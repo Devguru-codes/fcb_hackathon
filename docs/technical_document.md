@@ -90,12 +90,27 @@ official `possession_metrics.py`. The public five minutes are used only as an al
 | official baseline (smooth50) | 0.262 | 0.285 |
 | LightGBM, features v1 | 0.558 | 0.585 |
 | LightGBM, features v2 | 0.566 | 0.591 |
-| **GRU, features v2 (submitted)** | **0.719** | **0.749** |
+| GRU, features v2 | 0.719 | 0.749 |
+| **3 GRUs (seeds × noise draws), averaged — submitted** | **0.730** | **0.759** |
+
+Tried and not adopted (same protocol; DFL mean spellF1 of the model alone, then with the
+3-GRU ensemble):
+
+| variant | alone | in ensemble | verdict |
+|---|---|---|---|
+| player-set encoder (per-frame attention over players, PathCRF-style) | 0.714 | 0.726 | slightly worse, 4× slower |
+| TCN (dilated convolutions) | 0.717 | 0.727 | close, no ensemble gain |
+| transformer (5 fps tokens + full-rate skip) | 0.656 | 0.724 | worse: too coarse for short possessions |
+| hidden-ball auxiliary head, weight 1.0 / 0.1 | 0.699 / 0.710 | — / 0.725 | hurts: competes with the possession objective |
+
+PathCRF (Kim et al., KDD 2026) was reviewed but its released weights were not used: it needs 22
+persistent player identities (the ATD has anonymous, fragmented tracklets), models only live
+play, and was trained on five of the seven DFL matches used in our validation.
 
 Per held-out DFL match the GRU scores 0.705–0.758 (baseline 0.248–0.284). Recall of true
 possessions at IoU 0.5, GRU against LightGBM: 1–2 s possessions 0.51 vs 0.21; possessions with
-the ball visible under 20% of the time 0.33 vs 0.25. Decoder: switch 4, alive→dead 4,
-dead→alive 8, no change-head bonus (it did not help at any weight tried).
+the ball visible under 20% of the time 0.33 vs 0.25. Decoder for the ensemble: switch 2,
+alive→dead 4, dead→alive 8, no change-head bonus (it did not help at any weight tried).
 
 ## 8. Limitations
 
