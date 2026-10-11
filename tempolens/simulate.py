@@ -1,0 +1,145 @@
+"""Make clean tracking look like Metrica's automatic, uncorrected tracking (ATD).
+
+Why this exists: open tracking is clean. In Metrica's sample games the ball is missing almost
+only while it is dead, and in the DFL data it is never missing. A model trained on that learns
+"no ball = dead ball", or never learns to work without the ball at all.
+
+What the competition ATD actually looks like is measurable from the organisers' public files:
+`evaluation/results/baseline_raw.csv` is D exactly where the ATD has no ball. Over the graded
+frames the ball is missing 40.7% of the time in only 150 gaps -- median 268 frames, mean 431,
+and essentially every missing frame is inside a gap of 5 s or more. So the ATD loses the ball in
+long blind stretches, and for ~40% of the match possession must be read from the players alone.
+
+Simulated, per match:
+- stoppage gaps: each dead-ball stretch is lost, edges jittered, with probability `dead_cover`
+  (the tracker loses a ball that leaves play and finds it again around the restart);
+- ball gaps that start at a per-frame hazard (optionally `dead_bias` times higher while the ball
+  is dead) and last a log-normal number of frames fitted to those 150 gaps, topping the
+  in-period missing fraction up to `ball_missing`; plus rare short flickers;
+
+Calibration: the official baseline has published full-match scores for four smoothing windows
+(EVALUATION.md). On DFL match J03WMX, dead_cover ~0.67 reproduces their macroF1 within ~0.02
+and their ranking order under both metrics; uniform gaps (dead_cover 0) leave macroF1 ~0.2 too
+low whatever the dead-ball bias. Clean DFL also matches the competition's 78% agreement between
+nearest player's team and owning team, so no extra team noise is added.
+- player dropout as a two-state chain, so ~20.5 of 22 players are visible (DATA.md);
+- position jitter on ball and players.
+"""
+
+from dataclasses import dataclass, replace
+
+import numpy as np
+
+from .match import D
+
+
+@dataclass(frozen=True)
+class AtdNoise:
+    ball_missing: float = 0.407      # in-period fraction without a ball (measured, see above)
+    gap_median: float = 268.0        # frames; log-normal fit to the measured gaps
+    gap_sigma: float = 0.95          # gives a mean of ~420 frames against a measured 431
+    dead_bias: float = 1.0           # gap-start hazard while dead / while alive
+    dead_cover: float = 0.67         # chance a whole stoppage is lost (ball out of play)
+    dead_lag: float = 12.0           # frames after the stoppage starts before the ball is lost
+    dead_edge_sd: float = 15.0       # jitter of both edges of a stoppage gap, frames
+    flicker_rate: float = 2e-4       # per frame: short 1-5 frame losses
+    ball_jitter_m: float = 0.3
+    player_missing: float = 0.07     # 22 * (1 - 0.07) ~ 20.5 visible
+    player_mean_gap: float = 60.0
+    player_jitter_m: float = 0.15
+
+
+def _two_state_dropout(n, hazard, recover, rng):
+    """Boolean 'lost' sequence of a two-state chain with constant rates."""
+    u = rng.random(n)
+    lost = np.zeros(n, dtype=bool)
+    state = False
+    for t in range(n):
+        state = (u[t] >= recover) if state else (u[t] < hazard)
+        lost[t] = state
+    return lost
+
+
+def _ball_gaps(hazard, durations, period):
+    """Missing mask from per-frame gap-start hazards (already Bernoulli-drawn) and durations."""
+    n = len(hazard)
+    lost = np.zeros(n, dtype=bool)
+    t = 0
+    while t < n:
+        if period[t] > 0 and hazard[t]:
+            stop = min(n, t + int(durations[t]))
+            # A gap never runs on into the next period.
+            same = np.flatnonzero(period[t:stop] != period[t])
+            stop = t + int(same[0]) if len(same) else stop
+            lost[t:stop] = True
+            t = stop + 1   # the ball is seen at least one frame between two gaps
+        else:
+            t += 1
+    return lost
+
+
+def _stoppage_gaps(table, noise, rng):
+    """Lose the ball through whole stoppages: shortly after it dies until about the restart."""
+    lost = np.zeros(table.n_frames, dtype=bool)
+    dead = (table.labels == D) & (table.period > 0)
+    edges = np.diff(np.concatenate(([0], dead.astype(np.int8), [0])))
+    for start, stop in zip(np.flatnonzero(edges == 1), np.flatnonzero(edges == -1)):
+        if rng.random() >= noise.dead_cover:
+            continue
+        a = start + int(round(noise.dead_lag + noise.dead_edge_sd * rng.standard_normal()))
+        b = stop + int(round(noise.dead_edge_sd * rng.standard_normal()))
+        a, b = max(start, a), min(table.n_frames, b)
+        period = table.period[start]
+        if b > a:
+            lost[a:b] = table.period[a:b] == period
+    return lost
+
+
+def simulate_atd(table, noise=AtdNoise(), seed=0):
+    """A corrupted copy of `table`. Labels and periods are untouched."""
+    rng = np.random.default_rng(seed)
+    n = table.n_frames
+    inside = table.period > 0
+    ball = table.ball.astype(np.float32).copy()
+    players = table.players.astype(np.float32).copy()
+
+    # Relative gap-start hazard per frame; dead frames can be made likelier to start a gap.
+    weight = np.ones(n)
+    if table.labels is not None and noise.dead_bias != 1.0:
+        weight[table.labels == D] = noise.dead_bias
+    durations = np.exp(np.log(noise.gap_median) + noise.gap_sigma * rng.standard_normal(n))
+    u = rng.random(n)
+    already = np.isnan(ball[:, 0]) & inside
+    if table.labels is not None and noise.dead_cover > 0:
+        already |= _stoppage_gaps(table, noise, rng)
+    # Stationary missing fraction ~ h*L / (1 + h*L) for mean gap L: solve for the hazard, then
+    # correct it twice against the realised fraction (gaps are truncated at period ends).
+    target = max(0.0, noise.ball_missing - already.sum() / max(1, inside.sum()))
+    mean_gap = float(np.mean(np.minimum(durations, 3000)))
+    h = target / (mean_gap * max(1e-6, 1.0 - target))
+    lost = np.zeros(n, dtype=bool)
+    for _ in range(3):
+        if target <= 0:
+            break
+        rate = np.clip(h * weight / np.mean(weight[inside]), 0, 1)
+        lost = _ball_gaps(u < rate, durations, table.period)
+        extra = (lost & ~already)[inside].mean()
+        if extra <= 0:
+            break
+        h *= target / extra
+    lost |= already
+    flicker_start = (rng.random(n) < noise.flicker_rate) & inside
+    for t in np.flatnonzero(flicker_start):
+        lost[t:t + int(rng.integers(1, 6))] = True
+    ball[lost] = np.nan
+    ball += rng.normal(0, noise.ball_jitter_m, ball.shape).astype(np.float32)
+
+    # Players: independent dropout per slot.
+    h_player = noise.player_missing / (noise.player_mean_gap * (1 - noise.player_missing))
+    for slot in range(players.shape[1]):
+        gone = _two_state_dropout(n, h_player, 1.0 / noise.player_mean_gap, rng)
+        players[gone, slot] = np.nan
+    players += rng.normal(0, noise.player_jitter_m, players.shape).astype(np.float32)
+
+    return replace(table, name=table.name + "~atd{}".format(seed), ball=ball, players=players,
+                   meta=dict(table.meta, simulated=seed))

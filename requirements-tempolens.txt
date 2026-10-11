@@ -1,0 +1,10 @@
+# Pinned environment for TempoLens and the official evaluator (tested on Python 3.11).
+numpy==1.26.4
+pandas==2.3.3
+lightgbm==4.6.0
+# The temporal model. Inference for the submission runs on CPU; a CUDA build only speeds training.
+torch==2.5.1
+# Optional: JIT for the Viterbi decoder (the numpy fallback gives identical results, slower).
+numba==0.61.2
+# Reads Metrica's open sample game 3 (FIFA/EPTS); same pin as requirements-starter.txt.
+kloppy==3.18.0

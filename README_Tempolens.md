@@ -1,0 +1,64 @@
+# TempoLens
+
+A learned possession-reconstruction pipeline for **More than a Hack 2027**: a temporal model
+trained on open football data under realistic simulated tracking noise, decoded for whole
+possessions (`spellF1`), not for single frames.
+
+## Why it is built this way
+
+Two facts about the competition tracking (ATD), both measurable from the organisers' public
+files, shape everything:
+
+- **The ball is missing for 41% of the match, in long blind stretches**: ~150 gaps with a median
+  of 10.7 s. Possession has to be read from how the 22 players move for a large part of the
+  game, so ball-free inference is the core of the problem.
+- **The public 5 minutes are unrepresentative**: only ~12% of their frames lack the ball, and
+  they hold 17 possessions. They can check a pipeline, not choose between versions of it.
+
+So models are trained and compared on **open matches with known possession** — Metrica's 3
+sample games and the 7-match DFL/Sportec dataset (CC-BY 4.0) — after corrupting their tracking
+with a **simulator calibrated so the official baseline reproduces its published scores**.
+
+## Pipeline
+
+| stage | module | what it does |
+|---|---|---|
+| data | `match.py`, `opendata.py` | one per-frame table (metres, anonymous slots) for the ATD and every open match; open labels from DFL's ball status/owner flag or Metrica events |
+| noise | `simulate.py` | stoppage-aligned and long log-normal ball gaps, player dropout, jitter |
+| features | `features.py` | ~140 identity-free, team-symmetric features: control geometry, ball state, formation, memory across ball gaps, context windows |
+| model | `temporal.py` | bidirectional GRU: P(H/A/D) per frame plus a possession-change head; LightGBM in `experiments.py` as a comparison |
+| decoding | `decoder.py` | Viterbi with switch/stoppage costs tuned by cross-validated spellF1 |
+| tags | `tags.py` | Smart Tagging as an optional prior, with defensive codes pointing at the other team |
+
+## Run
+
+```bash
+pip install -r requirements-tempolens.txt
+
+# The submission, from committed weights, CPU-only and deterministic:
+python -m tempolens.predict --data-root data --output evaluation/results/<team>.csv
+python evaluation/validate_submission.py evaluation/results/<team>.csv
+
+# Data-day checks; prints aggregate numbers only:
+python -m tempolens.diagnostics --data-root data
+
+# Research loop on open data (MTAH_OPEN_DATA_DIR -> folder with metrica_sample_data/, dfl_idsse/):
+python -m tempolens.experiments --model gbm
+python -m tempolens.experiments --model temporal
+python -m tempolens.train --out models/tempolens_gru.pt
+```
+
+`--method heuristic` on `predict` runs the original hand-tuned decoder for comparison.
+
+## Open data
+
+- Metrica Sports sample data: `git clone https://github.com/metrica-sports/sample-data
+  external_data/metrica_sample_data`
+- DFL/Sportec (Bassek et al., *Scientific Data*, CC-BY 4.0), figshare article 28196177: the
+  `positions_raw`, `matchinformation` and `events_raw` files into `external_data/dfl_idsse/`.
+
+## Data safety
+
+Competition data never enters the repository (`data/` is gitignored) and must not be sent to a
+hosted LLM. Trained weights come from open data only. `tempolens.diagnostics` prints aggregates
+only; nothing in this package exports frame-level tracking.

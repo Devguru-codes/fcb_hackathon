@@ -1,0 +1,9 @@
+{
+  "_provenance": "Best mean spellF1 (0.749 all, 0.719 DFL) of the temporal GRU, features v2, under 5-fold simulated-ATD cross-validation on 10 open matches (python -m tempolens.experiments --model temporal). The dead-ball costs were flat between 2 and 8; switch 4 was best; the change-head bonus did not help.",
+  "switch": 4.0,
+  "alive_to_dead": 4.0,
+  "dead_to_alive": 8.0,
+  "change_weight": 0.0,
+  "tag_weight": 0.0,
+  "tag_restart_weight": 0.0
+}

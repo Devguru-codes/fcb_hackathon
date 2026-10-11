@@ -53,6 +53,11 @@ data/*
 # insurance against it being recreated in here by habit.
 organizers/
 
+# -- TempoLens derived outputs ---------------------------------------------------------------
+# These can reveal restricted frame-level information or contain a participant submission.
+tempolens/output/
+tempolens/*.csv
+
 # -- editors and build artifacts ---------------------------------------------------------------
 .idea/
 .vscode/

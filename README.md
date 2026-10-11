@@ -8,6 +8,13 @@ engineers. You are given one complete LaLiga match — two camera feeds, automat
 player and the ball, automatic tactical tagging, and the camera-to-pitch geometry — and one
 question to answer with it.
 
+## TempoLens submission pipeline
+
+This workspace adds **TempoLens**, a learned possession-reconstruction pipeline: a temporal model
+trained on open football data under simulated tracking noise calibrated to the competition's,
+decoded for whole possession spells. See [README_Tempolens.md](README_Tempolens.md) for the
+method, the run commands and the data-safety constraints.
+
 ---
 
 ## The task
