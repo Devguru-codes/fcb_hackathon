@@ -100,6 +100,7 @@ Tried and not adopted (same protocol; DFL mean spellF1 of the model alone, then 
 |---|---|---|---|
 | player-set encoder (per-frame attention over players, PathCRF-style) | 0.714 | 0.726 | slightly worse, 4× slower |
 | TCN (dilated convolutions) | 0.717 | 0.727 | close, no ensemble gain |
+| bidirectional LSTM | 0.707 | 0.729 | worse alone, no ensemble gain |
 | transformer (5 fps tokens + full-rate skip) | 0.656 | 0.724 | worse: too coarse for short possessions |
 | hidden-ball auxiliary head, weight 1.0 / 0.1 | 0.699 / 0.710 | — / 0.725 | hurts: competes with the possession objective |
 
