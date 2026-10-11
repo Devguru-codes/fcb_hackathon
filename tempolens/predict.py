@@ -43,16 +43,39 @@ def _paths(model_paths):
     return [Path(path) for path in model_paths]
 
 
-def learned_logp(data_root, game, model_paths):
-    """(competition MatchTable, ensemble output (n, 4)). The slow part: run it once."""
+def learned_logp(data_root, game, model_paths, video_ball=None, video_fill="alive"):
+    """(competition MatchTable, ensemble output (n, 4)). The slow part: run it once.
+
+    `video_ball`: optional ball_filled.npz from tempolens.vision.run. Its detections fill the
+    tracking's ball gaps -- everywhere ("all"), or ("alive") only where a first pass of the
+    ensemble on the raw tracking says the ball is in play, so the model's "ball missing during
+    a stoppage" cue is left intact. "alive" costs a second ensemble pass.
+    """
+    from dataclasses import replace
     from . import temporal
-    from .match import competition_table
+    from .match import D, competition_table
 
     table = competition_table(game, data_root)
     paths = _paths(model_paths)
     if not paths:
         raise IOError("no model weights given and none found in models/")
-    return table, temporal.predict_ensemble([temporal.load(path) for path in paths], table)
+    members = [temporal.load(path) for path in paths]
+    if video_ball is None:
+        return table, temporal.predict_ensemble(members, table)
+    filled = np.load(video_ball)
+    from_video = filled["source"] == 2
+    if len(from_video) != table.n_frames:
+        raise ValueError("video ball file has {} frames, the match {}".format(
+            len(from_video), table.n_frames))
+    if video_fill == "alive":
+        first = temporal.predict_ensemble(members, table)
+        from_video &= np.exp(first[:, D]) < 0.5
+    elif video_fill != "all":
+        raise ValueError("video_fill must be 'alive' or 'all', not {!r}".format(video_fill))
+    ball = table.ball.copy()
+    ball[from_video] = filled["ball"][from_video]
+    table = replace(table, ball=ball)
+    return table, temporal.predict_ensemble(members, table)
 
 
 def decode_learned(table, logp, settings, data_root, game, tag_prior=None):
@@ -80,9 +103,10 @@ def decode_learned(table, logp, settings, data_root, game, tag_prior=None):
     return decode_table(table, logp, transition, settings.get("change_weight", 0.0)), tag_report
 
 
-def learned_states(data_root, game, model_paths, decoder_path):
+def learned_states(data_root, game, model_paths, decoder_path, video_ball=None,
+                   video_fill="alive"):
     """H/A/D codes from the temporal ensemble, decoded per half. X (3) outside the halves."""
-    table, logp = learned_logp(data_root, game, model_paths)
+    table, logp = learned_logp(data_root, game, model_paths, video_ball, video_fill)
     states, _ = decode_learned(table, logp, load_decoder(decoder_path), data_root, game)
     report = SimpleNamespace(ball_seen=np.isfinite(table.ball[:, 0]),
                              ball_x=table.ball[:, 0], ball_y=table.ball[:, 1])
@@ -104,10 +128,12 @@ def heuristic_states(data_root, game, config_path=None):
 
 
 def predict(data_root, output, method="learned", model_paths=DEFAULT_MODELS,
-            decoder_path=DEFAULT_DECODER, config_path=None, report_dir=None, game=GAME):
+            decoder_path=DEFAULT_DECODER, config_path=None, report_dir=None, game=GAME,
+            video_ball=None, video_fill="alive"):
     """Run the pipeline and write a validated-shape CSV. Returns the label array."""
     if method == "learned":
-        states, report = learned_states(data_root, game, model_paths, decoder_path)
+        states, report = learned_states(data_root, game, model_paths, decoder_path,
+                                        video_ball, video_fill)
     else:
         states, report = heuristic_states(data_root, game, config_path)
     labels = np.array(["H", "A", "D", "X"])[np.where(states > 2, 3, states)].astype("<U1")
@@ -139,10 +165,15 @@ def main(argv=None):
     parser.add_argument("--decoder", default=str(DEFAULT_DECODER), help="decoder settings JSON")
     parser.add_argument("--config", help="heuristic method only: DecoderConfig JSON")
     parser.add_argument("--report-dir", help="optional local transition-report directory")
+    parser.add_argument("--video-ball", help="ball_filled.npz from tempolens.vision.run "
+                                             "(default: tracking ball only)")
+    parser.add_argument("--video-fill", default="alive", choices=("alive", "all"),
+                        help="fill video detections only where play looks live, or everywhere")
     args = parser.parse_args(argv)
     try:
         labels = predict(args.data_root, args.output, args.method, args.model, args.decoder,
-                         args.config, args.report_dir)
+                         args.config, args.report_dir, video_ball=args.video_ball,
+                         video_fill=args.video_fill)
     except (IOError, ImportError, ValueError) as error:
         parser.error(str(error))
     counts = {label: int(np.sum(labels == label)) for label in ("H", "A", "D", "X")}
