@@ -88,8 +88,17 @@ def run(data_root, model_paths=None, decoder_path=None):
     truth = pm.label_codes(pm.read_label_csv(ROOT / "evaluation/gt/BAR-ATH_possession_gt_public.csv"))
     scores = {"baseline_smooth50": baseline_codes(table, window=50)}
     if model_paths:
-        from .predict import learned_states
-        scores["learned"], _ = learned_states(data_root, GAME, model_paths, decoder_path)
+        from .predict import decode_learned, learned_logp, load_decoder
+        settings = load_decoder(decoder_path)
+        _, logp = learned_logp(data_root, GAME, model_paths)
+        scores["learned"], _ = decode_learned(table, logp, settings, data_root, GAME, "off")
+        scores["learned+tags"], tag_report = decode_learned(table, logp, settings, data_root,
+                                                            GAME, "auto")
+        # 6. Smart Tagging reliability, measured against the confident model (no labels)
+        report["tag_prior"] = {
+            group: {"weight": round(w, 3), "reliability": round(r, 3), "confident_frames": n}
+            for group, (w, r, n) in tag_report.items()}
+        report["tag_prior_setting"] = settings.get("tag_prior", "off")
     report["public_window"] = {}
     for name, codes in scores.items():
         codes = np.where(codes == X, X, codes).astype(np.int8)

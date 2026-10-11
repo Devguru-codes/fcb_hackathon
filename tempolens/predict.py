@@ -43,27 +43,47 @@ def _paths(model_paths):
     return [Path(path) for path in model_paths]
 
 
-def learned_states(data_root, game, model_paths, decoder_path):
-    """H/A/D codes from the temporal ensemble, decoded per half. X (3) outside the halves."""
+def learned_logp(data_root, game, model_paths):
+    """(competition MatchTable, ensemble output (n, 4)). The slow part: run it once."""
     from . import temporal
-    from .decoder import transition_matrix
-    from .experiments import decode_table
     from .match import competition_table
-    from .tags import tag_priors
 
     table = competition_table(game, data_root)
-    settings = load_decoder(decoder_path)
     paths = _paths(model_paths)
     if not paths:
         raise IOError("no model weights given and none found in models/")
-    logp = temporal.predict_ensemble([temporal.load(path) for path in paths], table)
-    if settings.get("tag_weight") or settings.get("tag_restart_weight"):
-        logp[:, :3] += tag_priors(table.meta["home"], table.meta["away"], game, data_root,
-                                  settings.get("tag_weight", 0.0),
-                                  settings.get("tag_restart_weight", 0.0))
+    return table, temporal.predict_ensemble([temporal.load(path) for path in paths], table)
+
+
+def decode_learned(table, logp, settings, data_root, game, tag_prior=None):
+    """(H/A/D codes per half with X outside, tag calibration report or None).
+
+    `tag_prior` overrides settings["tag_prior"]: "auto" applies the self-calibrated Smart
+    Tagging prior (tagprior.py), "off" does not.
+    """
+    from .decoder import transition_matrix
+    from .experiments import decode_table
+
+    mode = tag_prior or settings.get("tag_prior", "off")
+    tag_report = None
+    if mode == "auto":
+        from games import GAMES, require
+        from .tagprior import read_instances, self_calibrated
+        path = require(["smart_tagging"], game, data_root)[0]
+        instances = read_instances(path, table.meta["home"], table.meta["away"],
+                                   GAMES[game]["fps"])
+        logp, tag_report = self_calibrated(logp, instances, table.period > 0)
+    elif mode != "off":
+        raise ValueError("tag_prior must be 'auto' or 'off', not {!r}".format(mode))
     transition = transition_matrix(settings["switch"], settings["alive_to_dead"],
                                    settings["dead_to_alive"])
-    states = decode_table(table, logp, transition, settings.get("change_weight", 0.0))
+    return decode_table(table, logp, transition, settings.get("change_weight", 0.0)), tag_report
+
+
+def learned_states(data_root, game, model_paths, decoder_path):
+    """H/A/D codes from the temporal ensemble, decoded per half. X (3) outside the halves."""
+    table, logp = learned_logp(data_root, game, model_paths)
+    states, _ = decode_learned(table, logp, load_decoder(decoder_path), data_root, game)
     report = SimpleNamespace(ball_seen=np.isfinite(table.ball[:, 0]),
                              ball_x=table.ball[:, 0], ball_y=table.ball[:, 1])
     return states, report

@@ -88,7 +88,7 @@ class EndToEndTests(unittest.TestCase):
             tiny_model(model)
             decoder.write_text(json.dumps({"switch": 6.0, "alive_to_dead": 4.0,
                                            "dead_to_alive": 4.0, "change_weight": 0.5,
-                                           "tag_weight": 0.5, "tag_restart_weight": 0.3}))
+                                           "tag_prior": "auto"}))
             output = Path(folder) / "team.csv"
             labels = predict.predict(folder, output, "learned", model, decoder)
             frame = pm.read_label_csv(output)
@@ -103,6 +103,8 @@ class EndToEndTests(unittest.TestCase):
             sides = {name: entry["side"] for name, entry in report["tag_teams"].items()}
             self.assertEqual(sides, {"Barcelona": 0, "Atletic Club": 1, "N/A": None})
             self.assertIn("learned", report["public_window"])
+            self.assertIn("learned+tags", report["public_window"])
+            self.assertEqual(set(report["tag_prior"]), {"attack", "defence"})
 
 
 if __name__ == "__main__":

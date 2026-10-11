@@ -4,6 +4,6 @@
   "alive_to_dead": 4.0,
   "dead_to_alive": 8.0,
   "change_weight": 0.0,
-  "tag_weight": 0.0,
-  "tag_restart_weight": 0.0
+  "tag_prior": "off",
+  "_tag_prior": "'auto' adds the self-calibrated Smart Tagging prior (tagprior.py). Off until tempolens.diagnostics shows the real tags' reliability on the match; on synthetic tags it gained +0.013 DFL spellF1 when tags were accurate and ~0 when they were random (python -m tempolens.tagstudy)."
 }

@@ -32,7 +32,7 @@ the automatic tracking has no ball; the public ground truth covers five minutes)
 | asset | use |
 |---|---|
 | tactical ATD | the only input to the model: player and ball positions in metres, slots treated as anonymous tracklets |
-| Smart Tagging | optional decoder prior; defensive codes (`DEFENDING IN …`, `DEFENSIVE TRANSITION`) name the side *without* the ball and are inverted; team names matched fuzzily ("Atletic Club") — weight TBD |
+| Smart Tagging | optional self-calibrated prior on which team has the ball (§6a); defensive codes (`DEFENDING IN …`, `DEFENSIVE TRANSITION`) name the side *without* the ball and are inverted; team names matched fuzzily ("Atletic Club"); set pieces not used yet |
 | homography, videos | not used so far; the tracking is already in pitch coordinates. A local video ball detector to fill tracking gaps is the main untried extension |
 | broadcast feed | not used: unsynchronised, a third of frames without homography |
 | open data | Metrica Sports sample games 1–3 (labels from events), DFL/Sportec seven matches (Bassek et al., CC-BY 4.0; labels from the provider's per-frame ball status and owner) |
@@ -78,6 +78,33 @@ within 0.08 of the published values at any bias.
   plus a weighted change-detection loss. LightGBM on the same features as a comparison.
 - Decoder: Viterbi over H/A/D, costs for team switch, alive→dead and dead→alive; optional bonus
   from the change head.
+
+## 6a. Smart Tagging as a self-calibrated prior
+
+Tags exist only for the competition match, so their weight cannot be learned from open data,
+and the public window is too small to tune it. The prior calibrates itself without labels:
+each tag votes for the side in possession over its interval (two families: attacking and
+defensive codes); on frames where the ensemble is >90% sure which side has the ball, the
+family's agreement rate r with the ensemble estimates its reliability; the family's weight is
+0.5·logit(r), clipped to [0, 2], and shifts only the home-versus-away log-odds.
+
+Tested on the open matches with synthetic tags (phases on 60% of possessions, ±1 s boundaries,
+30% running on over the next possession, team error swept), using the cross-validated ensemble:
+
+| tag team error | DFL spellF1 | learned weights (attack / defence) |
+|---|---|---|
+| no prior | 0.730 | — |
+| 0% | 0.743 | 0.82 / 0.62 |
+| 10% | 0.736 | 0.59 / 0.45 |
+| 20% | 0.735 | 0.40 / 0.33 |
+| 35% | 0.729 | 0.20 / 0.28 |
+| 50% (random) | 0.730 | 0.05 / 0.07 |
+
+It helps when tags are informative and costs nothing when they are not. Shrinkage 1.0 gained
+more with perfect tags (+0.017) but lost 0.004 at 35% error, so 0.5 was kept. Caveat: real tag
+errors may correlate with the model's own (both read the same tracking), which synthetic tags do
+not capture; the reliability measured on the real match is reported by `tempolens.diagnostics`
+before the prior is switched on (`"tag_prior": "auto"` in `models/decoder.json`).
 
 ## 7. Validation
 
