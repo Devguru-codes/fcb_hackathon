@@ -131,6 +131,63 @@ class SimulatorTests(unittest.TestCase):
                            2 * missing[np.isin(table.labels, [H, A])].mean())
 
 
+class EnsembleTests(unittest.TestCase):
+    def test_combine_averages_probabilities_and_change_logits(self):
+        from tempolens.temporal import combine
+        a = np.column_stack([np.log([[0.8, 0.1, 0.1]]), [[2.0]]])
+        b = np.column_stack([np.log([[0.2, 0.7, 0.1]]), [[0.0]]])
+        out = combine([a, b])
+        np.testing.assert_allclose(np.exp(out[0, :3]), [0.5, 0.4, 0.1], atol=1e-3)
+        self.assertAlmostEqual(out[0, 3], 1.0)
+
+    def test_member_noise_seeds_are_disjoint(self):
+        from tempolens.experiments import member_noise_seeds
+        seeds = [set(member_noise_seeds(k)) for k in range(4)]
+        for i in range(4):
+            for j in range(i + 1, 4):
+                self.assertFalse(seeds[i] & seeds[j])
+
+
+class TemporalVariantTests(unittest.TestCase):
+    def test_every_variant_trains_saves_loads_and_predicts(self):
+        import tempfile
+        from tempolens import temporal
+        n = 3000
+        rng = np.random.default_rng(2)
+        period = np.ones(n, dtype=np.int8)
+        period[1500:] = 2
+        table = MatchTable(name="tiny", ball=rng.uniform([0, 0], [105, 68], (n, 2)).astype(np.float32),
+                           players=rng.uniform([0, 0], [105, 68], (n, 22, 2)).astype(np.float32),
+                           slot_team=np.array([H, A] * 11, dtype=np.int8), period=period,
+                           labels=np.tile(np.repeat(np.array([H, D, A], np.int8), 250), n // 750))
+        table.ball[100:300] = np.nan
+        configs = [temporal.TemporalConfig(aux_ball=1.0),
+                   temporal.TemporalConfig(encoder="players", hidden=16),
+                   temporal.TemporalConfig(arch="tcn", hidden=16),
+                   temporal.TemporalConfig(arch="transformer", hidden=16)]
+        with tempfile.TemporaryDirectory() as folder:
+            for config in configs:
+                model, normaliser = temporal.train([table], epochs=1, device="cpu",
+                                                   verbose=False, config=config)
+                path = "{}/{}.pt".format(folder, config.tag())
+                temporal.save(model, normaliser, path)
+                loaded, norm = temporal.load(path)
+                self.assertEqual(loaded.config, config)
+                out = temporal.predict(loaded, norm, table)
+                self.assertEqual(out.shape, (n, 4), config.tag())
+                self.assertTrue(np.all(np.isfinite(out)), config.tag())
+                np.testing.assert_allclose(np.exp(out[:, :3]).sum(axis=1), 1.0, atol=1e-2)
+
+    def test_committed_model_still_loads_as_default_gru(self):
+        from pathlib import Path
+        from tempolens import temporal
+        path = Path(__file__).resolve().parents[1] / "models" / "tempolens_gru.pt"
+        if not path.exists():
+            self.skipTest("no committed model")
+        model, _ = temporal.load(path)
+        self.assertEqual(model.config, temporal.DEFAULT_CONFIG)
+
+
 class DecodeTests(unittest.TestCase):
     def test_numba_and_numpy_viterbi_agree(self):
         from unittest.mock import patch

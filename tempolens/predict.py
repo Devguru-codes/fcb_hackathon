@@ -2,9 +2,9 @@
 
     python -m tempolens.predict --data-root data --output evaluation/results/<team>.csv
 
-The default method runs the committed temporal model (models/tempolens_gru.pt, trained on open
-data only) on CPU and decodes it with the committed decoder settings (models/decoder.json), so
-the same data always gives the same file. `--method heuristic` runs the original hand-tuned
+The default method runs the committed temporal models (every models/tempolens_gru*.pt, an
+ensemble trained on open data only) on CPU, averages them, and decodes with the committed
+decoder settings (models/decoder.json), so the same data always gives the same file. `--method heuristic` runs the original hand-tuned
 TempoLens decoder for comparison.
 """
 
@@ -19,7 +19,7 @@ import numpy as np
 from games import GAME, GAMES, half_video_blocks, source_frames
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_MODEL = ROOT / "models" / "tempolens_gru.pt"
+DEFAULT_MODELS = sorted((ROOT / "models").glob("tempolens_gru*.pt"))
 DEFAULT_DECODER = ROOT / "models" / "decoder.json"
 
 
@@ -37,8 +37,14 @@ def load_decoder(path=DEFAULT_DECODER):
     return {key: value for key, value in settings.items() if not key.startswith("_")}
 
 
-def learned_states(data_root, game, model_path, decoder_path):
-    """H/A/D codes from the temporal model, decoded per half. X (3) outside the halves."""
+def _paths(model_paths):
+    if isinstance(model_paths, (str, Path)):
+        return [Path(model_paths)]
+    return [Path(path) for path in model_paths]
+
+
+def learned_states(data_root, game, model_paths, decoder_path):
+    """H/A/D codes from the temporal ensemble, decoded per half. X (3) outside the halves."""
     from . import temporal
     from .decoder import transition_matrix
     from .experiments import decode_table
@@ -47,8 +53,10 @@ def learned_states(data_root, game, model_path, decoder_path):
 
     table = competition_table(game, data_root)
     settings = load_decoder(decoder_path)
-    model, normaliser = temporal.load(model_path)
-    logp = temporal.predict(model, normaliser, table)
+    paths = _paths(model_paths)
+    if not paths:
+        raise IOError("no model weights given and none found in models/")
+    logp = temporal.predict_ensemble([temporal.load(path) for path in paths], table)
     if settings.get("tag_weight") or settings.get("tag_restart_weight"):
         logp[:, :3] += tag_priors(table.meta["home"], table.meta["away"], game, data_root,
                                   settings.get("tag_weight", 0.0),
@@ -75,11 +83,11 @@ def heuristic_states(data_root, game, config_path=None):
     return decode(features, tags, config), features
 
 
-def predict(data_root, output, method="learned", model_path=DEFAULT_MODEL,
+def predict(data_root, output, method="learned", model_paths=DEFAULT_MODELS,
             decoder_path=DEFAULT_DECODER, config_path=None, report_dir=None, game=GAME):
     """Run the pipeline and write a validated-shape CSV. Returns the label array."""
     if method == "learned":
-        states, report = learned_states(data_root, game, model_path, decoder_path)
+        states, report = learned_states(data_root, game, model_paths, decoder_path)
     else:
         states, report = heuristic_states(data_root, game, config_path)
     labels = np.array(["H", "A", "D", "X"])[np.where(states > 2, 3, states)].astype("<U1")
@@ -106,7 +114,8 @@ def main(argv=None):
                         help="folder containing tactical/ and broadcast/ match assets")
     parser.add_argument("--output", required=True, help="target frame,label CSV")
     parser.add_argument("--method", default="learned", choices=("learned", "heuristic"))
-    parser.add_argument("--model", default=str(DEFAULT_MODEL), help="temporal model weights")
+    parser.add_argument("--model", nargs="+", default=[str(p) for p in DEFAULT_MODELS],
+                        help="temporal model weights; several are averaged")
     parser.add_argument("--decoder", default=str(DEFAULT_DECODER), help="decoder settings JSON")
     parser.add_argument("--config", help="heuristic method only: DecoderConfig JSON")
     parser.add_argument("--report-dir", help="optional local transition-report directory")

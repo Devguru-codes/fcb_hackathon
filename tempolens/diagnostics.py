@@ -44,7 +44,7 @@ def _gaps(missing):
     return np.flatnonzero(edges == -1) - np.flatnonzero(edges == 1)
 
 
-def run(data_root, model_path=None, decoder_path=None):
+def run(data_root, model_paths=None, decoder_path=None):
     report = {"note": "aggregate numbers only; safe to share"}
     table = competition_table(GAME, data_root)
     graded = table.period > 0
@@ -87,9 +87,9 @@ def run(data_root, model_path=None, decoder_path=None):
     # 5. public-window scores
     truth = pm.label_codes(pm.read_label_csv(ROOT / "evaluation/gt/BAR-ATH_possession_gt_public.csv"))
     scores = {"baseline_smooth50": baseline_codes(table, window=50)}
-    if model_path and Path(model_path).exists():
+    if model_paths:
         from .predict import learned_states
-        scores["learned"], _ = learned_states(data_root, GAME, model_path, decoder_path)
+        scores["learned"], _ = learned_states(data_root, GAME, model_paths, decoder_path)
     report["public_window"] = {}
     for name, codes in scores.items():
         codes = np.where(codes == X, X, codes).astype(np.int8)
@@ -107,10 +107,10 @@ def run(data_root, model_path=None, decoder_path=None):
 
 
 def main(argv=None):
-    from .predict import DEFAULT_DECODER, DEFAULT_MODEL
+    from .predict import DEFAULT_DECODER, DEFAULT_MODELS
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--data-root", required=True)
-    parser.add_argument("--model", default=str(DEFAULT_MODEL))
+    parser.add_argument("--model", nargs="+", default=[str(p) for p in DEFAULT_MODELS])
     parser.add_argument("--decoder", default=str(DEFAULT_DECODER))
     args = parser.parse_args(argv)
     print(json.dumps(run(args.data_root, args.model, args.decoder), indent=2, default=str))

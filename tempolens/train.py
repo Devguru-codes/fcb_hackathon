@@ -1,6 +1,7 @@
 """Train the final temporal model on every open match under simulated ATD noise.
 
-    python -m tempolens.train --out models/tempolens_gru.pt
+    python -m tempolens.train                 # member 0 -> models/tempolens_gru.pt
+    python -m tempolens.train --member 1      # member 1 -> models/tempolens_gru_m1.pt
 
 Same recipe as the cross-validation in tempolens.experiments (two noise draws per match, both
 team perspectives), on all matches. Training uses only open data (no competition asset), so the
@@ -12,23 +13,28 @@ import argparse
 from pathlib import Path
 
 from . import temporal
-from .experiments import SIM_TRAIN_SEEDS, CachedSample
+from .experiments import CachedSample, member_noise_seeds
 from .opendata import LOADERS
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--out", default="models/tempolens_gru.pt")
+    parser.add_argument("--member", type=int, default=0,
+                        help="ensemble member: sets the network seed and the noise draws")
+    parser.add_argument("--out", help="default models/tempolens_gru[_m<member>].pt")
     parser.add_argument("--matches", nargs="+", default=sorted(LOADERS))
     parser.add_argument("--epochs", type=int, default=temporal.EPOCHS)
-    parser.add_argument("--seed", type=int, default=temporal.SEED)
     args = parser.parse_args(argv)
-    samples = [CachedSample(name, seed) for name in args.matches for seed in SIM_TRAIN_SEEDS]
-    model, normaliser = temporal.train(samples, epochs=args.epochs, seed=args.seed)
-    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
-    temporal.save(model, normaliser, args.out)
-    print("saved {} (trained on {}, noise draws {})".format(
-        args.out, ", ".join(args.matches), SIM_TRAIN_SEEDS))
+    out = args.out or ("models/tempolens_gru.pt" if args.member == 0
+                       else "models/tempolens_gru_m{}.pt".format(args.member))
+    seeds = member_noise_seeds(args.member)
+    samples = [CachedSample(name, seed) for name in args.matches for seed in seeds]
+    model, normaliser = temporal.train(samples, epochs=args.epochs,
+                                       seed=temporal.SEED + args.member)
+    Path(out).parent.mkdir(parents=True, exist_ok=True)
+    temporal.save(model, normaliser, out)
+    print("saved {} (member {}, trained on {}, noise draws {})".format(
+        out, args.member, ", ".join(args.matches), seeds))
 
 
 if __name__ == "__main__":

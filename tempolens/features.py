@@ -280,6 +280,64 @@ def frame_features(table, swap=False):
     return matrix, names
 
 
+PLAYERS_PER_TEAM = 12      # token slots per team; 11 on the pitch plus one for a duplicate track
+TOKEN_FIELDS = ("present", "x", "y", "vx", "vy", "dx_ball", "dy_ball", "d_ball", "ball_seen")
+
+
+def player_tokens(table, swap=False, per_team=PLAYERS_PER_TEAM):
+    """(n, 2*per_team, len(TOKEN_FIELDS)) float16: each frame's players as a set.
+
+    The first `per_team` tokens are the perspective team's players, the rest the opponents',
+    each sorted by oriented x and zero-padded with present = 0. Scaled to roughly unit range.
+    A per-frame set/graph encoder reads these instead of hand-made formation features; slots
+    carry no identity, so nothing here assumes a track is a person.
+    """
+    fps = table.fps
+    length, width = table.pitch
+    sign = attack_sign(table) * (-1.0 if swap else 1.0)
+    players = table.players.astype(np.float64)
+    vel = _velocity(players, fps, MAX_SPEED)
+    ball = table.ball.astype(np.float64)
+    seen = np.isfinite(ball[:, 0])
+    team0 = table.slot_team == (A if swap else H)
+    n = table.n_frames
+    out = np.zeros((n, 2 * per_team, len(TOKEN_FIELDS)), dtype=np.float32)
+    for block, mask in enumerate((team0, ~team0)):
+        px = (players[:, mask, 0] - length / 2.0) * sign[:, None]
+        py = players[:, mask, 1] - width / 2.0
+        present = np.isfinite(px)
+        order = np.argsort(np.where(present, px, np.inf), axis=1)[:, :per_team]
+        take = lambda a: np.take_along_axis(a, order, axis=1)
+        pres = take(present)
+        dx = take(players[:, mask, 0] - ball[:, None, 0]) * sign[:, None]
+        dy = take(players[:, mask, 1] - ball[:, None, 1])
+        fields = [pres, take(px) / 52.5, take(py) / 34.0,
+                  take(vel[:, mask, 0] * sign[:, None]) / 8.0, take(vel[:, mask, 1]) / 8.0,
+                  dx / 20.0, dy / 20.0, np.hypot(dx, dy) / 20.0,
+                  np.repeat(seen[:, None], pres.shape[1], axis=1)]
+        k = pres.shape[1]
+        for f, values in enumerate(fields):
+            values = np.where(pres, np.nan_to_num(values, nan=0.0), 0.0)
+            out[:, block * per_team:block * per_team + k, f] = values
+    out[table.period == 0] = 0.0
+    return np.clip(out, -10, 10).astype(np.float16)
+
+
+def hidden_ball_target(clean, noisy, swap=False):
+    """(n, 2) float32: the true ball, oriented like the features, where the noisy copy hid it.
+
+    NaN wherever the clean ball is unknown or the noisy copy still shows it -- the supervision
+    for an auxiliary head that learns to place a ball it cannot see from how the players move.
+    """
+    length, width = clean.pitch
+    sign = attack_sign(noisy) * (-1.0 if swap else 1.0)
+    target = np.full((clean.n_frames, 2), np.nan, dtype=np.float32)
+    hidden = np.isfinite(clean.ball[:, 0]) & ~np.isfinite(noisy.ball[:, 0]) & (clean.period > 0)
+    target[hidden, 0] = (clean.ball[hidden, 0] - length / 2.0) * sign[hidden] / 52.5
+    target[hidden, 1] = (clean.ball[hidden, 1] - width / 2.0) / 34.0
+    return target
+
+
 class TableSample:
     """A match as the models see it: labels, periods, and features from either team's view."""
 
@@ -288,12 +346,26 @@ class TableSample:
         self.labels = table.labels
         self.period = table.period
         self.n_frames = table.n_frames
+        self._cache = {}
 
     def runs(self):
         return self.table.runs()
 
     def features(self, swap=False):
-        return frame_features(self.table, swap=swap)[0]
+        """Computed once per perspective: ensemble members share them."""
+        if swap not in self._cache:
+            self._cache[swap] = frame_features(self.table, swap=swap)[0]
+        return self._cache[swap]
+
+    def tokens(self, swap=False):
+        key = ("tokens", swap)
+        if key not in self._cache:
+            self._cache[key] = player_tokens(self.table, swap=swap)
+        return self._cache[key]
+
+    def ball_target(self, swap=False):
+        """No hidden truth for a real match: an all-NaN target (the head is simply unused)."""
+        return np.full((self.n_frames, 2), np.nan, dtype=np.float32)
 
 
 def feature_names():

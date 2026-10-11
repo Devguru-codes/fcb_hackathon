@@ -7,6 +7,7 @@ ball is missing for 41% of the match, in long stretches.
 
     python -m tempolens.experiments                    # LightGBM, simulated ATD, 5 folds
     python -m tempolens.experiments --model temporal   # the recurrent model
+    python -m tempolens.experiments --model ensemble   # its members averaged
     python -m tempolens.experiments --protocol clean   # no simulated noise (optimistic)
 """
 
@@ -100,10 +101,41 @@ class CachedSample:
         clean = load_open_match(self.name)
         return clean if self.seed is None else simulate_atd(clean, seed=self.seed)
 
-    def _path(self, swap):
+    def _path(self, swap, kind="f{}".format(FEATURE_VERSION)):
         tag = "clean" if self.seed is None else "sim{}_{}".format(NOISE_TAG, self.seed)
         return (open_data_dir() / "cache" / "features" /
-                "{}_{}_f{}_{}.npy".format(self.name, tag, FEATURE_VERSION, int(swap)))
+                "{}_{}_{}_{}.npy".format(self.name, tag, kind, int(swap)))
+
+    def _cached(self, kind, swap, compute):
+        """np.load(mmap) of a per-perspective array, computing both perspectives once."""
+        path = self._path(swap, kind)
+        if not path.exists():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            for side in (False, True):
+                final = self._path(side, kind)
+                partial = final.with_name(final.stem + ".partial.npy")
+                np.save(partial, compute(side))
+                os.replace(partial, final)
+        return np.load(path, mmap_mode="r")
+
+    def tokens(self, swap=False):
+        from .features import player_tokens
+        table = {}
+
+        def compute(side):
+            table.setdefault("t", self.table())
+            return player_tokens(table["t"], swap=side)
+        return self._cached("tok{}".format(FEATURE_VERSION), swap, compute)
+
+    def ball_target(self, swap=False):
+        from .features import hidden_ball_target
+        tables = {}
+
+        def compute(side):
+            if not tables:
+                tables["clean"], tables["noisy"] = load_open_match(self.name), self.table()
+            return hidden_ball_target(tables["clean"], tables["noisy"], swap=side)
+        return self._cached("ball{}".format(FEATURE_VERSION), swap, compute)
 
     def features(self, swap=False):
         path = self._path(swap)
@@ -156,18 +188,45 @@ def predict_logp(model, sample):
 
 # -- cross-validated predictions --------------------------------------------------------------
 
-def oof_logp(names, kind="gbm", protocol="sim", refresh=False):
-    """Held-out log-probabilities for every match, each from a model that never saw it."""
+ENSEMBLE_MEMBERS = 3
+
+
+def member_noise_seeds(member):
+    """Noise draws for ensemble member k: member 0 uses SIM_TRAIN_SEEDS, the others fresh draws,
+    so members differ in training data as well as initialisation."""
+    return SIM_TRAIN_SEEDS if member == 0 else (2 * member + 1, 2 * member + 2)
+
+
+def oof_logp(names, kind="gbm", protocol="sim", refresh=False, member=0,
+             members=ENSEMBLE_MEMBERS, config=None):
+    """Held-out log-probabilities for every match, each from a model that never saw it.
+
+    kind "temporal" trains the network described by `config` (default: the base GRU).
+    kind "ensemble" averages the held-out outputs of temporal members 0..members-1, each of
+    which is trained (or read from cache) like kind "temporal" with that member index.
+    """
+    if kind == "ensemble":
+        from .temporal import combine
+        outputs = [oof_logp(names, "temporal", protocol, refresh, k, config=config)
+                   for k in range(members)]
+        return {n: combine([out[n] for out in outputs]) for n in names}
+    if kind == "temporal":
+        from .temporal import DEFAULT_CONFIG
+        config = config or DEFAULT_CONFIG
+        kind_tag = config.tag()
+    else:
+        kind_tag = kind
     cache = open_data_dir() / "cache" / "oof"
     cache.mkdir(parents=True, exist_ok=True)
     noise = NOISE_TAG if protocol == "sim" else "clean"
-    train_seeds = SIM_TRAIN_SEEDS if protocol == "sim" else (None,)
+    train_seeds = member_noise_seeds(member) if protocol == "sim" else (None,)
     test_seed = SIM_TEST_SEED if protocol == "sim" else None
+    tag = kind_tag if member == 0 else "{}{}".format(kind_tag, member)
     logps = {}
     for held in folds(names):
         key = "-".join(sorted(set(names) - set(held)))
         paths = {n: cache / "{}_{}_f{}_{}_train-{}.npy".format(
-            kind, noise, FEATURE_VERSION, n, hashlib.md5(key.encode()).hexdigest()[:8])
+            tag, noise, FEATURE_VERSION, n, hashlib.md5(key.encode()).hexdigest()[:8])
             for n in held}
         if not refresh and all(p.exists() for p in paths.values()):
             logps.update({n: np.load(p) for n, p in paths.items()})
@@ -179,12 +238,14 @@ def oof_logp(names, kind="gbm", protocol="sim", refresh=False):
             predict = lambda sample: predict_logp(model, sample)
         else:
             from . import temporal
-            model, normaliser = temporal.train(train)
+            model, normaliser = temporal.train(train, seed=temporal.SEED + member,
+                                               config=config)
             predict = lambda sample: temporal.predict(model, normaliser, sample)
         for n in held:
             logps[n] = predict(CachedSample(n, test_seed))
             np.save(paths[n], logps[n])
-        print("trained {} without {} in {:.0f}s".format(kind, ", ".join(held), time.time() - t0))
+        print("trained {} without {} in {:.0f}s".format(tag, ", ".join(held), time.time() - t0),
+              flush=True)
     return logps
 
 
@@ -196,9 +257,9 @@ def _summary(rows, names):
             mean([n for n in names if n.startswith("metrica")]))
 
 
-def run(names, grid, kind="gbm", protocol="sim", refresh=False):
+def run(names, grid, kind="gbm", protocol="sim", refresh=False, member=0, config=None):
     test_seed = SIM_TEST_SEED if protocol == "sim" else None
-    logps = oof_logp(names, kind, protocol, refresh)
+    logps = oof_logp(names, kind, protocol, refresh, member, config=config)
     samples = {n: CachedSample(n, test_seed) for n in names}
 
     print("\n{:<14} {:>8} {:>8} {:>6} {:>6}".format("baseline50", "spellF1", "macroF1", "pred",
@@ -240,7 +301,13 @@ def run(names, grid, kind="gbm", protocol="sim", refresh=False):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--matches", nargs="+", default=sorted(LOADERS))
-    parser.add_argument("--model", default="gbm", choices=("gbm", "temporal"))
+    parser.add_argument("--model", default="gbm", choices=("gbm", "temporal", "ensemble"))
+    parser.add_argument("--member", type=int, default=0,
+                        help="temporal only: ensemble member index (seed, noise draws)")
+    parser.add_argument("--arch", default="gru", choices=("gru", "tcn", "transformer"))
+    parser.add_argument("--encoder", default="features", choices=("features", "players"))
+    parser.add_argument("--aux-ball", type=float, default=0.0,
+                        help="weight of the hidden-ball auxiliary loss (0 = off)")
     parser.add_argument("--protocol", default="sim", choices=("sim", "clean"))
     parser.add_argument("--refresh", action="store_true", help="retrain, ignoring the cache")
     args = parser.parse_args(argv)
@@ -248,7 +315,9 @@ def main(argv=None):
     # through one dead frame instead, which spellF1 does not see), so the grid stops there.
     grid = [(s, ad, da) for s in (2.0, 4.0, 6.0, 8.0, 12.0) for ad in (2.0, 4.0, 8.0)
             for da in (2.0, 4.0, 8.0)]
-    run(args.matches, grid, args.model, args.protocol, args.refresh)
+    from .temporal import TemporalConfig
+    config = TemporalConfig(arch=args.arch, encoder=args.encoder, aux_ball=args.aux_ball)
+    run(args.matches, grid, args.model, args.protocol, args.refresh, args.member, config)
 
 
 if __name__ == "__main__":
