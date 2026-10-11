@@ -304,7 +304,7 @@ def main(argv=None):
     parser.add_argument("--model", default="gbm", choices=("gbm", "temporal", "ensemble"))
     parser.add_argument("--member", type=int, default=0,
                         help="temporal only: ensemble member index (seed, noise draws)")
-    parser.add_argument("--arch", default="gru", choices=("gru", "tcn", "transformer"))
+    parser.add_argument("--arch", default="gru", choices=("gru", "lstm", "tcn", "transformer"))
     parser.add_argument("--encoder", default="features", choices=("features", "players"))
     parser.add_argument("--aux-ball", type=float, default=0.0,
                         help="weight of the hidden-ball auxiliary loss (0 = off)")

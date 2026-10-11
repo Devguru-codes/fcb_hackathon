@@ -9,7 +9,7 @@ Output per frame: log P(H), log P(A), log P(D), and the change logit.
 Deterministic: seeded, and inference runs on the CPU unless asked otherwise.
 
 Variants, chosen by TemporalConfig and saved inside each weights file:
-- arch: "gru" (bidirectional GRU), "tcn" (dilated temporal convolutions, ~40 s receptive field)
+- arch: "gru" (bidirectional GRU), "lstm" (bidirectional LSTM), "tcn" (dilated temporal convolutions, ~40 s receptive field)
   or "transformer" (self-attention over 5 fps tokens with a full-rate skip path);
 - encoder: "features" (the hand-made per-frame features) or "players" (those plus a per-frame
   attention encoder over the set of players -- a fully connected graph network, slot-free);
@@ -37,7 +37,7 @@ CHANGE_WEIGHT = 0.5  # weight of the change loss beside the possession loss
 
 @dataclass(frozen=True)
 class TemporalConfig:
-    arch: str = "gru"            # gru | tcn | transformer
+    arch: str = "gru"            # gru | lstm | tcn | transformer
     encoder: str = "features"    # features | players
     hidden: int = HIDDEN
     aux_ball: float = 0.0        # weight of the hidden-ball regression loss; 0 = no ball head
@@ -190,6 +190,10 @@ def build_model(n_inputs, config=DEFAULT_CONFIG, n_token_fields=None):
                 self.rnn = nn.GRU(hidden, hidden, num_layers=2, batch_first=True,
                                   bidirectional=True, dropout=0.2)
                 width_out = 2 * hidden
+            elif config.arch == "lstm":
+                self.rnn = nn.LSTM(hidden, hidden, num_layers=2, batch_first=True,
+                                   bidirectional=True, dropout=0.2)
+                width_out = 2 * hidden
             elif config.arch == "tcn":
                 self.tcn = TCN(hidden)
                 width_out = hidden
@@ -206,7 +210,7 @@ def build_model(n_inputs, config=DEFAULT_CONFIG, n_token_fields=None):
             if config.encoder == "players":
                 x = torch.cat([x, self.players(tokens)], dim=-1)
             h = self.inp(x)
-            if config.arch == "gru":
+            if config.arch in ("gru", "lstm"):
                 h, _ = self.rnn(h)
             elif config.arch == "tcn":
                 h = self.tcn(h)
