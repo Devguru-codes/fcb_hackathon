@@ -95,6 +95,81 @@ def _stoppage_gaps(table, noise, rng):
     return lost
 
 
+@dataclass(frozen=True)
+class TrackerFaults:
+    """Tracker failures beyond dropout, applied on top of simulate_atd (robustness checks)."""
+    swap_rate: float = 0.002        # per frame: two nearby same-team tracks exchange slots
+    swap_radius_m: float = 3.0
+    duplicate_rate: float = 0.0005  # per frame: someone is tracked twice for a while
+    duplicate_frames: int = 75
+    phantom_rate: float = 0.0003    # per frame: a non-player track near the ball, given a team
+    phantom_frames: int = 125
+
+
+def add_tracker_faults(table, faults=TrackerFaults(), seed=0):
+    """A copy of `table` with identity swaps, duplicate tracks and phantom tracks added.
+
+    Extra slots are appended for duplicates and phantoms, so the slot count grows as it does in
+    the real ATD (46 slots for 22 players). Labels and periods are untouched.
+    """
+    rng = np.random.default_rng(seed)
+    n = table.n_frames
+    players = table.players.astype(np.float32).copy()
+    teams = list(table.slot_team)
+    extra = []
+
+    # Identity swaps: exchange the rest of two close same-team tracks from frame t on, for a
+    # stretch, which is what a tracker re-acquiring the wrong person looks like.
+    for t in np.flatnonzero(rng.random(n) < faults.swap_rate):
+        team = int(rng.integers(0, 2))
+        slots = np.flatnonzero((np.asarray(teams[:players.shape[1]]) == team)
+                               & np.isfinite(players[t, :, 0]))
+        if len(slots) < 2:
+            continue
+        a = int(rng.choice(slots))
+        d = np.hypot(*(players[t, slots] - players[t, a]).T)
+        near = slots[(d > 0) & (d < faults.swap_radius_m)]
+        if not len(near):
+            continue
+        b = int(rng.choice(near))
+        stop = min(n, t + int(rng.integers(50, 500)))
+        players[t:stop, [a, b]] = players[t:stop, [b, a]]
+
+    # Duplicates: a second, slightly offset track of an existing player.
+    for t in np.flatnonzero(rng.random(n) < faults.duplicate_rate):
+        visible = np.flatnonzero(np.isfinite(players[t, :, 0]))
+        if not len(visible):
+            continue
+        slot = int(rng.choice(visible))
+        stop = min(n, t + faults.duplicate_frames)
+        track = np.full((n, 2), np.nan, dtype=np.float32)
+        track[t:stop] = players[t:stop, slot] + rng.normal(0, 0.5, 2).astype(np.float32)
+        extra.append((track, teams[slot]))
+
+    # Phantoms: something that is not a player (a referee, a coach on the line) tracked near
+    # the ball and assigned to a random team.
+    ball = table.ball.astype(np.float32)
+    for t in np.flatnonzero(rng.random(n) < faults.phantom_rate):
+        if not np.isfinite(ball[t, 0]):
+            continue
+        stop = min(n, t + faults.phantom_frames)
+        offset = rng.normal(0, 4.0, 2).astype(np.float32)
+        anchor = ball[t:stop].copy()
+        anchor[~np.isfinite(anchor[:, 0])] = ball[t]
+        track = np.full((n, 2), np.nan, dtype=np.float32)
+        # lag the ball like a referee does, smoothed over a second
+        smooth = np.array([np.nanmean(anchor[max(0, i - 25):i + 1], axis=0)
+                           for i in range(len(anchor))])
+        track[t:stop] = smooth + offset
+        extra.append((track, int(rng.integers(0, 2))))
+
+    if extra:
+        players = np.concatenate([players, np.stack([e[0] for e in extra], axis=1)], axis=1)
+        teams = teams + [e[1] for e in extra]
+    return replace(table, name=table.name + "~faults{}".format(seed), players=players,
+                   slot_team=np.asarray(teams, dtype=np.int8))
+
+
 def simulate_atd(table, noise=AtdNoise(), seed=0):
     """A corrupted copy of `table`. Labels and periods are untouched."""
     rng = np.random.default_rng(seed)

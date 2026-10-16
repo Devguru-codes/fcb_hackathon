@@ -63,13 +63,46 @@ class LinkingTests(unittest.TestCase):
         table = MatchTable(name="t", ball=ball, players=np.zeros((n, 2, 2), np.float32),
                            slot_team=np.array([H, A], np.int8), period=np.ones(n, np.int8))
         candidates = {f: [(50.0 + 0.1 * (f - 9), 50.0, 0.8)] for f in range(10, 20)}
-        filled, source = fill_ball(table, candidates)
+        filled, source = fill_ball(table, candidates, fill_min=0.5, min_run=1)
         self.assertTrue(np.all(source[10:20] == 2) and np.all(source[:10] == 1))
         np.testing.assert_array_equal(filled[:10], ball[:10])
         mask = np.zeros(n, dtype=bool)
         mask[10:15] = True
-        _, source = fill_ball(table, candidates, fill_mask=mask)
+        _, source = fill_ball(table, candidates, fill_mask=mask, fill_min=0.5, min_run=1)
         self.assertEqual(source[10:20].tolist(), [2] * 5 + [0] * 5)
+        # the default threshold (0.95) refuses these 0.8 detections
+        _, source = fill_ball(table, candidates)
+        self.assertTrue(np.all(source[10:20] == 0))
+
+    def test_short_video_stretches_are_dropped(self):
+        n = 40
+        ball = np.full((n, 2), 50.0, dtype=np.float32)
+        ball[10:30] = np.nan
+        table = MatchTable(name="t", ball=ball, players=np.zeros((n, 2, 2), np.float32),
+                           slot_team=np.array([H, A], np.int8), period=np.ones(n, np.int8))
+        # a 3-frame stretch and a 8-frame stretch of confident detections
+        candidates = {f: [(50.0, 50.0, 0.99)] for f in list(range(10, 13)) + list(range(20, 28))}
+        _, source = fill_ball(table, candidates, min_run=5)
+        self.assertTrue(np.all(source[10:13] == 0))
+        self.assertTrue(np.all(source[20:28] == 2))
+
+
+class TrackerFaultTests(unittest.TestCase):
+    def test_faults_add_slots_but_keep_labels_and_frame_count(self):
+        from tempolens.simulate import TrackerFaults, add_tracker_faults
+        rng = np.random.default_rng(0)
+        n = 5000
+        players = rng.uniform([0, 0], [105, 68], (n, 22, 2)).astype(np.float32)
+        table = MatchTable(name="t", ball=rng.uniform([0, 0], [105, 68], (n, 2)).astype(np.float32),
+                           players=players, slot_team=np.array([H, A] * 11, np.int8),
+                           period=np.ones(n, np.int8), labels=np.zeros(n, np.int8))
+        faults = TrackerFaults(swap_rate=0.01, duplicate_rate=0.002, phantom_rate=0.002)
+        out = add_tracker_faults(table, faults, seed=1)
+        self.assertEqual(out.n_frames, n)
+        self.assertGreater(out.players.shape[1], 22)
+        self.assertEqual(len(out.slot_team), out.players.shape[1])
+        np.testing.assert_array_equal(out.labels, table.labels)
+        self.assertTrue(np.array_equal(table.players, players))   # input untouched
 
 
 if __name__ == "__main__":

@@ -121,12 +121,17 @@ def stage_fill(data_root):
     # Audit: on tracked frames the network never trained on, how often is its best on-pitch
     # candidate within 1.5 m of the tracking's ball?
     audit = np.asarray(meta["audit_frames"], dtype=int)
-    hits = found = 0
+    from .track import FILL_MIN
+    hits = found = confident = confident_hits = 0
     for frame in audit:
         if frame in candidates:
             found += 1
-            x, y, _ = max(candidates[frame], key=lambda c: c[2])
-            hits += np.hypot(x - table.ball[frame, 0], y - table.ball[frame, 1]) <= 1.5
+            x, y, p = max(candidates[frame], key=lambda c: c[2])
+            hit = np.hypot(x - table.ball[frame, 0], y - table.ball[frame, 1]) <= 1.5
+            hits += hit
+            if p >= FILL_MIN:
+                confident += 1
+                confident_hits += hit
     ball, source = fill_ball(table, candidates)
     np.savez_compressed(paths["filled"], ball=ball, source=source)
     graded = table.period > 0
@@ -135,6 +140,8 @@ def stage_fill(data_root):
         "audit_frames": int(len(audit)),
         "audit_candidate_rate": round(found / max(len(audit), 1), 4),
         "audit_within_1p5m_rate": round(hits / max(len(audit), 1), 4),
+        "audit_confident_share": round(confident / max(len(audit), 1), 4),
+        "audit_confident_within_1p5m": round(confident_hits / max(confident, 1), 4),
         "graded_missing_before": round(float(np.mean(table.ball[graded, 0] != table.ball[graded, 0])), 4),
         "graded_missing_after": round(float(np.mean(source[graded] == 0)), 4),
         "gap_frames_filled_share": round(float(np.mean(source[gap] == 2)), 4),

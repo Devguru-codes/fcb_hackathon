@@ -16,7 +16,10 @@ OFF_PITCH = 2.0        # m outside the lines a candidate may still be
 START_COST = 3.0       # log-odds paid to start a detected stretch
 END_COST = 3.0
 STEP_COST = 0.05       # per metre moved between consecutive detections
-FILL_MIN = 0.5         # minimum candidate probability for a frame to be filled
+FILL_MIN = 0.95        # minimum candidate probability for a frame to be filled
+MIN_RUN = 5            # minimum consecutive video-filled frames
+# On the synthetic rehearsal, 0.95 gave 47% coverage of gap frames at 100% within
+# 1.5 m; 0.85 gave 91% coverage at only 56%. A wrong ball is worse than none.
 
 
 def candidates_on_pitch(detections, matrices, pitch):
@@ -85,12 +88,15 @@ def _viterbi_gap(cands, before, after, fps):
     return [j - 1 for j in path]
 
 
-def fill_ball(table, candidates, fill_mask=None, fps=25):
+def fill_ball(table, candidates, fill_mask=None, fps=25, fill_min=None, min_run=MIN_RUN):
     """(ball (n, 2) metres, source (n,) int8: 0 none / 1 tracking / 2 video).
 
     Frames already tracked keep the tracking's ball. Inside each gap (within a period), the
-    linked path's detections fill frames where `fill_mask` allows it (default: everywhere).
+    linked path's detections fill frames where `fill_mask` allows it (default: everywhere),
+    whose probability is at least `fill_min`, and that belong to a run of at least `min_run`
+    consecutive filled frames -- a wrong ball is worse than no ball, so isolated fills go.
     """
+    fill_min = FILL_MIN if fill_min is None else fill_min
     ball = table.ball.astype(np.float32).copy()
     source = np.where(np.isfinite(ball[:, 0]), 1, 0).astype(np.int8)
     allow = np.ones(table.n_frames, dtype=bool) if fill_mask is None else fill_mask
@@ -103,9 +109,15 @@ def fill_ball(table, candidates, fill_mask=None, fps=25):
                 continue
             before = ball[g0 - 1] if g0 > start else None
             after = ball[g1] if g1 < stop else None
-            for offset, j in enumerate(_viterbi_gap(cands, before, after, fps)):
-                frame = g0 + offset
-                if j >= 0 and allow[frame] and cands[offset][j][2] >= FILL_MIN:
-                    ball[frame] = cands[offset][j][:2]
-                    source[frame] = 2
+            path = _viterbi_gap(cands, before, after, fps)
+            keep = np.array([j >= 0 and allow[g0 + k] and cands[k][j][2] >= fill_min
+                             for k, j in enumerate(path)], dtype=bool)
+            if min_run > 1:
+                edges = np.diff(np.concatenate(([0], keep.astype(np.int8), [0])))
+                for a, b in zip(np.flatnonzero(edges == 1), np.flatnonzero(edges == -1)):
+                    if b - a < min_run:
+                        keep[a:b] = False
+            for offset in np.flatnonzero(keep):
+                ball[g0 + offset] = cands[offset][path[offset]][:2]
+                source[g0 + offset] = 2
     return ball, source

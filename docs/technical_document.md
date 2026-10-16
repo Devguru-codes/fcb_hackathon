@@ -131,6 +131,41 @@ Tried and not adopted (same protocol; DFL mean spellF1 of the model alone, then 
 | transformer (5 fps tokens + full-rate skip) | 0.656 | 0.724 | worse: too coarse for short possessions |
 | hidden-ball auxiliary head, weight 1.0 / 0.1 | 0.699 / 0.710 | — / 0.725 | hurts: competes with the possession objective |
 
+Decoding alternatives, on the cross-validated ensemble output (`python -m tempolens.decodestudy`):
+
+| decoder | DFL | all |
+|---|---|---|
+| Viterbi, switch 2 (submitted) | 0.7295 | 0.7592 |
+| minimum-duration Viterbi (best: 6-frame minimum) | 0.7297 | 0.7593 |
+| minimum-Bayes-risk choice of switch cost per match | 0.7271 | 0.7574 |
+| oracle: best switch per match in hindsight (ceiling) | 0.7314 | 0.7610 |
+
+Decoding is not the bottleneck: even the hindsight-optimal per-match decoder gains 0.002. MBR
+picked the lowest switch cost everywhere, because chain-CRF samples over per-frame probabilities
+are more fragmented than real possession sequences.
+
+Robustness to tracker faults absent from training (`python -m tempolens.robustness`): one
+cross-validation fold, held-out matches re-scored after adding identity swaps between nearby
+team-mates, duplicate tracks and phantom (non-player) tracks near the ball — 70–80 extra slots,
+up to 24 tracked objects per frame as in the real ATD. spellF1 0.7087 → 0.7114 and
+0.7134 → 0.7157: no loss, so the features' slot-free design absorbs these faults.
+
+## 6b. Video ball detector (optional, built; awaiting the real video)
+
+A TrackNet-style heatmap network (3 stacked frames in, ball probability per pixel out) trained
+on labels the ATD itself provides: wherever the tracking has the ball, its pitch position through
+that frame's homography is the ball's pixel position — no hand labelling. Candidates in the ATD's
+gaps are linked by a Viterbi pass (≤40 m/s, on or near the pitch, joined to the tracked ball at
+the gap edges) and only confident, sustained detections fill the gap; by default only where the
+first ensemble pass says play is live, so the "ball missing at a stoppage" cue survives.
+
+Rehearsed end to end on a synthetic tactical video rendered from a DFL match (players as discs,
+the ball a 2 px dot hidden when covered): held-out crops 82% within 5 px; filled positions at the
+default threshold (p ≥ 0.95, ≥5 consecutive frames) covered 47% of gap frames with **100% within
+1.5 m** (median 0.16 m). At p ≥ 0.85 coverage was 91% but only 56% within 1.5 m — precision is
+what matters, a wrong ball being worse than none. Whether it helps on the real video, and the
+threshold, are decided on data day from the audit on held-out tracked frames.
+
 PathCRF (Kim et al., KDD 2026) was reviewed but its released weights were not used: it needs 22
 persistent player identities (the ATD has anonymous, fragmented tracklets), models only live
 play, and was trained on five of the seven DFL matches used in our validation.
