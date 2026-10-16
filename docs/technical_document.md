@@ -161,8 +161,10 @@ first ensemble pass says play is live, so the "ball missing at a stoppage" cue s
 
 Rehearsed end to end on a synthetic tactical video rendered from a DFL match (players as discs,
 the ball a 2 px dot hidden when covered): held-out crops 82% within 5 px; filled positions at the
-default threshold (p ≥ 0.95, ≥5 consecutive frames) covered 47% of gap frames with **100% within
-1.5 m** (median 0.16 m). At p ≥ 0.85 coverage was 91% but only 56% within 1.5 m — precision is
+default threshold (p ≥ 0.95, ≥5 consecutive frames) covered 47% of gap frames with 100% within
+1.5 m (median 0.16 m) — measured on the same clip the threshold was chosen on, so an optimistic
+figure, not a held-out one; on the real video the threshold is set from the data-day audit
+(`audit_confident_within_1p5m`). At p ≥ 0.85 coverage was 91% but only 56% within 1.5 m — precision is
 what matters, a wrong ball being worse than none. Whether it helps on the real video, and the
 threshold, are decided on data day from the audit on held-out tracked frames.
 

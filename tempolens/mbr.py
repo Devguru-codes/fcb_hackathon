@@ -146,8 +146,9 @@ except ImportError:
 
 
 def viterbi_min_duration(logits, transition, lengths=(1, 1, 1)):
-    """Best H/A/D path in which every run of label s lasts at least lengths[s] frames (except a
-    run cut off by the end of the sequence). lengths (1, 1, 1) is plain Viterbi."""
+    """Best H/A/D path in which every run of label s lasts at least lengths[s] frames. Only the
+    last run may be shorter (cut off by the end of the sequence); the first run of a half must
+    still reach the minimum. lengths (1, 1, 1) is plain Viterbi."""
     lengths = np.asarray([max(1, int(v)) for v in lengths], dtype=np.int64)
     return _min_duration_kernel(np.ascontiguousarray(logits[:, :3], dtype=np.float64),
                                 np.ascontiguousarray(transition, dtype=np.float64), lengths)

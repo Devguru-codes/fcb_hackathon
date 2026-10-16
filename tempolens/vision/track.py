@@ -18,8 +18,9 @@ END_COST = 3.0
 STEP_COST = 0.05       # per metre moved between consecutive detections
 FILL_MIN = 0.95        # minimum candidate probability for a frame to be filled
 MIN_RUN = 5            # minimum consecutive video-filled frames
-# On the synthetic rehearsal, 0.95 gave 47% coverage of gap frames at 100% within
-# 1.5 m; 0.85 gave 91% coverage at only 56%. A wrong ball is worse than none.
+# Chosen on the synthetic rehearsal, and measured on that same clip (so optimistic): 0.95
+# gave 47% coverage of gap frames at 100% within 1.5 m; 0.85 gave 91% at only 56%. A wrong
+# ball is worse than none. Re-set it on the real video from the audit in vision/run.py.
 
 
 def candidates_on_pitch(detections, matrices, pitch):
