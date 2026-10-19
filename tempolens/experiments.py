@@ -306,6 +306,8 @@ def main(argv=None):
                         help="temporal only: ensemble member index (seed, noise draws)")
     parser.add_argument("--arch", default="gru", choices=("gru", "lstm", "tcn", "transformer"))
     parser.add_argument("--encoder", default="features", choices=("features", "players"))
+    parser.add_argument("--hidden", type=int, default=None, help="temporal width (default 96)")
+    parser.add_argument("--epochs", type=int, default=None, help="temporal epochs (default 8)")
     parser.add_argument("--aux-ball", type=float, default=0.0,
                         help="weight of the hidden-ball auxiliary loss (0 = off)")
     parser.add_argument("--protocol", default="sim", choices=("sim", "clean"))
@@ -316,7 +318,9 @@ def main(argv=None):
     grid = [(s, ad, da) for s in (2.0, 4.0, 6.0, 8.0, 12.0) for ad in (2.0, 4.0, 8.0)
             for da in (2.0, 4.0, 8.0)]
     from .temporal import TemporalConfig
-    config = TemporalConfig(arch=args.arch, encoder=args.encoder, aux_ball=args.aux_ball)
+    sizes = {k: v for k, v in (("hidden", args.hidden), ("epochs", args.epochs)) if v}
+    config = TemporalConfig(arch=args.arch, encoder=args.encoder, aux_ball=args.aux_ball,
+                            **sizes)
     run(args.matches, grid, args.model, args.protocol, args.refresh, args.member, config)
 
 

@@ -41,6 +41,7 @@ class TemporalConfig:
     encoder: str = "features"    # features | players
     hidden: int = HIDDEN
     aux_ball: float = 0.0        # weight of the hidden-ball regression loss; 0 = no ball head
+    epochs: int = EPOCHS
 
     def tag(self):
         """Cache/file tag; the default config keeps the historical name "temporal"."""
@@ -50,6 +51,8 @@ class TemporalConfig:
             parts.append("h{}".format(self.hidden))
         if self.aux_ball:
             parts.append("aux{:g}".format(self.aux_ball))
+        if self.epochs != EPOCHS:
+            parts.append("e{}".format(self.epochs))
         return "temporal" + ("_" + "_".join(parts) if parts else "")
 
 
@@ -278,9 +281,11 @@ def _chunk_index(sequences, chunk=CHUNK, stride=STRIDE):
     return index
 
 
-def train(samples, epochs=EPOCHS, device=None, seed=SEED, verbose=True,
+def train(samples, epochs=None, device=None, seed=SEED, verbose=True,
           config=DEFAULT_CONFIG):
-    """Fit a network on labelled samples (or MatchTables). Returns (CPU model, normaliser)."""
+    """Fit a network on labelled samples (or MatchTables). Returns (CPU model, normaliser).
+    `epochs` overrides config.epochs."""
+    epochs = config.epochs if epochs is None else epochs
     torch = _torch()
     torch.manual_seed(seed)
     np.random.seed(seed)
