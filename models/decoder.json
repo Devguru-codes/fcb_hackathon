@@ -1,9 +1,10 @@
 {
-  "_provenance": "Best mean spellF1 (0.759 all, 0.730 DFL) of the 3-member GRU ensemble (models/tempolens_gru*.pt), features v2, under 5-fold simulated-ATD cross-validation on 10 open matches (python -m tempolens.experiments --model ensemble). Flat for switch 1.5-3; the dead-ball costs barely matter; the change-head bonus did not help.",
+  "_provenance": "Best mean spellF1 (0.792 all, 0.768 DFL; official baseline 0.291 / 0.267) of the 3-member GRU ensemble below, features v2, ATD noise without per-frame jitter, under 5-fold simulated-ATD cross-validation on 10 open matches (python -m tempolens.experiments --model ensemble). Flat for switch 2-3 (within 0.0003); switch 1-1.5 is worse; the dead-ball costs barely matter; the change-head bonus did not help.",
+  "members": ["tempolens_gru.pt", "tempolens_gru_m1.pt", "tempolens_gru_m2.pt"],
   "switch": 2.0,
-  "alive_to_dead": 4.0,
+  "alive_to_dead": 2.0,
   "dead_to_alive": 8.0,
   "change_weight": 0.0,
   "tag_prior": "off",
-  "_tag_prior": "'auto' adds the self-calibrated Smart Tagging prior (tagprior.py). Off until tempolens.diagnostics shows the real tags' reliability on the match; on synthetic tags it gained +0.013 DFL spellF1 when tags were accurate and ~0 when they were random (python -m tempolens.tagstudy)."
+  "_tag_prior": "'auto' adds the self-calibrated Smart Tagging prior (tagprior.py). Off: on the real match the tags agree with a confident model 83% (attacking codes) and 94% (defensive codes) of the time, yet the prior lowered the public-window spellF1 (0.43 vs 0.59, single GRU)."
 }
