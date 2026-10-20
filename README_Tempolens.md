@@ -48,7 +48,9 @@ python -m tempolens.experiments --model temporal
 python -m tempolens.train --out models/tempolens_gru.pt
 ```
 
-`--method heuristic` on `predict` runs the original hand-tuned decoder for comparison.
+`predict` uses the ensemble members listed in `models/decoder.json` (the costs there were tuned for
+exactly them); `--model` overrides it. Weights record the feature version they were trained on and
+refuse to load against another.
 
 ## Open data
 

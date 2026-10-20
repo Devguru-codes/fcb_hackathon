@@ -1,8 +1,12 @@
 {
-  "_provenance": "Best mean spellF1 (0.792 all, 0.768 DFL; official baseline 0.291 / 0.267) of the 3-member GRU ensemble below, features v2, ATD noise without per-frame jitter, under 5-fold simulated-ATD cross-validation on 10 open matches (python -m tempolens.experiments --model ensemble). Flat for switch 2-3 (within 0.0003); switch 1-1.5 is worse; the dead-ball costs barely matter; the change-head bonus did not help.",
-  "members": ["tempolens_gru.pt", "tempolens_gru_m1.pt", "tempolens_gru_m2.pt"],
+  "_provenance": "Best mean spellF1 (0.794 all, 0.770 DFL; official baseline 0.291 / 0.267) of the 3-member GRU ensemble below, features v3 (visible-player own-half share, no nearest-player speed without a ball), ATD noise without per-frame jitter, under 5-fold simulated-ATD cross-validation on 10 open matches (python -m tempolens.experiments --model ensemble). Flat for switch 2-3; switch 1-1.5 is worse; the dead-ball costs barely matter; the change-head bonus did not help. Features v2 scored 0.792 / 0.768 under the same protocol.",
+  "members": [
+    "tempolens_gru.pt",
+    "tempolens_gru_m1.pt",
+    "tempolens_gru_m2.pt"
+  ],
   "switch": 2.0,
-  "alive_to_dead": 2.0,
+  "alive_to_dead": 8.0,
   "dead_to_alive": 8.0,
   "change_weight": 0.0,
   "tag_prior": "off",

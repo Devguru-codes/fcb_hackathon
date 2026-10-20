@@ -315,7 +315,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     # A switch dearer than alive>dead + dead>alive is never taken directly (the decoder routes
     # through one dead frame instead, which spellF1 does not see), so the grid stops there.
-    grid = [(s, ad, da) for s in (2.0, 4.0, 6.0, 8.0, 12.0) for ad in (2.0, 4.0, 8.0)
+    grid = [(s, ad, da) for s in (1.0, 1.5, 2.0, 4.0, 6.0, 8.0, 12.0) for ad in (2.0, 4.0, 8.0)
             for da in (2.0, 4.0, 8.0)]
     from .temporal import TemporalConfig
     sizes = {k: v for k, v in (("hidden", args.hidden), ("epochs", args.epochs)) if v}

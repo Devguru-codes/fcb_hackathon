@@ -14,7 +14,7 @@ import numpy as np
 
 from .match import A, H
 
-FEATURE_VERSION = 2       # bump whenever a feature changes, to invalidate on-disk caches
+FEATURE_VERSION = 3       # bump whenever a feature changes, to invalidate on-disk caches
 MAX_SPEED = 12.0          # m/s; faster "players" are identity switches or teleports
 MAX_BALL_SPEED = 40.0     # m/s
 IMPUTE_GAP = 50           # frames; ball gaps up to this long are linearly interpolated
@@ -205,22 +205,27 @@ def frame_features(table, swap=False):
               if d.shape[1] > 1 else np.full(len(d), np.nan))
         nearest = np.argmin(np.where(np.isfinite(d), d, np.inf), axis=1)
         rows = np.arange(len(d))
+        # With no ball (or nobody visible) argmin picks the team's first slot, an arbitrary
+        # tracklet: blank those frames rather than report a stranger's speed.
+        known = np.isfinite(d1)
         nv = pvel[:, mask][rows, nearest]
-        rel = np.hypot(nv[:, 0] - bvel[:, 0], nv[:, 1] - bvel[:, 1])
+        rel = np.where(known, np.hypot(nv[:, 0] - bvel[:, 0], nv[:, 1] - bvel[:, 1]), np.nan)
         px = (players[:, mask, 0] - length / 2.0) * sign[:, None]
         feats[tag + "_d1"] = d1
         feats[tag + "_d2"] = d2
         for r in (1.5, 3.0, 6.0):
             feats["{}_within{}".format(tag, r)] = (d <= r).sum(axis=1).astype(np.float64)
-        feats[tag + "_near_speed"] = pspeed[:, mask][rows, nearest]
+        feats[tag + "_near_speed"] = np.where(known, pspeed[:, mask][rows, nearest], np.nan)
         feats[tag + "_near_rel_speed"] = rel
         feats[tag + "_centroid_x"] = np.nanmean(px, axis=1)
         feats[tag + "_spread_x"] = np.nanstd(px, axis=1)
         feats[tag + "_spread_y"] = np.nanstd(players[:, mask, 1], axis=1)
         feats[tag + "_mean_speed"] = np.nanmean(pspeed[:, mask], axis=1)
         feats[tag + "_centroid_vx"] = np.nanmean(pvel[:, mask, 0], axis=1) * sign
-        feats[tag + "_own_half"] = np.nanmean(
-            (px < 0) if tag == "t0" else (px > 0), axis=1).astype(np.float64)
+        # Share of the *visible* players: a boolean mean would divide by the slot count, which
+        # is ~15 per team in open data and 46 in all on the competition ATD.
+        own = np.where(np.isfinite(px), (px < 0) if tag == "t0" else (px > 0), np.nan)
+        feats[tag + "_own_half"] = np.nanmean(own, axis=1)
         feats[tag + "_n"] = np.isfinite(players[:, mask, 0]).sum(axis=1).astype(np.float64)
         # Formation, slot-free: each team's players sorted along each axis. Who is pushed up,
         # who is spread wide, and who is running forwards, readable without the ball.

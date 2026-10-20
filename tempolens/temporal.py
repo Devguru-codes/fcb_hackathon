@@ -21,7 +21,7 @@ from dataclasses import asdict, dataclass
 
 import numpy as np
 
-from .features import TableSample, swap_labels
+from .features import FEATURE_VERSION, TableSample, swap_labels
 from .match import A, D, H, X
 
 SEED = 0
@@ -420,13 +420,19 @@ def save(model, normaliser, path):
                                            if hasattr(model, "players") else 0)
     torch.save({"state_dict": model.state_dict(), "normaliser": normaliser.state(),
                 "n_inputs": n_inputs, "n_token_fields": n_fields,
-                "config": asdict(model.config)}, path)
+                "config": asdict(model.config), "feature_version": FEATURE_VERSION}, path)
 
 
 def load(path):
     """(model, normaliser). Weights saved before configs existed load as the default GRU."""
     torch = _torch()
     blob = torch.load(path, map_location="cpu", weights_only=False)
+    # Weights read features by column: other features give a silently wrong model. Files from
+    # before the version was recorded were trained on version 2.
+    version = blob.get("feature_version", 2)
+    if version != FEATURE_VERSION:
+        raise ValueError("{} was trained on features v{}, the code computes v{}: retrain it "
+                         "(python -m tempolens.train)".format(path, version, FEATURE_VERSION))
     config = TemporalConfig(**blob.get("config", {}))
     model = build_model(blob["n_inputs"], config, blob.get("n_token_fields"))
     model.load_state_dict(blob["state_dict"])

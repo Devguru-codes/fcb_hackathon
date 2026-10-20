@@ -90,7 +90,7 @@ class EndToEndTests(unittest.TestCase):
                                            "dead_to_alive": 4.0, "change_weight": 0.5,
                                            "tag_prior": "auto"}))
             output = Path(folder) / "team.csv"
-            labels = predict.predict(folder, output, "learned", model, decoder)
+            labels = predict.predict(folder, output, model, decoder)
             frame = pm.read_label_csv(output)
             self.assertIsNone(pm.validate_submission(frame, N_FRAMES))
             graded = np.zeros(N_FRAMES, dtype=bool)

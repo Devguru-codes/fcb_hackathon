@@ -116,13 +116,14 @@ def run(data_root, model_paths=None, decoder_path=None):
 
 
 def main(argv=None):
-    from .predict import DEFAULT_DECODER, DEFAULT_MODELS
+    from .predict import DEFAULT_DECODER, default_models
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--data-root", required=True)
-    parser.add_argument("--model", nargs="+", default=[str(p) for p in DEFAULT_MODELS])
+    parser.add_argument("--model", nargs="+", help="default: the decoder's members")
     parser.add_argument("--decoder", default=str(DEFAULT_DECODER))
     args = parser.parse_args(argv)
-    print(json.dumps(run(args.data_root, args.model, args.decoder), indent=2, default=str))
+    models = args.model or default_models(args.decoder)
+    print(json.dumps(run(args.data_root, models, args.decoder), indent=2, default=str))
 
 
 if __name__ == "__main__":

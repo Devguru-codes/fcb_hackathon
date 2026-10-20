@@ -26,6 +26,31 @@ def _table(n=200, seed=0):
                       slot_team=np.array([H, H, H, A, A, A], dtype=np.int8), period=period)
 
 
+class TrackingParserTests(unittest.TestCase):
+    def test_read_atd_aligns_frames_and_teams(self):
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        from tempolens.match import read_atd
+        with TemporaryDirectory() as folder:
+            meta, raw = Path(folder) / "atd.xml", Path(folder) / "atd.txt"
+            meta.write_text("<root><Team id='h'><Name>Barcelona</Name></Team>"
+                            "<Team id='a'><Name>Athletic</Name></Team>"
+                            "<Player teamId='h'/><Player teamId='a'/></root>", encoding="utf-8")
+            # tracking frames count from 1; a NaN ball and a malformed line are skipped
+            raw.write_text("1:0.50,0.50,0;0.70,0.50,0:0.51,0.50,0\n"
+                           "2:0.50,0.50,0;0.70,0.50,0:NaN,NaN,NaN\n"
+                           "garbage\n"
+                           "3:0.50,0.50,0;N:0.69,0.50,0\n", encoding="utf-8")
+            table = read_atd(meta, raw, 3, (100.0, 50.0), period_blocks=[(1, 0, 1)])
+        self.assertEqual((table.meta["home"], table.meta["away"]), ("Barcelona", "Athletic"))
+        self.assertEqual(table.slot_team.tolist(), [H, A])
+        np.testing.assert_allclose(table.ball[0], [51.0, 25.0])
+        self.assertTrue(np.isnan(table.ball[1, 0]))
+        np.testing.assert_allclose(table.players[2, 0], [50.0, 25.0])
+        self.assertTrue(np.isnan(table.players[2, 1, 0]))
+        self.assertEqual(table.period.tolist(), [1, 1, 0])
+
+
 class EventLabelTests(unittest.TestCase):
     def test_possession_and_dead_ball_rules(self):
         period = np.zeros(100, dtype=np.int8)
@@ -52,6 +77,22 @@ class EventLabelTests(unittest.TestCase):
 
 
 class FeatureTests(unittest.TestCase):
+    def test_empty_and_reordered_slots_change_nothing(self):
+        # Slots are anonymous tracklets: the real ATD has 46 for ~20 visible players, open data
+        # ~15 per team. Features must not see how many slots exist or in which order.
+        table = _table()
+        n = table.n_frames
+        extra = np.full((n, 20, 2), np.nan, dtype=np.float32)
+        players = np.concatenate([table.players, extra], axis=1)
+        slot_team = np.concatenate([table.slot_team, np.array([H, A] * 10, dtype=np.int8)])
+        order = np.random.default_rng(3).permutation(len(slot_team))
+        padded = MatchTable(name="padded", ball=table.ball, players=players[:, order],
+                            slot_team=slot_team[order], period=table.period)
+        x, names = frame_features(table)
+        xp, _ = frame_features(padded)
+        for i, name in enumerate(names):
+            np.testing.assert_allclose(xp[:, i], x[:, i], rtol=1e-5, atol=1e-5, err_msg=name)
+
     def test_swapping_teams_mirrors_the_features(self):
         table = _table()
         x, names = frame_features(table)

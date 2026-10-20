@@ -1,11 +1,6 @@
-"""Soft evidence from Smart Tagging, never a direct possession label."""
+"""Which side a Smart Tagging tag says has the ball (used by tagprior.py)."""
 
 from difflib import SequenceMatcher
-import xml.etree.ElementTree as ET
-
-import numpy as np
-
-from games import GAME, GAMES, require, source_frames
 
 
 def _normalise(value):
@@ -52,37 +47,3 @@ def possessing_side(code, side):
     if side is None:
         return None
     return 1 - side if _normalise(code) in DEFENSIVE_CODES else side
-
-
-def tag_priors(home_name, away_name, game=GAME, data_dir=None, team_weight=0.65,
-               restart_weight=0.45):
-    """Return additive H/A/D logits from automatic tactical tags.
-
-    The values are deliberately modest: tags identify phases, not possessions. A tagged team can
-    be wrong or its interval can span more than one possession, so tracking and temporal evidence
-    can always override it.
-    """
-    n_frames = source_frames("tactical", game)
-    priors = np.zeros((n_frames, 3), dtype=np.float32)
-    path = require(["smart_tagging"], game, data_dir)[0]
-    fps = GAMES[game]["fps"]
-    for instance in ET.parse(path).getroot().iter("instance"):
-        try:
-            start = max(0, int(round(float(instance.findtext("start")) * fps)))
-            end = min(n_frames, int(round(float(instance.findtext("end")) * fps)) + 1)
-        except (TypeError, ValueError):
-            continue
-        if end <= start:
-            continue
-        labels = {label.findtext("group"): label.findtext("text")
-                  for label in instance.findall("label")}
-        code = _normalise(instance.findtext("code"))
-        side = possessing_side(code, resolve_side(labels.get("Team"), home_name, away_name))
-        if side is not None:
-            priors[start:end, side] += team_weight
-        # A set-piece interval is mostly live once the restart happens, so make only its boundary
-        # weakly dead-ball-like. The decoder's geometry still decides the final answer.
-        if code == "set pieces":
-            edge = min(end, start + fps)
-            priors[start:edge, 2] += restart_weight
-    return priors
