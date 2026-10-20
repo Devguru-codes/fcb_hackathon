@@ -43,10 +43,13 @@ class AtdNoise:
     dead_lag: float = 12.0           # frames after the stoppage starts before the ball is lost
     dead_edge_sd: float = 15.0       # jitter of both edges of a stoppage gap, frames
     flicker_rate: float = 2e-4       # per frame: short 1-5 frame losses
-    ball_jitter_m: float = 0.3
+    ball_jitter_m: float = 0.0      # see player_jitter_m
     player_missing: float = 0.07     # 22 * (1 - 0.07) ~ 20.5 visible
     player_mean_gap: float = 60.0
-    player_jitter_m: float = 0.15
+    # Per-frame independent jitter is NOT tracker noise: through 25 fps velocities it added
+    # ~2.6 m/s of fake speed (players 3.8 m/s vs 1.5 on the real ATD), so the model read real
+    # play as a stoppage. The real ATD is smooth; jitter is off.
+    player_jitter_m: float = 0.0
 
 
 def _two_state_dropout(n, hazard, recover, rng):
