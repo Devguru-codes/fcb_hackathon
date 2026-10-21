@@ -52,8 +52,8 @@ Two bugs only the real tracking could reveal, both fixed:
 |---|---|
 | tactical ATD | the only input to the model: player and ball positions in metres, slots treated as anonymous tracklets |
 | Smart Tagging | optional self-calibrated prior on which team has the ball (§6a); defensive codes (`DEFENDING IN …`, `DEFENSIVE TRANSITION`) name the side *without* the ball and are inverted; team names matched fuzzily ("Atletic Club"); set pieces not used yet |
-| homography, videos | not used so far; the tracking is already in pitch coordinates. A local video ball detector to fill tracking gaps is the main untried extension |
-| broadcast feed | not used: unsynchronised, a third of frames without homography |
+| homography, tactical video | tried, not used: a ball detector trained on ATD-projected labels was too imprecise on the real video to fill gaps safely (§6b) |
+| broadcast feed | tried, not used: its tracking aligns to the tactical one (39.5% of frames) but its ball fills only 5.3% of the tactical ball gaps (§6b) |
 | open data | Metrica Sports sample games 1–3 (labels from events), DFL/Sportec seven matches (Bassek et al., CC-BY 4.0; labels from the provider's per-frame ball status and owner) |
 
 ## 4. Labels on open data, and the possession rules they encode
@@ -181,7 +181,7 @@ team-mates, duplicate tracks and phantom (non-player) tracks near the ball — 7
 up to 24 tracked objects per frame as in the real ATD. spellF1 0.7087 → 0.7114 and
 0.7134 → 0.7157: no loss, so the features' slot-free design absorbs these faults.
 
-## 6b. Video ball detector (optional, built; awaiting the real video)
+## 6b. Video ball detector (built, tested on the real video, not used)
 
 A TrackNet-style heatmap network (3 stacked frames in, ball probability per pixel out) trained
 on labels the ATD itself provides: wherever the tracking has the ball, its pitch position through
@@ -196,8 +196,23 @@ default threshold (p ≥ 0.95, ≥5 consecutive frames) covered 47% of gap frame
 1.5 m (median 0.16 m) — measured on the same clip the threshold was chosen on, so an optimistic
 figure, not a held-out one; on the real video the threshold is set from the data-day audit
 (`audit_confident_within_1p5m`). At p ≥ 0.85 coverage was 91% but only 56% within 1.5 m — precision is
-what matters, a wrong ball being worse than none. Whether it helps on the real video, and the
-threshold, are decided on data day from the audit on held-out tracked frames.
+what matters, a wrong ball being worse than none.
+
+On the real tactical video (12,000 positive and 6,000 negative crops, labels from the ATD as
+above) the held-out crops were 22% within 5 px, 57% within 15 px (about 1 m), median error
+12.6 px; only the 5% most confident detections were reliable (95% within 15 px). At the fill
+threshold that covers a small share of the gaps, a full scan of the gap frames takes hours, and
+weights trained on the licensed video may not be publishable, which the submission's exact
+reproduction would need. It is therefore not used. A stronger detector (e.g. WASB, Tarashima et
+al., BMVC 2023) is the obvious upgrade.
+
+**Broadcast tracking as a second ball source.** The broadcast feed's tracking is not
+frame-aligned to the tactical one, but can be aligned from the tracking alone: broadcast frames
+matched to the tactical frame with the same ball position and velocity, verified by player
+positions (median distance < 1.5 m), then grouped into constant-offset segments that also pass
+the player check every second. 39.5% of broadcast frames align. Yet its ball fills only 5.3% of
+the tactical ball gaps (about 2% of graded frames): both cameras lose the ball in the same hard
+moments. Not used.
 
 PathCRF (Kim et al., KDD 2026) was reviewed but its released weights were not used: it needs 22
 persistent player identities (the ATD has anonymous, fragmented tracklets), models only live
@@ -215,8 +230,11 @@ switch 2–3; switch 1–1.5 is worse; the dead-ball costs barely matter.
   public window is too small to calibrate the definition of "control" precisely.
 - The simulator matches published aggregates, not the joint structure of the real errors.
 - Very short possessions (<2 s) remain the weakest part. The model predicts ~85% of the true
-  possession count on open data and ~275 possessions on the competition match, where the public
-  window's rate suggests ~350: possessions are merged rather than split.
+  possession count on open data. On the competition match it predicts ~275 possessions of mean
+  14.5 s; the public window's mean possession (14.2 s) over our ~3,985 s of live play implies
+  ~280, so there is no sign of systematic merging there.
+- Transition timing on the public window shows no constant lag (median offset −1 frame) but a
+  typical error of ~0.8 s, and dead-ball onsets are the most often missed.
 - Cross-validation cannot see faults that open tracking lacks (see §2): the slot-count bugs were
   found by reading the code, not by a score.
 
