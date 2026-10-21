@@ -22,8 +22,13 @@ Calibration: the official baseline has published full-match scores for four smoo
 and their ranking order under both metrics; uniform gaps (dead_cover 0) leave macroF1 ~0.2 too
 low whatever the dead-ball bias. Clean DFL also matches the competition's 78% agreement between
 nearest player's team and owning team, so no extra team noise is added.
-- player dropout as a two-state chain, so ~20.5 of 22 players are visible (DATA.md);
-- position jitter on ball and players.
+- player dropout as a two-state chain: ~4% per player, which matches the real share of frames
+  with 21+ players visible (77%); the real mean of 20.5 also includes rare long blackouts during
+  stoppages, which the model already reads as dead ball;
+- tracker measurement noise on the ball, smoothed like a tracker's output: 0.2 m, Gaussian over
+  ~3 frames. It reproduces the real ball's acceleration profile (median ~5.7 m/s^2, vs ~3 on the
+  clean open data) while leaving its speeds unchanged. Independent per-frame jitter must never be
+  used (see player_jitter_m).
 """
 
 from dataclasses import dataclass, replace
@@ -44,7 +49,9 @@ class AtdNoise:
     dead_edge_sd: float = 15.0       # jitter of both edges of a stoppage gap, frames
     flicker_rate: float = 2e-4       # per frame: short 1-5 frame losses
     ball_jitter_m: float = 0.0      # see player_jitter_m
-    player_missing: float = 0.07     # 22 * (1 - 0.07) ~ 20.5 visible
+    ball_noise_m: float = 0.2        # tracker noise on the ball, then smoothed (ball_smooth_sd)
+    ball_smooth_sd: float = 3.0      # frames
+    player_missing: float = 0.04     # real ATD: 77% of graded frames show 21+ players
     player_mean_gap: float = 60.0
     # Per-frame independent jitter is NOT tracker noise: through 25 fps velocities it added
     # ~2.6 m/s of fake speed (players 3.8 m/s vs 1.5 on the real ATD), so the model read real
@@ -173,12 +180,32 @@ def add_tracker_faults(table, faults=TrackerFaults(), seed=0):
                    slot_team=np.asarray(teams, dtype=np.int8))
 
 
+def _tracker_ball(table, noise, rng):
+    """The clean ball as a tracker reports it: measurement noise, then Gaussian smoothing within
+    each period over the frames where the ball exists (normalised convolution)."""
+    ball = table.ball.astype(np.float64)
+    if noise.ball_noise_m <= 0 and noise.ball_smooth_sd <= 0:
+        return ball.astype(np.float32)
+    ball = ball + rng.normal(0, noise.ball_noise_m, ball.shape) if noise.ball_noise_m > 0 else ball
+    if noise.ball_smooth_sd > 0:
+        half = int(4 * noise.ball_smooth_sd)
+        kernel = np.exp(-0.5 * (np.arange(-half, half + 1) / noise.ball_smooth_sd) ** 2)
+        for start, stop in table.runs():
+            seg = ball[start:stop]
+            ok = np.isfinite(seg[:, 0])
+            weight = np.convolve(ok.astype(np.float64), kernel, mode="same")
+            for axis in (0, 1):
+                smooth = np.convolve(np.where(ok, seg[:, axis], 0.0), kernel, mode="same")
+                seg[ok, axis] = (smooth / np.maximum(weight, 1e-9))[ok]
+    return ball.astype(np.float32)
+
+
 def simulate_atd(table, noise=AtdNoise(), seed=0):
     """A corrupted copy of `table`. Labels and periods are untouched."""
     rng = np.random.default_rng(seed)
     n = table.n_frames
     inside = table.period > 0
-    ball = table.ball.astype(np.float32).copy()
+    ball = _tracker_ball(table, noise, rng)
     players = table.players.astype(np.float32).copy()
 
     # Relative gap-start hazard per frame; dead frames can be made likelier to start a gap.

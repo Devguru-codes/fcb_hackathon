@@ -338,6 +338,29 @@ def remove_flicker(labels, runs, min_frames):
 DFL_MIN_SPELL = 10
 
 
+def fill_dead_ball(table):
+    """A copy of `table` whose missing ball during dead-ball stretches moves in a straight line
+    from where it was last seen to where it is next seen (in the same period).
+
+    Metrica's sample games almost never track the ball while it is dead, so on them "no ball"
+    meant "dead" every time -- a shortcut the competition tracking breaks: there the ball is
+    visible on ~2/3 of dead frames (the keeper fetching it, the throw-in taker carrying it).
+    The simulator then loses whole stoppages at its calibrated rate, as for DFL.
+    """
+    from dataclasses import replace
+    ball = table.ball.astype(np.float32).copy()
+    for start, stop in table.runs():
+        seg, lab = ball[start:stop], table.labels[start:stop]
+        seen = np.flatnonzero(np.isfinite(seg[:, 0]))
+        if len(seen) < 2:
+            continue
+        idx = np.arange(len(seg))
+        fill = ~np.isfinite(seg[:, 0]) & (lab == D) & (idx > seen[0]) & (idx < seen[-1])
+        for axis in (0, 1):
+            seg[fill, axis] = np.interp(idx[fill], seen, seg[seen, axis])
+    return replace(table, ball=ball)
+
+
 def load_open_match(name, cache_dir=None):
     """A labelled open MatchTable, cached as .npz under the open-data folder."""
     cache = Path(cache_dir) if cache_dir else open_data_dir() / "cache"
@@ -349,4 +372,6 @@ def load_open_match(name, cache_dir=None):
         table.save(path)
     if name.startswith("dfl_") and DFL_MIN_SPELL:
         table.labels = remove_flicker(table.labels, table.runs(), DFL_MIN_SPELL)
+    if name.startswith("metrica"):
+        table = fill_dead_ball(table)
     return table

@@ -41,7 +41,7 @@ N_FOLDS = 5
 # The caches below are keyed by parameters, not by code. Bump SIM_VERSION when simulate.py's
 # logic changes and TRAIN_VERSION when temporal.py's training changes (LR, CHUNK, losses...);
 # version 1 keeps the historical file names, so existing caches stay valid.
-SIM_VERSION = 1
+SIM_VERSION = 2   # 2: Metrica's dead-time ball filled (opendata.fill_dead_ball)
 TRAIN_VERSION = 1
 NOISE_TAG = hashlib.md5((repr(AtdNoise()) + ("" if SIM_VERSION == 1 else str(SIM_VERSION)))
                         .encode()).hexdigest()[:8]
