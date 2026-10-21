@@ -20,6 +20,7 @@ from .experiments import (CachedSample, SIM_TEST_SEED, _summary, decode_table, o
                           score)
 from .match import A, H
 from .opendata import LOADERS
+from .predict import load_decoder
 from .tagprior import GROUPS, self_calibrated
 
 COVER = 0.6          # share of possessions that get a phase tag
@@ -48,11 +49,13 @@ def synthetic_tags(labels, error, seed):
     return out
 
 
-def run(errors, costs=(2.0, 4.0, 8.0)):
+def run(errors, costs=None):
     names = sorted(LOADERS)
     samples = {n: CachedSample(n, SIM_TEST_SEED) for n in names}
     logps = oof_logp(names, "ensemble")
-    transition = transition_matrix(*costs)
+    settings = load_decoder()
+    transition = transition_matrix(*(costs or (settings["switch"], settings["alive_to_dead"],
+                                               settings["dead_to_alive"])))
     base = {n: score(samples[n].labels, decode_table(samples[n], logps[n], transition))
             for n in names}
     print("no prior              all {:.4f}  dfl {:.4f}  metrica {:.4f}".format(

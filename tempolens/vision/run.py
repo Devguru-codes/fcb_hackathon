@@ -20,11 +20,11 @@ import numpy as np
 from games import GAME, asset_paths, require
 from ..match import competition_table
 from . import ballnet
-from .io import (CONTEXT, ball_pixels, build_training_set, choose_training_frames, iter_frames,
-                 load_homographies)
+from .io import (CONTEXT, ball_pixels, build_training_set, choose_audit_frames,
+                 choose_training_frames, iter_frames, load_homographies)
 from .track import candidates_on_pitch, fill_ball
 
-AUDIT_FRAMES = 3000   # tracked frames held out of training, to score detection against the ATD
+AUDIT_FRAMES = 3000   # tracked frames near ball gaps, held out, to score detection against the ATD
 
 
 def _paths(data_root):
@@ -51,12 +51,9 @@ def stage_labels(data_root):
     capture.release()
     pixels = ball_pixels(table, matrices)
     graded = table.period > 0
-    positive, negative = choose_training_frames(pixels, size, graded)
-    # Hold some tracked frames out of training entirely, to audit detection against the ATD.
-    rng = np.random.default_rng(1)
-    tracked = np.setdiff1d(np.flatnonzero(np.isfinite(pixels[:, 0]) & graded),
-                           np.concatenate([positive, negative]))
-    audit = np.sort(rng.permutation(tracked)[:AUDIT_FRAMES])
+    audit, trainable = choose_audit_frames(np.isfinite(table.ball[:, 0]), pixels, graded,
+                                           AUDIT_FRAMES)
+    positive, negative = choose_training_frames(trainable, size, graded)
     t0 = time.time()
     build_training_set(video, pixels, positive, negative, paths["dir"])
     meta = {"frame_size": size, "positives": int(len(positive)), "negatives": int(len(negative)),

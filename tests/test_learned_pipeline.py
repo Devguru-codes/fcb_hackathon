@@ -192,6 +192,7 @@ class EnsembleTests(unittest.TestCase):
 class TemporalVariantTests(unittest.TestCase):
     def test_every_variant_trains_saves_loads_and_predicts(self):
         import tempfile
+        import torch
         from tempolens import temporal
         n = 3000
         rng = np.random.default_rng(2)
@@ -215,6 +216,8 @@ class TemporalVariantTests(unittest.TestCase):
                 temporal.save(model, normaliser, path)
                 loaded, norm = temporal.load(path)
                 self.assertEqual(loaded.config, config)
+                # float64 inference is what makes another CPU produce the same file
+                self.assertEqual(next(loaded.parameters()).dtype, torch.float64)
                 out = temporal.predict(loaded, norm, table)
                 self.assertEqual(out.shape, (n, 4), config.tag())
                 self.assertTrue(np.all(np.isfinite(out)), config.tag())

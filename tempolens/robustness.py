@@ -15,7 +15,7 @@ from .features import TableSample
 from .opendata import LOADERS, load_open_match
 from .simulate import add_tracker_faults, simulate_atd
 
-COSTS = (4.0, 4.0, 8.0)   # the single-GRU optimum
+COSTS = (4.0, 8.0, 8.0)   # the single-GRU optimum (one model, not the submitted ensemble)
 
 
 def main():

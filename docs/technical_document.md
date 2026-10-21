@@ -27,6 +27,25 @@ the automatic tracking has no ball; the public ground truth covers five minutes)
 | nearest player's team = owner, ball visible and alive | 77.8% | the nearest-player rule is a weak signal on its own |
 | baseline macroF1 0.65 with ball-missing = D | — | missing-ball gaps are aligned with stoppages |
 
+Checked on the released data with `python -m tempolens.diagnostics`, which prints aggregates only:
+the tracking has one record per tactical video frame; our loader reproduces the organisers'
+`baseline_raw.csv` on 100% of frames (frame alignment and home/away mapping); 40.7% of graded
+frames have no ball, in 150 gaps of median 268 frames, as the simulator assumes; every Smart
+Tagging team name resolves (the tagging spells the away side "Atletic Club").
+
+Two bugs only the real tracking could reveal, both fixed:
+
+- **Simulated jitter read as play stopping.** The first simulator added independent per-frame
+  position noise. Through 25 fps velocities that is ~2.6 m/s of fake speed: simulated players ran
+  at a median 3.8 m/s against 1.5 m/s on the real tracking, so the model learned "everyone slow =
+  stoppage" and called 88% of the real match dead (public spellF1 0.13). The real tracking is
+  smooth; jitter is off, and simulated speed statistics now match (1.65 vs 1.47 m/s).
+- **Features that saw the slot count.** The real tracking spreads ~20 visible players over 46
+  anonymous slots; open data has ~15 per team. A team's "share in its own half" was divided by
+  the slot count, and "nearest player's speed" fell back to an arbitrary slot when the ball was
+  missing. Cross-validation could not see either (every open match has few slots). Features v3
+  fixes both; a test pads and shuffles slots and requires identical features.
+
 ## 3. Assets used and dropped
 
 | asset | use |
@@ -50,10 +69,11 @@ the automatic tracking has no ball; the public ground truth covers five minutes)
 
 ## 5. Simulating the automatic tracking
 
-Per match: each stoppage is lost with probability 0.67 (edges jittered); further log-normal gaps
-(median 268 frames, σ 0.95) top the missing fraction up to 40.7%; players drop out so ~20.5 are
-visible; positions are jittered. Calibration on DFL match J03WMX against the published
-full-match baseline scores:
+Per match: each stoppage is lost with probability 0.67 (its edges jittered by ~0.6 s); further
+log-normal gaps (median 268 frames, σ 0.95) top the missing fraction up to 40.7%; players drop
+out so ~20.5 are visible. Positions are not jittered (see §2). Calibration on DFL match J03WMX
+against the published full-match baseline scores (measured before jitter was removed; the
+baseline reads only the nearest player, which the jitter barely moved):
 
 | | raw | smooth25 | smooth50 | smooth125 |
 |---|---|---|---|---|
@@ -106,21 +126,30 @@ errors may correlate with the model's own (both read the same tracking), which s
 not capture; the reliability measured on the real match is reported by `tempolens.diagnostics`
 before the prior is switched on (`"tag_prior": "auto"` in `models/decoder.json`).
 
+On the real match the tags agree with a confident model 83% (attacking codes) and 94%
+(defensive codes) of the time, yet the prior lowered the public-window spellF1 (0.43 vs 0.59 for
+a single GRU): a tag spans a whole phase and swallows short counter-possessions. It is off.
+
 ## 7. Validation
 
 5-fold grouped cross-validation over the 10 open matches, every match corrupted by the
 simulator (two noise draws per training match, a fixed draw per test match), scored with the
 official `possession_metrics.py`. The public five minutes are used only as an alignment check.
 
-| method | DFL mean spellF1 | all mean spellF1 |
+| method (current simulator) | DFL mean spellF1 | all mean spellF1 |
 |---|---|---|
-| official baseline (smooth50) | 0.262 | 0.285 |
-| LightGBM, features v1 | 0.558 | 0.585 |
-| LightGBM, features v2 | 0.566 | 0.591 |
-| GRU, features v2 | 0.719 | 0.749 |
-| **3 GRUs (seeds × noise draws), averaged — submitted** | **0.730** | **0.759** |
+| official baseline (smooth50) | 0.267 | 0.291 |
+| GRU, features v2 | 0.759 | 0.784 |
+| 3 GRUs (seeds × noise draws), averaged, features v2 | 0.768 | 0.792 |
+| **3 GRUs, features v3 — submitted** | **0.770** | **0.794** |
 
-Tried and not adopted (same protocol; DFL mean spellF1 of the model alone, then with the
+The public five minutes (17 possessions; a sanity check, never used for selection): official
+baseline smooth50 0.326 spellF1 / 0.621 macroF1; submitted ensemble 0.518 / 0.732, all 17
+possessions found (features v2: 0.525 / 0.729).
+
+Earlier experiments ran under the first simulator (with jitter), so their absolute values are
+lower; they decided relative choices only: baseline 0.262 DFL, LightGBM 0.566, GRU 0.719, 3-GRU
+ensemble 0.730. Tried and not adopted there (DFL mean spellF1 of the model alone, then with the
 3-GRU ensemble):
 
 | variant | alone | in ensemble | verdict |
@@ -132,7 +161,8 @@ Tried and not adopted (same protocol; DFL mean spellF1 of the model alone, then 
 | transformer (5 fps tokens + full-rate skip) | 0.656 | 0.724 | worse: too coarse for short possessions |
 | hidden-ball auxiliary head, weight 1.0 / 0.1 | 0.699 / 0.710 | — / 0.725 | hurts: competes with the possession objective |
 
-Decoding alternatives, on the cross-validated ensemble output (`python -m tempolens.decodestudy`):
+Decoding alternatives, on the cross-validated ensemble output under the first simulator
+(`python -m tempolens.decodestudy`):
 
 | decoder | DFL | all |
 |---|---|---|
@@ -173,17 +203,22 @@ PathCRF (Kim et al., KDD 2026) was reviewed but its released weights were not us
 persistent player identities (the ATD has anonymous, fragmented tracklets), models only live
 play, and was trained on five of the seven DFL matches used in our validation.
 
-Per held-out DFL match the GRU scores 0.705–0.758 (baseline 0.248–0.284). Recall of true
-possessions at IoU 0.5, GRU against LightGBM: 1–2 s possessions 0.51 vs 0.21; possessions with
-the ball visible under 20% of the time 0.33 vs 0.25. Decoder for the ensemble: switch 2,
-alive→dead 4, dead→alive 8, no change-head bonus (it did not help at any weight tried).
+Per held-out match the submitted ensemble scores 0.726–0.866 (baseline 0.248–0.377). Under the
+first simulator, recall of true possessions at IoU 0.5, GRU against LightGBM: 1–2 s possessions
+0.51 vs 0.21; possessions with the ball visible under 20% of the time 0.33 vs 0.25. Decoder for
+the submitted ensemble: switch 2, alive→dead 8, dead→alive 8, no change-head bonus. Flat for
+switch 2–3; switch 1–1.5 is worse; the dead-ball costs barely matter.
 
 ## 8. Limitations
 
 - Open-data labels approximate, but are not, Metrica's corrected-tracking definition; the
   public window is too small to calibrate the definition of "control" precisely.
 - The simulator matches published aggregates, not the joint structure of the real errors.
-- Very short possessions (<2 s) remain the weakest part.
+- Very short possessions (<2 s) remain the weakest part. The model predicts ~85% of the true
+  possession count on open data and ~275 possessions on the competition match, where the public
+  window's rate suggests ~350: possessions are merged rather than split.
+- Cross-validation cannot see faults that open tracking lacks (see §2): the slot-count bugs were
+  found by reading the code, not by a score.
 
 ## 9. Reproduction
 
@@ -193,5 +228,9 @@ python -m tempolens.predict --data-root data --output <team>.csv     # committed
 python evaluation/validate_submission.py <team>.csv
 ```
 
-Retraining from open data: `python -m tempolens.train` (GPU training is not bit-reproducible,
-which is why the weights used for the submission are committed).
+The ensemble members are listed in `models/decoder.json`, whose costs were tuned for exactly
+them; each weights file records its feature version and refuses to load against another.
+Inference runs on the CPU in float64 and rounds to 4 decimals, so a different CPU (e.g. AVX2 vs
+AVX-512) gives the same file. Retraining from open data: `python -m tempolens.train --member k`
+(GPU training is not bit-reproducible, which is why the weights used for the submission are
+committed).

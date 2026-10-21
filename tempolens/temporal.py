@@ -345,6 +345,7 @@ def _infer(model, z, tokens=None):
     its training length, since its positions are absolute within a window.
     """
     torch = _torch()
+    dtype = next(model.parameters()).dtype
     chunk, overlap = (CHUNK, 150) if model.config.arch == "transformer" else (3000, 500)
     n = len(z)
     out = None
@@ -353,8 +354,8 @@ def _infer(model, z, tokens=None):
         for start in range(0, n, step):
             lo, hi = max(0, start - overlap), min(n, start + step + overlap)
             tok = None if tokens is None else torch.from_numpy(
-                np.asarray(tokens[lo:hi], dtype=np.float32)[None])
-            pred = model(torch.from_numpy(z[None, lo:hi]), tok)[0].numpy()
+                np.asarray(tokens[lo:hi], dtype=np.float32)[None]).to(dtype)
+            pred = model(torch.from_numpy(z[None, lo:hi]).to(dtype), tok)[0].numpy()
             if out is None:
                 out = np.zeros((n, pred.shape[1]), dtype=np.float64)
             keep_lo, keep_hi = start - lo, min(start + step, n) - lo
@@ -436,4 +437,7 @@ def load(path):
     config = TemporalConfig(**blob.get("config", {}))
     model = build_model(blob["n_inputs"], config, blob.get("n_token_fields"))
     model.load_state_dict(blob["state_dict"])
-    return model.eval(), Normaliser.from_state(blob["normaliser"])
+    # float64 inference: float32 sums differ in the last bits between CPU types (AVX2 vs
+    # AVX-512), enough to flip the 4-decimal rounding of ~2% of values, and with it a decoder
+    # tie somewhere; the rules require the organisers' re-run to give the same file.
+    return model.double().eval(), Normaliser.from_state(blob["normaliser"])

@@ -38,7 +38,13 @@ TRAIN_STRIDE = 5          # train on every 5th frame: neighbours are near-duplic
 SIM_TRAIN_SEEDS = (1, 2)  # two noise draws of every training match
 SIM_TEST_SEED = 1000      # one fixed draw of every held-out match
 N_FOLDS = 5
-NOISE_TAG = hashlib.md5(repr(AtdNoise()).encode()).hexdigest()[:8]
+# The caches below are keyed by parameters, not by code. Bump SIM_VERSION when simulate.py's
+# logic changes and TRAIN_VERSION when temporal.py's training changes (LR, CHUNK, losses...);
+# version 1 keeps the historical file names, so existing caches stay valid.
+SIM_VERSION = 1
+TRAIN_VERSION = 1
+NOISE_TAG = hashlib.md5((repr(AtdNoise()) + ("" if SIM_VERSION == 1 else str(SIM_VERSION)))
+                        .encode()).hexdigest()[:8]
 
 
 # -- scoring and decoding ---------------------------------------------------------------------
@@ -213,7 +219,7 @@ def oof_logp(names, kind="gbm", protocol="sim", refresh=False, member=0,
     if kind == "temporal":
         from .temporal import DEFAULT_CONFIG
         config = config or DEFAULT_CONFIG
-        kind_tag = config.tag()
+        kind_tag = config.tag() + ("" if TRAIN_VERSION == 1 else "_t{}".format(TRAIN_VERSION))
     else:
         kind_tag = kind
     cache = open_data_dir() / "cache" / "oof"

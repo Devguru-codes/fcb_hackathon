@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 
 from tempolens.match import A, H, MatchTable
-from tempolens.vision.io import choose_training_frames, project, unproject
+from tempolens.vision.io import choose_audit_frames, choose_training_frames, project, unproject
 from tempolens.vision.track import _viterbi_gap, fill_ball
 
 
@@ -34,6 +34,22 @@ class TrainingSplitTests(unittest.TestCase):
         self.assertGreater(len(negative), 0)
         self.assertLessEqual(len(positive) + len(negative), int(0.85 * tracked))
         self.assertFalse(np.intersect1d(positive, negative).size)
+
+    def test_audit_frames_sit_near_long_gaps_and_stay_out_of_training(self):
+        n = 6000
+        seen = np.ones(n, dtype=bool)
+        seen[1000:1300] = seen[4000:4400] = False      # two long gaps
+        seen[2500:2505] = False                        # a flicker: not a gap worth auditing
+        pixels = np.where(seen[:, None], np.array([[300.0, 300.0]]), np.nan)
+        graded = np.ones(n, dtype=bool)
+        audit, trainable = choose_audit_frames(seen, pixels, graded, n=100)
+        self.assertEqual(len(audit), 100)
+        near = (np.abs(audit[:, None] - np.array([999, 1300, 3999, 4400])) <= 50).any(axis=1)
+        self.assertTrue(near.all())
+        self.assertTrue(seen[audit].all())
+        positive, negative = choose_training_frames(trainable, (960, 540), graded)
+        used = np.concatenate([positive, negative])
+        self.assertGreater(np.abs(used[:, None] - audit[None]).min(), 12)
 
 
 class LinkingTests(unittest.TestCase):

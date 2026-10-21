@@ -13,8 +13,10 @@ from .decoder import transition_matrix
 from .experiments import CachedSample, SIM_TEST_SEED, _summary, decode_table, oof_logp, score
 from .mbr import decode_min_duration, mbr_decode
 from .opendata import LOADERS
+from .predict import load_decoder
 
-BASE = (2.0, 4.0, 8.0)
+_SETTINGS = load_decoder()   # the submitted decoder is the baseline every alternative must beat
+BASE = tuple(_SETTINGS[k] for k in ("switch", "alive_to_dead", "dead_to_alive"))
 
 
 def evaluate(names, samples, decode):
@@ -35,7 +37,7 @@ def main(argv=None):
 
     base, _ = evaluate(names, samples, lambda n: decode_table(
         samples[n], logps[n], transition_matrix(*BASE)))
-    show("viterbi switch 2 (current)", base)
+    show("viterbi {} (submitted)".format(BASE), base)
 
     # Minimum durations, with the switch cost re-tuned (a floor on run length replaces part of
     # what the switch cost was doing).

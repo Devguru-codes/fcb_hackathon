@@ -149,8 +149,8 @@ def peaks(model, stack, device="cpu", k=PEAK_K, minimum=PEAK_MIN):
     x = _to_input(stack[None]).to(device)
     x = nn.functional.pad(x, (0, pad_w, 0, pad_h))
     with torch.no_grad():
-        with torch.autocast(device_type="cuda", enabled=(device == "cuda")):
-            prob = torch.sigmoid(model(x).float())[0, :height, :width]
+        # float32, no autocast: half precision changes detections between GPUs
+        prob = torch.sigmoid(model(x))[0, :height, :width]
         local_max = nn.functional.max_pool2d(prob[None, None], 9, stride=1, padding=4)[0, 0]
         prob = torch.where(prob == local_max, prob, torch.zeros_like(prob))
         values, flat = prob.flatten().topk(k)

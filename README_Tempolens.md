@@ -24,7 +24,7 @@ with a **simulator calibrated so the official baseline reproduces its published 
 | stage | module | what it does |
 |---|---|---|
 | data | `match.py`, `opendata.py` | one per-frame table (metres, anonymous slots) for the ATD and every open match; open labels from DFL's ball status/owner flag or Metrica events |
-| noise | `simulate.py` | stoppage-aligned and long log-normal ball gaps, player dropout, jitter |
+| noise | `simulate.py` | stoppage-aligned and long log-normal ball gaps, player dropout (no position jitter: the real tracking is smooth) |
 | features | `features.py` | ~140 identity-free, team-symmetric features: control geometry, ball state, formation, memory across ball gaps, context windows |
 | model | `temporal.py` | bidirectional GRU: P(H/A/D) per frame plus a possession-change head; LightGBM in `experiments.py` as a comparison |
 | decoding | `decoder.py` | Viterbi with switch/stoppage costs tuned by cross-validated spellF1 |

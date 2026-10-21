@@ -21,6 +21,7 @@ RULES.md asks participants to ask before building on anything near a line. Three
    provided match itself — for example a ball detector whose labels are the ATD's own ball
    positions projected through the provided homography (no hand labelling) — may its weights be
    committed to the public repository, or should the repository instead retrain it from the data
-   at reproduction time?
+   at reproduction time? (Retraining on a GPU is not bit-reproducible, so only committed weights
+   let the submission file be reproduced exactly; without them we would leave the component out.)
 
 Thank you!

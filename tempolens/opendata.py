@@ -7,7 +7,7 @@ as the competition ATD.
 
 The labels are derived from events, not from corrected tracking as the competition's ground truth
 is, so they are close to but not identical with the competition's definition. That difference is
-documented in the technical document and absorbed by calibration on the public five minutes.
+documented in the technical document; the public five minutes are too few to calibrate it.
 
 Set MTAH_OPEN_DATA_DIR to the folder holding `metrica_sample_data/`; by default the nearest
 `external_data/` folder above the repository is used.

@@ -99,6 +99,28 @@ def choose_training_frames(pixels, frame_size, graded, n_positive=12000, n_negat
     return positive, negative
 
 
+def choose_audit_frames(ball_seen, pixels, graded, n=3000, near=50, min_gap=25, guard=12,
+                        seed=1):
+    """(audit frames, pixels with the audit frames and their +/-`guard` neighbours blanked).
+
+    The detector is only trusted inside the tracking's ball gaps, where the ball is hidden by
+    bodies, in the air or out of play. Random tracked frames are easier than that, so the audit
+    uses tracked frames within `near` frames of a gap of at least `min_gap` frames -- the closest
+    conditions that still have an answer. Blanking their neighbours keeps near-identical frames
+    out of training, so the audit stays held out.
+    """
+    from ..features import _gap_lengths
+    gap, _, _ = _gap_lengths(ball_seen)
+    _, since, until = _gap_lengths(gap >= min_gap)   # distance of every frame to a long gap
+    near_gap = np.isfinite(pixels[:, 0]) & graded & (np.minimum(since, until) <= near)
+    rng = np.random.default_rng(seed)
+    audit = np.sort(rng.permutation(np.flatnonzero(near_gap))[:n])
+    blanked = pixels.copy()
+    for offset in range(-guard, guard + 1):
+        blanked[np.clip(audit + offset, 0, len(pixels) - 1)] = np.nan
+    return audit, blanked
+
+
 def _crop(stack, cx, cy):
     """CROP x CROP window of a (k, H, W, 3) stack, top-left (cx, cy), zero-padded at edges."""
     k, height, width, _ = stack.shape
