@@ -98,6 +98,15 @@ class EndToEndTests(unittest.TestCase):
             self.assertTrue(np.all(labels[~graded] == "X"))
             self.assertFalse(np.any(labels[graded] == "X"))
 
+            # Reproduction: a second run, with the numpy Viterbi instead of numba, must give a
+            # byte-identical file -- the rules require the organisers' re-run to match.
+            from unittest.mock import patch
+            import tempolens.decoder as decoder_module
+            again = Path(folder) / "again.csv"
+            with patch.object(decoder_module, "_kernel", None):
+                predict.predict(folder, again, model, decoder)
+            self.assertEqual(output.read_bytes(), again.read_bytes())
+
             report = diagnostics.run(folder, model, decoder)
             self.assertEqual(report["visibility"]["track_slots"], N_SLOTS)
             sides = {name: entry["side"] for name, entry in report["tag_teams"].items()}

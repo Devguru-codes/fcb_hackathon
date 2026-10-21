@@ -102,6 +102,7 @@ def read_atd(meta_path, raw_path, n_frames, pitch, name="match", period_blocks=(
     length, width = pitch
     ball = np.full((n_frames, 2), np.nan, dtype=np.float32)
     players = np.full((n_frames, len(slot_team), 2), np.nan, dtype=np.float32)
+    read = np.zeros(n_frames, dtype=bool)
     with open(raw_path, encoding="utf-8") as handle:
         for line in handle:
             parts = line.rstrip("\n").split(":")
@@ -113,6 +114,7 @@ def read_atd(meta_path, raw_path, n_frames, pitch, name="match", period_blocks=(
                 continue
             if not 0 <= frame < n_frames:
                 continue
+            read[frame] = True
             point = _xy(parts[2])
             if point is not None:
                 ball[frame] = (point[0] * length, point[1] * width)
@@ -120,6 +122,10 @@ def read_atd(meta_path, raw_path, n_frames, pitch, name="match", period_blocks=(
                 point = _xy(group)
                 if point is not None:
                     players[frame, slot] = (point[0] * length, point[1] * width)
+    # A truncated or reformatted file would otherwise become NaN rows and a normal-looking CSV.
+    if not read.all():
+        raise ValueError("{} has records for {} of {} frames (first missing: {})".format(
+            raw_path, int(read.sum()), n_frames, int(np.flatnonzero(~read)[0])))
     period = np.zeros(n_frames, dtype=np.int8)
     for half, first, last in period_blocks:
         period[first:last + 1] = half

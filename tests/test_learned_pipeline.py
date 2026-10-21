@@ -50,6 +50,18 @@ class TrackingParserTests(unittest.TestCase):
         self.assertTrue(np.isnan(table.players[2, 1, 0]))
         self.assertEqual(table.period.tolist(), [1, 1, 0])
 
+    def test_read_atd_refuses_a_file_with_missing_frames(self):
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        from tempolens.match import read_atd
+        with TemporaryDirectory() as folder:
+            meta, raw = Path(folder) / "atd.xml", Path(folder) / "atd.txt"
+            meta.write_text("<root><Team id='h'/><Team id='a'/><Player teamId='h'/></root>",
+                            encoding="utf-8")
+            raw.write_text("1:0.5,0.5,0:N\n3:0.5,0.5,0:N\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "2 of 3 frames"):
+                read_atd(meta, raw, 3, (100.0, 50.0))
+
 
 class EventLabelTests(unittest.TestCase):
     def test_possession_and_dead_ball_rules(self):

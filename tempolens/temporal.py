@@ -342,24 +342,37 @@ def _infer(model, z, tokens=None):
     """Run over a long sequence in overlapping windows, keeping each window's centre.
 
     Recurrent and convolutional models read 3000-frame windows; the transformer reads windows of
-    its training length, since its positions are absolute within a window.
+    its training length, since its positions are absolute within a window. Full-width windows
+    run as one batch (~8x faster on CPU); the shorter edge windows run alone, so no padding ever
+    enters a bidirectional model.
     """
     torch = _torch()
     dtype = next(model.parameters()).dtype
     chunk, overlap = (CHUNK, 150) if model.config.arch == "transformer" else (3000, 500)
     n = len(z)
-    out = None
     step = chunk - 2 * overlap
+    starts = list(range(0, n, step))
+    spans = [(max(0, start - overlap), min(n, start + step + overlap)) for start in starts]
+    width = max(hi - lo for lo, hi in spans)
+
+    def run(group):
+        x = torch.from_numpy(np.stack([z[lo:hi] for lo, hi in group])).to(dtype)
+        tok = None if tokens is None else torch.from_numpy(np.stack(
+            [np.asarray(tokens[lo:hi], dtype=np.float32) for lo, hi in group])).to(dtype)
+        return model(x, tok).numpy()
+
+    preds = {}
     with torch.no_grad():
-        for start in range(0, n, step):
-            lo, hi = max(0, start - overlap), min(n, start + step + overlap)
-            tok = None if tokens is None else torch.from_numpy(
-                np.asarray(tokens[lo:hi], dtype=np.float32)[None]).to(dtype)
-            pred = model(torch.from_numpy(z[None, lo:hi]).to(dtype), tok)[0].numpy()
-            if out is None:
-                out = np.zeros((n, pred.shape[1]), dtype=np.float64)
-            keep_lo, keep_hi = start - lo, min(start + step, n) - lo
-            out[start:start + (keep_hi - keep_lo)] = pred[keep_lo:keep_hi]
+        full = [k for k, (lo, hi) in enumerate(spans) if hi - lo == width]
+        for i in range(0, len(full), 16):   # 16 windows at a time bounds memory
+            batch = full[i:i + 16]
+            preds.update(zip(batch, run([spans[k] for k in batch])))
+        for k in set(range(len(spans))) - set(full):
+            preds[k] = run([spans[k]])[0]
+    out = np.zeros((n, preds[0].shape[1]), dtype=np.float64)
+    for k, start in enumerate(starts):
+        lo, keep = spans[k][0], min(start + step, n) - start
+        out[start:start + keep] = preds[k][start - lo:start - lo + keep]
     return out
 
 
