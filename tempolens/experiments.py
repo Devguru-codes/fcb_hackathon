@@ -316,6 +316,8 @@ def main(argv=None):
     parser.add_argument("--epochs", type=int, default=None, help="temporal epochs (default 8)")
     parser.add_argument("--aux-ball", type=float, default=0.0,
                         help="weight of the hidden-ball auxiliary loss (0 = off)")
+    parser.add_argument("--smooth", type=float, default=0.0,
+                        help="weight of the MS-TCN++ smoothing loss (0 = off)")
     parser.add_argument("--protocol", default="sim", choices=("sim", "clean"))
     parser.add_argument("--refresh", action="store_true", help="retrain, ignoring the cache")
     args = parser.parse_args(argv)
@@ -326,7 +328,7 @@ def main(argv=None):
     from .temporal import TemporalConfig
     sizes = {k: v for k, v in (("hidden", args.hidden), ("epochs", args.epochs)) if v}
     config = TemporalConfig(arch=args.arch, encoder=args.encoder, aux_ball=args.aux_ball,
-                            **sizes)
+                            smooth=args.smooth, **sizes)
     run(args.matches, grid, args.model, args.protocol, args.refresh, args.member, config)
 
 

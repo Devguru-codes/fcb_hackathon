@@ -218,7 +218,7 @@ class TemporalVariantTests(unittest.TestCase):
         configs = [temporal.TemporalConfig(aux_ball=1.0),
                    temporal.TemporalConfig(encoder="players", hidden=16),
                    temporal.TemporalConfig(arch="tcn", hidden=16),
-                   temporal.TemporalConfig(arch="lstm", hidden=16),
+                   temporal.TemporalConfig(arch="lstm", hidden=16, smooth=0.15),
                    temporal.TemporalConfig(arch="transformer", hidden=16)]
         with tempfile.TemporaryDirectory() as folder:
             for config in configs:

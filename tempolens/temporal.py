@@ -14,7 +14,9 @@ Variants, chosen by TemporalConfig and saved inside each weights file:
 - encoder: "features" (the hand-made per-frame features) or "players" (those plus a per-frame
   attention encoder over the set of players -- a fully connected graph network, slot-free);
 - aux_ball: weight of an auxiliary head that regresses the true ball position on frames where
-  the simulator hid it, i.e. learning to place an unseen ball from how the players move.
+  the simulator hid it, i.e. learning to place an unseen ball from how the players move;
+- smooth: weight of MS-TCN++'s truncated smoothing loss (Li et al., TPAMI 2020) on frame-to-frame
+  changes of the log-probabilities, which targets over-segmentation -- what spellF1 punishes.
 """
 
 from dataclasses import asdict, dataclass
@@ -42,6 +44,7 @@ class TemporalConfig:
     hidden: int = HIDDEN
     aux_ball: float = 0.0        # weight of the hidden-ball regression loss; 0 = no ball head
     epochs: int = EPOCHS
+    smooth: float = 0.0          # weight of the truncated smoothing loss; 0 = off
 
     def tag(self):
         """Cache/file tag; the default config keeps the historical name "temporal"."""
@@ -53,6 +56,8 @@ class TemporalConfig:
             parts.append("aux{:g}".format(self.aux_ball))
         if self.epochs != EPOCHS:
             parts.append("e{}".format(self.epochs))
+        if self.smooth:
+            parts.append("sm{:g}".format(self.smooth))
         return "temporal" + ("_" + "_".join(parts) if parts else "")
 
 
@@ -322,6 +327,13 @@ def train(samples, epochs=None, device=None, seed=SEED, verbose=True,
             change_loss = ((bce(out[..., 3], c.clamp(min=0)) * valid).sum()
                            / valid.sum().clamp(min=1))
             loss = loss + CHANGE_WEIGHT * change_loss
+            if config.smooth:
+                # truncated MSE between neighbouring frames' log-probabilities (MS-TCN++, tau=4)
+                logp = torch.log_softmax(out[..., :3], dim=-1)
+                step = (logp[:, 1:] - logp[:, :-1].detach()) ** 2
+                labelled = (y[:, 1:] >= 0)[..., None]
+                loss = loss + config.smooth * ((step.clamp(max=16.0) * labelled).sum()
+                                               / labelled.sum().clamp(min=1) / 3)
             if config.aux_ball:
                 target = batch_of("ball", batch)
                 known = torch.isfinite(target[..., 0])
