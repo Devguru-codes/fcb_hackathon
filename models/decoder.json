@@ -1,14 +1,14 @@
 {
-  "_provenance": "Best mean spellF1 (0.794 all, 0.770 DFL; official baseline 0.291 / 0.267) of the 3-member GRU ensemble below, features v3 (visible-player own-half share, no nearest-player speed without a ball), ATD noise without per-frame jitter, under 5-fold simulated-ATD cross-validation on 10 open matches (python -m tempolens.experiments --model ensemble). Flat for switch 2-3; switch 1-1.5 is worse; the dead-ball costs barely matter; the change-head bonus did not help. Features v2 scored 0.792 / 0.768 under the same protocol.",
+  "_provenance": "Best mean spellF1 (0.764 all, 0.754 DFL; official baseline 0.291 / 0.267 on the earlier simulator) of the 3-member GRU ensemble below, features v3, simulator v2 (Metrica's dead-time ball filled, tracker ball noise, 4% dropout -- harder and closer to the real ATD than v1, so not comparable with v1's 0.794 / 0.770), under 5-fold simulated-ATD cross-validation on 10 open matches (python -m tempolens.experiments --model ensemble). The change-head bonus helps for the first time.",
   "members": [
     "tempolens_gru.pt",
     "tempolens_gru_m1.pt",
     "tempolens_gru_m2.pt"
   ],
-  "switch": 2.0,
+  "switch": 4.0,
   "alive_to_dead": 8.0,
   "dead_to_alive": 8.0,
-  "change_weight": 0.0,
+  "change_weight": 1.0,
   "tag_prior": "off",
   "_tag_prior": "'auto' adds the self-calibrated Smart Tagging prior (tagprior.py). Off: on the real match the tags agree with a confident model 83% (attacking codes) and 94% (defensive codes) of the time, yet the prior lowered the public-window spellF1 (0.43 vs 0.59, single GRU)."
 }

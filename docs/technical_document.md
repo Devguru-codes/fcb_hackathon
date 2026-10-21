@@ -45,6 +45,21 @@ Two bugs only the real tracking could reveal, both fixed:
   the slot count, and "nearest player's speed" fell back to an arbitrary slot when the ball was
   missing. Cross-validation could not see either (every open match has few slots). Features v3
   fixes both; a test pads and shuffles slots and requires identical features.
+- **Dead ball missed at goal kicks.** Around Smart Tagging's goal-kick tags the model predicted
+  dead ball on only 30–49% of frames, against ~76% around goal kicks on open data. Cause: Metrica's
+  sample games never track the ball while it is dead, so 3 of 10 training matches taught "no
+  ball = dead ball", while on the real match the ball stays visible through much of a stoppage
+  (on the public window, 66% of dead frames). Simulator v2 fills Metrica's dead-time ball (a
+  straight line from where it was last seen to where play restarts) before the usual stoppage
+  losses. After retraining, dead-ball share before goal kicks rose to 56–71%, after throw-ins
+  to 88%.
+
+A per-feature comparison of simulated and real features (quantiles over all frames, nothing
+frame-level) guided two further simulator changes: tracker ball noise (0.2 m, smoothed over ~3
+frames) brings the ball-acceleration profile in line (shift score 1.01 → 0.38, speeds unchanged),
+and 4% player dropout instead of 7% matches the real share of frames with 21+ players (shift
+1.40 → 0.70). Real tracking also has rare long blackouts during stoppages (≤14 players on 5% of
+frames), which the model already labels dead ball (96%).
 
 ## 3. Assets used and dropped
 
@@ -136,16 +151,20 @@ a single GRU): a tag spans a whole phase and swallows short counter-possessions.
 simulator (two noise draws per training match, a fixed draw per test match), scored with the
 official `possession_metrics.py`. The public five minutes are used only as an alignment check.
 
-| method (current simulator) | DFL mean spellF1 | all mean spellF1 |
+| method | DFL mean spellF1 | all mean spellF1 |
 |---|---|---|
-| official baseline (smooth50) | 0.267 | 0.291 |
-| GRU, features v2 | 0.759 | 0.784 |
-| 3 GRUs (seeds × noise draws), averaged, features v2 | 0.768 | 0.792 |
-| **3 GRUs, features v3 — submitted** | **0.770** | **0.794** |
+| official baseline (smooth50), simulator v1 | 0.267 | 0.291 |
+| GRU, features v2, simulator v1 | 0.759 | 0.784 |
+| 3 GRUs (seeds × noise draws), features v2, simulator v1 | 0.768 | 0.792 |
+| 3 GRUs, features v3, simulator v1 | 0.770 | 0.794 |
+| **3 GRUs, features v3, simulator v2 — submitted** | **0.754** | **0.764** |
 
-The public five minutes (17 possessions; a sanity check, never used for selection): official
-baseline smooth50 0.326 spellF1 / 0.621 macroF1; submitted ensemble 0.518 / 0.732, all 17
-possessions found (features v2: 0.525 / 0.729).
+Simulator v2 is harder and closer to the real tracking (visible dead-time ball, tracker ball
+noise), so its scores are not comparable with v1's; the choice between them rests on the real
+match. On the public five minutes (17 possessions; a sanity check, never used for tuning):
+official baseline smooth50 0.326 spellF1 / 0.621 macroF1; v1 ensemble 0.518 / 0.732 (17
+possessions); **submitted v2 ensemble 0.573 / 0.790** (20 possessions). Full match: ~322
+possessions of mean 11.5 s.
 
 Earlier experiments ran under the first simulator (with jitter), so their absolute values are
 lower; they decided relative choices only: baseline 0.262 DFL, LightGBM 0.566, GRU 0.719, 3-GRU
@@ -218,11 +237,12 @@ PathCRF (Kim et al., KDD 2026) was reviewed but its released weights were not us
 persistent player identities (the ATD has anonymous, fragmented tracklets), models only live
 play, and was trained on five of the seven DFL matches used in our validation.
 
-Per held-out match the submitted ensemble scores 0.726–0.866 (baseline 0.248–0.377). Under the
-first simulator, recall of true possessions at IoU 0.5, GRU against LightGBM: 1–2 s possessions
-0.51 vs 0.21; possessions with the ball visible under 20% of the time 0.33 vs 0.25. Decoder for
-the submitted ensemble: switch 2, alive→dead 8, dead→alive 8, no change-head bonus. Flat for
-switch 2–3; switch 1–1.5 is worse; the dead-ball costs barely matter.
+Under the first simulator, recall of true possessions at IoU 0.5, GRU against LightGBM: 1–2 s
+possessions 0.51 vs 0.21; possessions with the ball visible under 20% of the time 0.33 vs 0.25.
+Decoder for the submitted ensemble: switch 4, alive→dead 8, dead→alive 8, change-head bonus 1.0
+(the first ensemble where the boundary head helps). Re-running the decoder study on its
+cross-validated output: minimum-duration Viterbi +0.001, MBR +0.0007, hindsight-optimal switch
+per match +0.0024 — decoding is still not the bottleneck.
 
 ## 8. Limitations
 
