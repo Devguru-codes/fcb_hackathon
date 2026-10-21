@@ -179,6 +179,7 @@ ensemble 0.730. Tried and not adopted there (DFL mean spellF1 of the model alone
 | bigger GRU (128 units, 16 epochs) | 0.715 | 0.731 | tie alone; +0.001 in ensemble, within noise |
 | transformer (5 fps tokens + full-rate skip) | 0.656 | 0.724 | worse: too coarse for short possessions |
 | hidden-ball auxiliary head, weight 1.0 / 0.1 | 0.699 / 0.710 | — / 0.725 | hurts: competes with the possession objective |
+| MS-TCN++ truncated smoothing loss, weight 0.15 (simulator v2; base 0.746 DFL / 0.754 all) | 0.750 DFL / 0.754 all | — | tie: the decoder's switch cost already does this job |
 
 Decoding alternatives, on the cross-validated ensemble output under the first simulator
 (`python -m tempolens.decodestudy`):
