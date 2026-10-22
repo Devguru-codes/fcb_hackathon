@@ -4,6 +4,10 @@ A learned possession-reconstruction pipeline for **More than a Hack 2027**: a te
 trained on open football data under realistic simulated tracking noise, decoded for whole
 possessions (`spellF1`), not for single frames.
 
+Method and results: [docs/technical_document.md](docs/technical_document.md). Every experiment
+tried, running and planned, with its measured result and the decision rules:
+[docs/plan_of_action.md](docs/plan_of_action.md).
+
 ## Why it is built this way
 
 Two facts about the competition tracking (ATD), both measurable from the organisers' public
