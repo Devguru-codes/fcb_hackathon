@@ -80,12 +80,23 @@ becomes public at submission).
 | ❌ | Q1 segment-length-balanced loss (exponent 0.5) | 0.751 / 0.755 vs 0.746 / 0.754 (DFL +0.005, Metrica −0.010) | no gain beyond noise (seed-1 replicate queued) |
 | ⏳ | Q2 focal loss (γ = 2) | same baseline | running (autoqueue records it) |
 
+## GitHub scan for data and code (2026-10-23)
+
+| | source | finding |
+|---|---|---|
+| ✅ | SkillCorner/opendata (MIT) | 20 matches with per-frame owner + phases of play — adopted as H1 |
+| ❌ | DFL `positions_raw_observed` | already used; the ball is never missing (no raw faults to learn from) |
+| ❌ | yangpeduto/symmetrica | rule-based "control with memory" on 2 Metrica games, 93% frame accuracy — weaker than ours |
+| ❌ | GeonHeeJo2000/following-the-ball | event detection on the same 7 DFL matches — no new data |
+| 🚫 | hyunsungkim-ds/ballradar, pathcrf | need persistent player identities (the ATD has none) |
+| ⬜ | hyunsungkim-ds/elastic, ML-KULeuven/ETSY, databallpy | event–tracking synchronisation: only useful with event data we do not have for the match |
+
 ## D. Queue (ranked by expected gain ÷ cost)
 
 | | id | hypothesis | why (measured weakness) | test | cost |
 |---|---|---|---|---|---|
 | ⏳ | Q10 | **Multi-seed variance check** (autoqueue Q10a/b, Q1s1, Q2s1, H6s1) | decisions rest on 0.001–0.005 differences; noise floor unknown | score members 0–2 separately from cached CV outputs; then paired per-match comparison of any variant over ≥3 seeds | minutes (cached), then GPU per seed |
-| ⬜ | H1 | **More training data**: PFF FIFA World Cup 2022 (64 matches), SkillCorner open data (10 matches, possession events) | only 10 training matches; broadcast-tracked data is noisy like the real ATD | loaders + labels; CV on the same DFL folds with/without | 1–2 days · 👤 PFF form needs an email |
+| ⏳ | H1 | **More training data**: SkillCorner open data — **20** A-League matches, broadcast tracking (real detection gaps, ball seen 75–85%), labels from phases of play + the tracking's owner flag (median possession 5–7 s vs DFL 3.4 s: closer to *controlled* possession). Loader + tests done; training-only extra data so DFL/Metrica folds stay comparable (autoqueue H1sc, H1sc_s1). PFF World Cup 2022 🚫: form not accessible | only 10 training matches | CV with vs without | ~1 h per seed |
 | ⬜ | H3 | Training labels match "control": minimum possession 19 frames (public truth's shortest) instead of 10 | short possessions recalled 45% (27% of all possessions) | retrain; per-duration recall + public sanity | hours |
 | ⏳ | H6 | Mirror augmentation (autoqueue H6, H6s1) (flip pitch y), reflection symmetry as in TacticAI | data scarcity | CV | ~2 h |
 | ⬜ | H5 | Restart-spot features (stationary ball at corner arc / touchline / 6-yard box, players walking) | real dead-ball recall 0.48 | CV + goal-kick/throw-in diagnostic | half a day + retrain |
@@ -117,3 +128,21 @@ reboot from the repository root:
 | 👤 | Upload the possession file (named `<team_name>.csv`), repository URL, technical document; edit later if a better version lands | team | **2026-11-17** |
 | 👤 | Make the repository public at submission time (history checked: no match data) | team | at submission |
 | 👤 | Optional: hand-label 20–30 min for validation only (allowed by RULES.md), locally, never sent to a cloud LLM | team | — |
+
+## F. Automatic experiment queue
+
+<!-- autoqueue:start -->
+Written by `python -m tempolens.autoqueue` from `experiments/queue.json` (✅ here = finished; adoption still follows the decision rules above).
+
+| | id | experiment | all | DFL | metrica | best costs | vs baseline | finished |
+|---|---|---|---|---|---|---|---|---|
+| ⏳ | Q1 | segment-balanced loss 0.5 (seed 0) |  |  |  |  |  |  |
+| ⬜ | Q2 | focal loss gamma 2 (seed 0) |  |  |  |  |  |  |
+| ⬜ | Q10a | seed check: default GRU, member 1 |  |  |  |  |  |  |
+| ⬜ | Q10b | seed check: default GRU, member 2 |  |  |  |  |  |  |
+| ⬜ | Q1s1 | segment-balanced loss 0.5 (seed 1) |  |  |  |  |  |  |
+| ⬜ | Q2s1 | focal loss gamma 2 (seed 1) |  |  |  |  |  |  |
+| ⬜ | H6 | mirror augmentation (seed 0) |  |  |  |  |  |  |
+| ⬜ | H6s1 | mirror augmentation (seed 1) |  |  |  |  |  |  |
+| ⬜ | H7 | 5-member ensemble (vs 3) |  |  |  |  |  |  |
+<!-- autoqueue:end -->

@@ -13,7 +13,8 @@
       "dfl": 0.7456
     },
     "baseline_from": null,
-    "status": "pending"
+    "status": "running",
+    "started": "2026-10-22 21:46"
   },
   {
     "id": "Q2",
@@ -55,6 +56,37 @@
     ],
     "baseline": null,
     "baseline_from": null,
+    "status": "pending"
+  },
+  {
+    "id": "H1sc",
+    "title": "+ 20 SkillCorner matches in training (seed 0)",
+    "args": [
+      "--model",
+      "temporal",
+      "--extra-train",
+      "skillcorner"
+    ],
+    "baseline": {
+      "all": 0.7543,
+      "dfl": 0.7456
+    },
+    "baseline_from": null,
+    "status": "pending"
+  },
+  {
+    "id": "H1sc_s1",
+    "title": "+ 20 SkillCorner matches in training (seed 1)",
+    "args": [
+      "--model",
+      "temporal",
+      "--extra-train",
+      "skillcorner",
+      "--member",
+      "1"
+    ],
+    "baseline": null,
+    "baseline_from": "Q10a",
     "status": "pending"
   },
   {
