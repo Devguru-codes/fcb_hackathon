@@ -12,8 +12,9 @@ becomes public at submission).
 1. **Model selection = cross-validation (CV)** on 10 open matches (7 DFL, 3 Metrica) under the
    simulated competition tracking, scored with the official `possession_metrics.py`. Compare only
    runs on the **same simulator version** (v1 and v2 numbers are not comparable).
-2. **Noise floor:** a variant must beat its baseline by more than the seed-to-seed spread
-   (to be measured, see Q10; until then ~+0.005 mean spellF1) without losing elsewhere.
+2. **Noise floor (measured, Q10):** the same model retrained with seeds 0/1/2 scores 0.7543 /
+   0.7556 / 0.7599 (all; sd 0.0029, range 0.0056) and 0.7456 / 0.7439 / 0.7524 (DFL; sd 0.0045).
+   A single-seed gain must exceed ~0.006 overall (2 sd); smaller gains need ≥ 2 seeds agreeing.
 3. **Real match = sanity, not tuning:** the public 5 minutes (17 possessions) and aggregate
    real-match diagnostics (dead-ball share around Smart Tagging restarts, sim-vs-real feature
    shift) may veto a change, never select between close variants.
@@ -78,7 +79,7 @@ becomes public at submission).
 | ✅ | Simulator recalibration from the sim-vs-real feature audit | ball-acceleration shift 1.01 → 0.38; player count 1.40 → 0.70 | in simulator v2 |
 | ❌ | Smart Tagging set-piece starts as restart timing | tag start ≈ set-up phase, median 4.6 s before our restart | not a timing cue |
 | ❌ | Q1 segment-length-balanced loss (exponent 0.5) | 0.751 / 0.755 vs 0.746 / 0.754 (DFL +0.005, Metrica −0.010) | no gain beyond noise (seed-1 replicate queued) |
-| ⏳ | Q2 focal loss (γ = 2) | same baseline | running (autoqueue records it) |
+| ❌ | Q2 focal loss (γ = 2) | −0.0023 vs baseline | no gain |
 
 ## GitHub scan for data and code (2026-10-23)
 
@@ -95,7 +96,7 @@ becomes public at submission).
 
 | | id | hypothesis | why (measured weakness) | test | cost |
 |---|---|---|---|---|---|
-| ⏳ | Q10 | **Multi-seed variance check** (autoqueue Q10a/b, Q1s1, Q2s1, H6s1) | decisions rest on 0.001–0.005 differences; noise floor unknown | score members 0–2 separately from cached CV outputs; then paired per-match comparison of any variant over ≥3 seeds | minutes (cached), then GPU per seed |
+| ✅ | Q10 | **Multi-seed variance check** — done: sd 0.0029 all / 0.0045 DFL (see rule 2); seed-1 replicates of each variant still queued | decisions rest on 0.001–0.005 differences; noise floor unknown | score members 0–2 separately from cached CV outputs; then paired per-match comparison of any variant over ≥3 seeds | minutes (cached), then GPU per seed |
 | ⏳ | H1 | **More training data**: SkillCorner open data — **20** A-League matches, broadcast tracking (real detection gaps, ball seen 75–85%), labels from phases of play + the tracking's owner flag (median possession 5–7 s vs DFL 3.4 s: closer to *controlled* possession). Loader + tests done; training-only extra data so DFL/Metrica folds stay comparable (autoqueue H1sc, H1sc_s1). PFF World Cup 2022 🚫: form not accessible | only 10 training matches | CV with vs without | ~1 h per seed |
 | ⬜ | H3 | Training labels match "control": minimum possession 19 frames (public truth's shortest) instead of 10 | short possessions recalled 45% (27% of all possessions) | retrain; per-duration recall + public sanity | hours |
 | ⏳ | H6 | Mirror augmentation (autoqueue H6, H6s1) (flip pitch y), reflection symmetry as in TacticAI | data scarcity | CV | ~2 h |
@@ -136,10 +137,12 @@ Written by `python -m tempolens.autoqueue` from `experiments/queue.json` (✅ he
 
 | | id | experiment | all | DFL | metrica | best costs | vs baseline | finished |
 |---|---|---|---|---|---|---|---|---|
-| ⏳ | Q1 | segment-balanced loss 0.5 (seed 0) |  |  |  |  |  |  |
-| ⬜ | Q2 | focal loss gamma 2 (seed 0) |  |  |  |  |  |  |
-| ⬜ | Q10a | seed check: default GRU, member 1 |  |  |  |  |  |  |
-| ⬜ | Q10b | seed check: default GRU, member 2 |  |  |  |  |  |  |
+| ✅ | Q1 | segment-balanced loss 0.5 (seed 0) | 0.7551 | 0.7510 | 0.7645 | (8.0, 4.0, 8.0, 0.5) | no gain (+0.0008) | 2026-10-22 21:50 |
+| ✅ | Q2 | focal loss gamma 2 (seed 0) | 0.7520 | 0.7398 | 0.7805 | (1.0, 4.0, 4.0, 0.0) | no gain (-0.0023) | 2026-10-22 21:54 |
+| ✅ | Q10a | seed check: default GRU, member 1 | 0.7556 | 0.7439 | 0.7828 | (4.0, 8.0, 8.0, 0.5) | measured | 2026-10-22 21:57 |
+| ✅ | Q10b | seed check: default GRU, member 2 | 0.7599 | 0.7524 | 0.7773 | (4.0, 8.0, 8.0, 0.0) | measured | 2026-10-22 22:01 |
+| ⏳ | H1sc | + 20 SkillCorner matches in training (seed 0) |  |  |  |  |  |  |
+| ⬜ | H1sc_s1 | + 20 SkillCorner matches in training (seed 1) |  |  |  |  |  |  |
 | ⬜ | Q1s1 | segment-balanced loss 0.5 (seed 1) |  |  |  |  |  |  |
 | ⬜ | Q2s1 | focal loss gamma 2 (seed 1) |  |  |  |  |  |  |
 | ⬜ | H6 | mirror augmentation (seed 0) |  |  |  |  |  |  |
