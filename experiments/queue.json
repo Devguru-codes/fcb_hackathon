@@ -1,0 +1,135 @@
+[
+  {
+    "id": "Q1",
+    "title": "segment-balanced loss 0.5 (seed 0)",
+    "args": [
+      "--model",
+      "temporal",
+      "--seg-balance",
+      "0.5"
+    ],
+    "baseline": {
+      "all": 0.7543,
+      "dfl": 0.7456
+    },
+    "baseline_from": null,
+    "status": "pending"
+  },
+  {
+    "id": "Q2",
+    "title": "focal loss gamma 2 (seed 0)",
+    "args": [
+      "--model",
+      "temporal",
+      "--focal",
+      "2"
+    ],
+    "baseline": {
+      "all": 0.7543,
+      "dfl": 0.7456
+    },
+    "baseline_from": null,
+    "status": "pending"
+  },
+  {
+    "id": "Q10a",
+    "title": "seed check: default GRU, member 1",
+    "args": [
+      "--model",
+      "temporal",
+      "--member",
+      "1"
+    ],
+    "baseline": null,
+    "baseline_from": null,
+    "status": "pending"
+  },
+  {
+    "id": "Q10b",
+    "title": "seed check: default GRU, member 2",
+    "args": [
+      "--model",
+      "temporal",
+      "--member",
+      "2"
+    ],
+    "baseline": null,
+    "baseline_from": null,
+    "status": "pending"
+  },
+  {
+    "id": "Q1s1",
+    "title": "segment-balanced loss 0.5 (seed 1)",
+    "args": [
+      "--model",
+      "temporal",
+      "--seg-balance",
+      "0.5",
+      "--member",
+      "1"
+    ],
+    "baseline": null,
+    "baseline_from": "Q10a",
+    "status": "pending"
+  },
+  {
+    "id": "Q2s1",
+    "title": "focal loss gamma 2 (seed 1)",
+    "args": [
+      "--model",
+      "temporal",
+      "--focal",
+      "2",
+      "--member",
+      "1"
+    ],
+    "baseline": null,
+    "baseline_from": "Q10a",
+    "status": "pending"
+  },
+  {
+    "id": "H6",
+    "title": "mirror augmentation (seed 0)",
+    "args": [
+      "--model",
+      "temporal",
+      "--mirror"
+    ],
+    "baseline": {
+      "all": 0.7543,
+      "dfl": 0.7456
+    },
+    "baseline_from": null,
+    "status": "pending"
+  },
+  {
+    "id": "H6s1",
+    "title": "mirror augmentation (seed 1)",
+    "args": [
+      "--model",
+      "temporal",
+      "--mirror",
+      "--member",
+      "1"
+    ],
+    "baseline": null,
+    "baseline_from": "Q10a",
+    "status": "pending"
+  },
+  {
+    "id": "H7",
+    "title": "5-member ensemble (vs 3)",
+    "args": [
+      "--model",
+      "ensemble",
+      "--members",
+      "5"
+    ],
+    "baseline": {
+      "all": 0.7638,
+      "dfl": 0.7538
+    },
+    "baseline_from": null,
+    "status": "pending"
+  }
+]

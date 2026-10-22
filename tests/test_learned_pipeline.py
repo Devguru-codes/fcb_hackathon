@@ -105,6 +105,14 @@ class FeatureTests(unittest.TestCase):
         for i, name in enumerate(names):
             np.testing.assert_allclose(xp[:, i], x[:, i], rtol=1e-5, atol=1e-5, err_msg=name)
 
+    def test_mirroring_the_pitch_twice_is_the_identity(self):
+        from tempolens.temporal import mirror_y
+        x, names = frame_features(_table())
+        once = mirror_y(x, names)
+        np.testing.assert_allclose(mirror_y(once, names), x, equal_nan=True)
+        col = names.index("t0_y0")
+        self.assertFalse(np.allclose(once[:, col], x[:, col], equal_nan=True))
+
     def test_swapping_teams_mirrors_the_features(self):
         table = _table()
         x, names = frame_features(table)
@@ -219,7 +227,7 @@ class TemporalVariantTests(unittest.TestCase):
                    temporal.TemporalConfig(encoder="players", hidden=16),
                    temporal.TemporalConfig(arch="tcn", hidden=16, seg_balance=0.5, focal=2.0),
                    temporal.TemporalConfig(arch="lstm", hidden=16, smooth=0.15),
-                   temporal.TemporalConfig(arch="transformer", hidden=16)]
+                   temporal.TemporalConfig(arch="transformer", hidden=16, mirror=True)]
         with tempfile.TemporaryDirectory() as folder:
             for config in configs:
                 model, normaliser = temporal.train([table], epochs=1, device="cpu",

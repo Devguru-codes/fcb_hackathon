@@ -20,7 +20,9 @@ Variants, chosen by TemporalConfig and saved inside each weights file:
 - seg_balance: exponent a of a per-frame weight (median run length / own run length)^a, clipped
   to [0.25, 4] -- spellF1 counts every possession once, so short ones should not be outvoted by
   the frames of long ones (ASRF's segment-frequency balancing, Ishikawa et al. 2021);
-- focal: focal-loss exponent (Lin et al. 2017): down-weights frames the model already gets right.
+- focal: focal-loss exponent (Lin et al. 2017): down-weights frames the model already gets right;
+- mirror: reflect half the training sequences across the pitch's long axis (football is
+  left-right symmetric; TacticAI builds the same symmetry in) -- more data for free.
 """
 
 from dataclasses import asdict, dataclass
@@ -51,6 +53,7 @@ class TemporalConfig:
     smooth: float = 0.0          # weight of the truncated smoothing loss; 0 = off
     seg_balance: float = 0.0     # exponent of the run-length frame weight; 0 = off
     focal: float = 0.0           # focal-loss gamma; 0 = plain cross-entropy
+    mirror: bool = False         # reflect half the training sequences across the long axis
 
     def tag(self):
         """Cache/file tag; the default config keeps the historical name "temporal"."""
@@ -68,6 +71,8 @@ class TemporalConfig:
             parts.append("sb{:g}".format(self.seg_balance))
         if self.focal:
             parts.append("fg{:g}".format(self.focal))
+        if self.mirror:
+            parts.append("mir")
         return "temporal" + ("_" + "_".join(parts) if parts else "")
 
 
@@ -248,6 +253,21 @@ def _as_sample(item):
     return item if hasattr(item, "features") else TableSample(item)
 
 
+def mirror_y(x, names=None):
+    """Features of the same frames reflected across the pitch's long axis (y -> -y).
+
+    Only the per-team sorted y-coordinates depend on the side: they change sign and so re-sort
+    (NaN padding stays last). Everything else is symmetric already (|y| distances, spreads).
+    """
+    from .features import feature_names
+    names = names or feature_names()
+    out = np.array(x, dtype=np.float32, copy=True)
+    for team in ("t0", "t1"):
+        cols = [names.index("{}_y{}".format(team, i)) for i in range(11)]
+        out[:, cols] = np.sort(-out[:, cols], axis=1)
+    return out
+
+
 def _sequences(samples, config=DEFAULT_CONFIG, normaliser=None):
     """Per sample, perspective and period, a dict of training arrays.
 
@@ -262,6 +282,7 @@ def _sequences(samples, config=DEFAULT_CONFIG, normaliser=None):
                                   for s in samples])
         normaliser = Normaliser(stacked)
     out = []
+    flip = np.random.default_rng(12345)   # which sequences are mirrored: fixed, so runs repeat
     for sample in samples:
         for swap in (False, True):
             x = sample.features(swap)
@@ -272,7 +293,10 @@ def _sequences(samples, config=DEFAULT_CONFIG, normaliser=None):
                 y_run = y[start:stop].astype(np.int64)
                 change = change_targets(y_run)
                 y_run[y_run == X] = -100   # CrossEntropyLoss ignore_index
-                seq = {"x": normaliser(np.asarray(x[start:stop])).astype(np.float16),
+                raw = np.asarray(x[start:stop])
+                if config.mirror and flip.random() < 0.5:
+                    raw = mirror_y(raw)
+                seq = {"x": normaliser(raw).astype(np.float16),
                        "y": y_run, "c": change}
                 if config.seg_balance:
                     seq["w"] = run_weights(y_run, config.seg_balance)

@@ -67,3 +67,8 @@ __pycache__/
 venv/
 env/
 .DS_Store
+
+# -- autoqueue run state (results land in experiments/queue.json and docs/plan_of_action.md)
+experiments/logs/
+experiments/STOP
+experiments/*.tmp

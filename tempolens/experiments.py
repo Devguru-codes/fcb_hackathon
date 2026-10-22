@@ -227,7 +227,10 @@ def oof_logp(names, kind="gbm", protocol="sim", refresh=False, member=0,
     noise = NOISE_TAG if protocol == "sim" else "clean"
     train_seeds = member_noise_seeds(member) if protocol == "sim" else (None,)
     test_seed = SIM_TEST_SEED if protocol == "sim" else None
-    tag = kind_tag if member == 0 else "{}{}".format(kind_tag, member)
+    # members of the default model keep their historical names (temporal1, temporal2); other
+    # configs use a separator so that e.g. sb0.5 member 1 cannot read as sb0.51
+    tag = (kind_tag if member == 0 else "{}{}".format(kind_tag, member) if kind_tag == "temporal"
+           else "{}_m{}".format(kind_tag, member))
     logps = {}
     for held in folds(names):
         key = "-".join(sorted(set(names) - set(held)))
@@ -263,9 +266,10 @@ def _summary(rows, names):
             mean([n for n in names if n.startswith("metrica")]))
 
 
-def run(names, grid, kind="gbm", protocol="sim", refresh=False, member=0, config=None):
+def run(names, grid, kind="gbm", protocol="sim", refresh=False, member=0, config=None,
+        members=ENSEMBLE_MEMBERS):
     test_seed = SIM_TEST_SEED if protocol == "sim" else None
-    logps = oof_logp(names, kind, protocol, refresh, member, config=config)
+    logps = oof_logp(names, kind, protocol, refresh, member, members, config=config)
     samples = {n: CachedSample(n, test_seed) for n in names}
 
     print("\n{:<14} {:>8} {:>8} {:>6} {:>6}".format("baseline50", "spellF1", "macroF1", "pred",
@@ -321,6 +325,10 @@ def main(argv=None):
     parser.add_argument("--seg-balance", type=float, default=0.0,
                         help="exponent of the run-length frame weight (0 = off)")
     parser.add_argument("--focal", type=float, default=0.0, help="focal-loss gamma (0 = off)")
+    parser.add_argument("--mirror", action="store_true",
+                        help="reflect half the training sequences across the long axis")
+    parser.add_argument("--members", type=int, default=ENSEMBLE_MEMBERS,
+                        help="ensemble only: number of members averaged")
     parser.add_argument("--protocol", default="sim", choices=("sim", "clean"))
     parser.add_argument("--refresh", action="store_true", help="retrain, ignoring the cache")
     args = parser.parse_args(argv)
@@ -332,8 +340,9 @@ def main(argv=None):
     sizes = {k: v for k, v in (("hidden", args.hidden), ("epochs", args.epochs)) if v}
     config = TemporalConfig(arch=args.arch, encoder=args.encoder, aux_ball=args.aux_ball,
                             smooth=args.smooth, seg_balance=args.seg_balance,
-                            focal=args.focal, **sizes)
-    run(args.matches, grid, args.model, args.protocol, args.refresh, args.member, config)
+                            focal=args.focal, mirror=args.mirror, **sizes)
+    run(args.matches, grid, args.model, args.protocol, args.refresh, args.member, config,
+        args.members)
 
 
 if __name__ == "__main__":
