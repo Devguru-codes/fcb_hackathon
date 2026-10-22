@@ -77,19 +77,19 @@ becomes public at submission).
 | ❌ | Broadcast tracking as second ball source | aligns 39.5% of broadcast frames; fills 5.3% of ball gaps | low value |
 | ✅ | Simulator recalibration from the sim-vs-real feature audit | ball-acceleration shift 1.01 → 0.38; player count 1.40 → 0.70 | in simulator v2 |
 | ❌ | Smart Tagging set-piece starts as restart timing | tag start ≈ set-up phase, median 4.6 s before our restart | not a timing cue |
-| ⏳ | Q1 segment-length-balanced loss (exponent 0.5) | baseline member 0: 0.746 DFL / 0.754 all | running |
-| ⏳ | Q2 focal loss (γ = 2) | same baseline | queued after Q1 |
+| ❌ | Q1 segment-length-balanced loss (exponent 0.5) | 0.751 / 0.755 vs 0.746 / 0.754 (DFL +0.005, Metrica −0.010) | no gain beyond noise (seed-1 replicate queued) |
+| ⏳ | Q2 focal loss (γ = 2) | same baseline | running (autoqueue records it) |
 
 ## D. Queue (ranked by expected gain ÷ cost)
 
 | | id | hypothesis | why (measured weakness) | test | cost |
 |---|---|---|---|---|---|
-| ⬜ | Q10 | **Multi-seed variance check** | decisions rest on 0.001–0.005 differences; noise floor unknown | score members 0–2 separately from cached CV outputs; then paired per-match comparison of any variant over ≥3 seeds | minutes (cached), then GPU per seed |
+| ⏳ | Q10 | **Multi-seed variance check** (autoqueue Q10a/b, Q1s1, Q2s1, H6s1) | decisions rest on 0.001–0.005 differences; noise floor unknown | score members 0–2 separately from cached CV outputs; then paired per-match comparison of any variant over ≥3 seeds | minutes (cached), then GPU per seed |
 | ⬜ | H1 | **More training data**: PFF FIFA World Cup 2022 (64 matches), SkillCorner open data (10 matches, possession events) | only 10 training matches; broadcast-tracked data is noisy like the real ATD | loaders + labels; CV on the same DFL folds with/without | 1–2 days · 👤 PFF form needs an email |
 | ⬜ | H3 | Training labels match "control": minimum possession 19 frames (public truth's shortest) instead of 10 | short possessions recalled 45% (27% of all possessions) | retrain; per-duration recall + public sanity | hours |
-| ⬜ | H6 | Mirror augmentation (flip pitch y), reflection symmetry as in TacticAI | data scarcity | CV | ~2 h |
+| ⏳ | H6 | Mirror augmentation (autoqueue H6, H6s1) (flip pitch y), reflection symmetry as in TacticAI | data scarcity | CV | ~2 h |
 | ⬜ | H5 | Restart-spot features (stationary ball at corner arc / touchline / 6-yard box, players walking) | real dead-ball recall 0.48 | CV + goal-kick/throw-in diagnostic | half a day + retrain |
-| ⬜ | H7 | 5 members instead of 3; stochastic weight averaging | small, safe | CV | GPU only |
+| ⏳ | H7 | 5 members instead of 3 (autoqueue H7); stochastic weight averaging still to do | small, safe | CV | GPU only |
 | ⬜ | H2 | Adapt to the real match (domain-adversarial à la SSTDA, or self-training on confident frames) | real dead ball looks like live play | public + diagnostics | ~1 day · 🚫 until organisers answer whether weights derived from match data may be committed |
 | ⬜ | H8 | Use the ATD's own per-object speed | tracker-smoothed speeds unused | needs simulating for open data | small |
 | ⬜ | H9 | Full HSMM with learned duration distributions | — | decode study | low value (decoder ceiling +0.002) |
@@ -97,6 +97,16 @@ becomes public at submission).
 | 🚫 | V1 | Stronger video ball detector (WASB) | ball missing on 41% of frames | held-out audit | blocked on organiser question #3 (weights from the match video) |
 | 🚫 | V2 | Video event spotting (ball out, throw-ins) | dead-ball onsets most missed | — | no labels for the tactical camera; weeks |
 | 🚫 | V3 | Player re-identification → identity-based models (PathCRF, Ball Radar) | — | — | weeks |
+
+## How experiments run unattended
+
+`python -m tempolens.autoqueue` (started in the background; works offline) runs the jobs in
+`experiments/queue.json` one after another, waits while any other training/CV run is active,
+parses each result and rewrites table F below. To add a test, append a job to the queue file;
+to stop, create `experiments/STOP`. Logs: `experiments/logs/` (not committed). Restart after a
+reboot from the repository root:
+
+    python -m tempolens.autoqueue
 
 ## E. People and admin
 
