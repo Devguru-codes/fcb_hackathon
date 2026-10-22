@@ -97,7 +97,8 @@ becomes public at submission).
 | | id | hypothesis | why (measured weakness) | test | cost |
 |---|---|---|---|---|---|
 | ✅ | Q10 | **Multi-seed variance check** — done: sd 0.0029 all / 0.0045 DFL (see rule 2); seed-1 replicates of each variant still queued | decisions rest on 0.001–0.005 differences; noise floor unknown | score members 0–2 separately from cached CV outputs; then paired per-match comparison of any variant over ≥3 seeds | minutes (cached), then GPU per seed |
-| ⏳ | H1 | **More training data**: SkillCorner open data — **20** A-League matches, broadcast tracking (real detection gaps, ball seen 75–85%), labels from phases of play + the tracking's owner flag (median possession 5–7 s vs DFL 3.4 s: closer to *controlled* possession). Loader + tests done; training-only extra data so DFL/Metrica folds stay comparable (autoqueue H1sc, H1sc_s1). PFF World Cup 2022 🚫: form not accessible | only 10 training matches | CV with vs without | ~1 h per seed |
+| ❌ | H1 | **More training data**: SkillCorner open data (20 A-League matches, broadcast tracking, labels from phases of play + owner flag). Training-only extra data, same CV folds: seed 0 −0.0006, seed 1 −0.0116 (mean −0.006; Metrica −0.023). Not adopted. Likely cause: SkillCorner teaches longer *controlled* possessions (median 5–7 s) while the DFL/Metrica test labels keep short ones — CV cannot tell which definition the private truth uses. PFF World Cup 2022 🚫: form not accessible | only 10 training matches | CV with vs without, 2 seeds | done |
+| ⬜ | H1b | SkillCorner-trained ensemble checked on the real match only (public window + dead-ball diagnostics), since CV labels may not share the truth's definition of control — sanity-level evidence only (17 possessions) | H1 tie/loss may be a label-definition artefact | needs `train --extra-train`; compare with v4 | ~3 h |
 | ⬜ | H3 | Training labels match "control": minimum possession 19 frames (public truth's shortest) instead of 10 | short possessions recalled 45% (27% of all possessions) | retrain; per-duration recall + public sanity | hours |
 | ⏳ | H6 | Mirror augmentation (autoqueue H6, H6s1) (flip pitch y), reflection symmetry as in TacticAI | data scarcity | CV | ~2 h |
 | ⬜ | H5 | Restart-spot features (stationary ball at corner arc / touchline / 6-yard box, players walking) | real dead-ball recall 0.48 | CV + goal-kick/throw-in diagnostic | half a day + retrain |
@@ -141,9 +142,9 @@ Written by `python -m tempolens.autoqueue` from `experiments/queue.json` (✅ he
 | ✅ | Q2 | focal loss gamma 2 (seed 0) | 0.7520 | 0.7398 | 0.7805 | (1.0, 4.0, 4.0, 0.0) | no gain (-0.0023) | 2026-10-22 21:54 |
 | ✅ | Q10a | seed check: default GRU, member 1 | 0.7556 | 0.7439 | 0.7828 | (4.0, 8.0, 8.0, 0.5) | measured | 2026-10-22 21:57 |
 | ✅ | Q10b | seed check: default GRU, member 2 | 0.7599 | 0.7524 | 0.7773 | (4.0, 8.0, 8.0, 0.0) | measured | 2026-10-22 22:01 |
-| ⏳ | H1sc | + 20 SkillCorner matches in training (seed 0) |  |  |  |  |  |  |
-| ⬜ | H1sc_s1 | + 20 SkillCorner matches in training (seed 1) |  |  |  |  |  |  |
-| ⬜ | Q1s1 | segment-balanced loss 0.5 (seed 1) |  |  |  |  |  |  |
+| ✅ | H1sc | + 20 SkillCorner matches in training (seed 0) | 0.7537 | 0.7448 | 0.7744 | (2.0, 4.0, 8.0, 0.0) | no gain (-0.0006) | 2026-10-22 22:55 |
+| ✅ | H1sc_s1 | + 20 SkillCorner matches in training (seed 1) | 0.7440 | 0.7375 | 0.7594 | (4.0, 2.0, 4.0, 0.5) | no gain (-0.0116) | 2026-10-22 23:49 |
+| ⏳ | Q1s1 | segment-balanced loss 0.5 (seed 1) |  |  |  |  |  |  |
 | ⬜ | Q2s1 | focal loss gamma 2 (seed 1) |  |  |  |  |  |  |
 | ⬜ | H6 | mirror augmentation (seed 0) |  |  |  |  |  |  |
 | ⬜ | H6s1 | mirror augmentation (seed 1) |  |  |  |  |  |  |

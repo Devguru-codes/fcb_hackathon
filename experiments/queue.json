@@ -107,8 +107,16 @@
       "dfl": 0.7456
     },
     "baseline_from": null,
-    "status": "running",
-    "started": "2026-10-22 22:01"
+    "status": "done",
+    "started": "2026-10-22 22:01",
+    "result": {
+      "all": 0.7537,
+      "dfl": 0.7448,
+      "metrica": 0.7744,
+      "costs": "(2.0, 4.0, 8.0, 0.0)"
+    },
+    "finished": "2026-10-22 22:55",
+    "exit_code": 0
   },
   {
     "id": "H1sc_s1",
@@ -123,7 +131,16 @@
     ],
     "baseline": null,
     "baseline_from": "Q10a",
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-22 22:55",
+    "result": {
+      "all": 0.744,
+      "dfl": 0.7375,
+      "metrica": 0.7594,
+      "costs": "(4.0, 2.0, 4.0, 0.5)"
+    },
+    "finished": "2026-10-22 23:49",
+    "exit_code": 0
   },
   {
     "id": "Q1s1",
@@ -138,7 +155,8 @@
     ],
     "baseline": null,
     "baseline_from": "Q10a",
-    "status": "pending"
+    "status": "running",
+    "started": "2026-10-22 23:49"
   },
   {
     "id": "Q2s1",
