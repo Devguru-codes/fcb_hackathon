@@ -204,17 +204,19 @@ def member_noise_seeds(member):
 
 
 def oof_logp(names, kind="gbm", protocol="sim", refresh=False, member=0,
-             members=ENSEMBLE_MEMBERS, config=None):
+             members=ENSEMBLE_MEMBERS, config=None, extra_train=()):
     """Held-out log-probabilities for every match, each from a model that never saw it.
 
     kind "temporal" trains the network described by `config` (default: the base GRU).
     kind "ensemble" averages the held-out outputs of temporal members 0..members-1, each of
     which is trained (or read from cache) like kind "temporal" with that member index.
+    `extra_train`: matches added to every fold's training set and never held out, so the
+    held-out matches and their scores stay comparable with runs without them.
     """
     if kind == "ensemble":
         from .temporal import combine
-        outputs = [oof_logp(names, "temporal", protocol, refresh, k, config=config)
-                   for k in range(members)]
+        outputs = [oof_logp(names, "temporal", protocol, refresh, k, config=config,
+                            extra_train=extra_train) for k in range(members)]
         return {n: combine([out[n] for out in outputs]) for n in names}
     if kind == "temporal":
         from .temporal import DEFAULT_CONFIG
@@ -233,7 +235,7 @@ def oof_logp(names, kind="gbm", protocol="sim", refresh=False, member=0,
            else "{}_m{}".format(kind_tag, member))
     logps = {}
     for held in folds(names):
-        key = "-".join(sorted(set(names) - set(held)))
+        key = "-".join(sorted(set(names) - set(held)) + sorted(extra_train))
         paths = {n: cache / "{}_{}_f{}_{}_train-{}.npy".format(
             tag, noise, FEATURE_VERSION, n, hashlib.md5(key.encode()).hexdigest()[:8])
             for n in held}
@@ -241,7 +243,10 @@ def oof_logp(names, kind="gbm", protocol="sim", refresh=False, member=0,
             logps.update({n: np.load(p) for n, p in paths.items()})
             continue
         t0 = time.time()
-        train = [CachedSample(n, s) for n in sorted(set(names) - set(held)) for s in train_seeds]
+        # extra matches carry real broadcast-tracking noise already: one noise draw each keeps
+        # memory in bounds (~3.8 GB of training arrays with 20 SkillCorner matches)
+        train = ([CachedSample(n, s) for n in sorted(set(names) - set(held)) for s in train_seeds]
+                 + [CachedSample(n, train_seeds[0]) for n in sorted(extra_train)])
         if kind == "gbm":
             model = train_gbm(train)
             predict = lambda sample: predict_logp(model, sample)
@@ -267,9 +272,10 @@ def _summary(rows, names):
 
 
 def run(names, grid, kind="gbm", protocol="sim", refresh=False, member=0, config=None,
-        members=ENSEMBLE_MEMBERS):
+        members=ENSEMBLE_MEMBERS, extra_train=()):
     test_seed = SIM_TEST_SEED if protocol == "sim" else None
-    logps = oof_logp(names, kind, protocol, refresh, member, members, config=config)
+    logps = oof_logp(names, kind, protocol, refresh, member, members, config=config,
+                     extra_train=extra_train)
     samples = {n: CachedSample(n, test_seed) for n in names}
 
     print("\n{:<14} {:>8} {:>8} {:>6} {:>6}".format("baseline50", "spellF1", "macroF1", "pred",
@@ -329,6 +335,8 @@ def main(argv=None):
                         help="reflect half the training sequences across the long axis")
     parser.add_argument("--members", type=int, default=ENSEMBLE_MEMBERS,
                         help="ensemble only: number of members averaged")
+    parser.add_argument("--extra-train", choices=("skillcorner",),
+                        help="add these open matches to every fold's training set only")
     parser.add_argument("--protocol", default="sim", choices=("sim", "clean"))
     parser.add_argument("--refresh", action="store_true", help="retrain, ignoring the cache")
     args = parser.parse_args(argv)
@@ -341,8 +349,10 @@ def main(argv=None):
     config = TemporalConfig(arch=args.arch, encoder=args.encoder, aux_ball=args.aux_ball,
                             smooth=args.smooth, seg_balance=args.seg_balance,
                             focal=args.focal, mirror=args.mirror, **sizes)
+    from .opendata import EXTRA_LOADERS
+    extra = sorted(EXTRA_LOADERS) if args.extra_train == "skillcorner" else ()
     run(args.matches, grid, args.model, args.protocol, args.refresh, args.member, config,
-        args.members)
+        args.members, extra)
 
 
 if __name__ == "__main__":

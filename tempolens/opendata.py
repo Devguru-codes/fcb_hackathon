@@ -308,12 +308,103 @@ def dfl_game(match_id):
     return table
 
 
+# -- SkillCorner open data (A-League 2024/25, broadcast tracking, MIT licence) ----------------
+#
+# github.com/SkillCorner/opendata: 10 matches tracked from the TV broadcast at 10 fps -- off-screen
+# players extrapolated, the ball missing when unseen, nothing at all during replays -- so its
+# faults are real ones, closer to the competition ATD than clean DFL. Labels follow the
+# competition's rule: phases of play exist only while the ball is in play (outside them: D);
+# inside, the team the tracking names as owning the ball (`possession.group`), kept by the last
+# owner through passes and loose balls, starting from the phase's team in possession.
+
+SKILLCORNER_FPS = 10
+
+
+def _upsample(values, n_out, ratio):
+    """Linear interpolation of a (n, ...) array sampled every `ratio` output frames; NaN wherever
+    either neighbour is NaN."""
+    pos = np.arange(n_out) / ratio
+    i0 = np.minimum(np.floor(pos).astype(int), len(values) - 1)
+    i1 = np.minimum(i0 + 1, len(values) - 1)
+    w = (pos - i0).reshape((-1,) + (1,) * (values.ndim - 1))
+    return (1 - w) * values[i0] + w * values[i1]
+
+
+def skillcorner_game(match_id, folder=None, fps=25):
+    import csv
+    folder = Path(folder) if folder else (open_data_dir() / "skillcorner" / "data" / "matches"
+                                          / str(match_id))
+    meta = json.loads((folder / "{}_match.json".format(match_id)).read_text(encoding="utf-8"))
+    length, width = float(meta["pitch_length"]), float(meta["pitch_width"])
+    home_id, away_id = meta["home_team"]["id"], meta["away_team"]["id"]
+    people = [p for p in meta["players"] if p["team_id"] in (home_id, away_id)]
+    slot = {p["id"]: k for k, p in enumerate(people)}
+    slot_team = np.asarray([H if p["team_id"] == home_id else A for p in people], dtype=np.int8)
+
+    rows = [json.loads(line) for line in
+            (folder / "{}_tracking_extrapolated.jsonl".format(match_id)).open(encoding="utf-8")]
+    n = max(r["frame"] for r in rows) + 1
+    ball = np.full((n, 2), np.nan)
+    players = np.full((n, len(people), 2), np.nan)
+    owner = np.full(n, -1)
+    tracked = np.zeros(n, dtype=bool)
+    for r in rows:
+        f = r["frame"]
+        b = r.get("ball_data") or {}
+        if b.get("is_detected") and b.get("x") is not None:   # an extrapolated ball is a guess
+            ball[f] = (b["x"] + length / 2, b["y"] + width / 2)
+        for p in r.get("player_data") or []:
+            k = slot.get(p["player_id"])
+            if k is not None and p.get("x") is not None:
+                players[f, k] = (p["x"] + length / 2, p["y"] + width / 2)
+        tracked[f] = bool(r.get("player_data"))
+        group = (r.get("possession") or {}).get("group")
+        owner[f] = H if group == "home team" else A if group == "away team" else -1
+
+    period = np.zeros(n, dtype=np.int8)
+    for p in meta["match_periods"]:
+        period[p["start_frame"]:p["end_frame"] + 1] = p["period"]
+    period[~tracked] = 0               # replays and close-ups: no tracking, so no label either
+
+    labels = np.full(n, D, dtype=np.int8)
+    with (folder / "{}_phases_of_play.csv".format(match_id)).open(encoding="utf-8") as handle:
+        for phase in csv.DictReader(handle):
+            current = H if int(phase["team_in_possession_id"]) == home_id else A
+            for f in range(int(phase["frame_start"]), min(int(phase["frame_end"]), n)):
+                current = owner[f] if owner[f] >= 0 else current
+                labels[f] = current
+    labels[period == 0] = X
+
+    ratio = fps / SKILLCORNER_FPS
+    n_out = int(round(n * ratio))
+    nearest = np.minimum(np.round(np.arange(n_out) / ratio).astype(int), n - 1)
+    table = MatchTable(name="sc_{}".format(match_id),
+                       ball=_upsample(ball, n_out, ratio).astype(np.float32),
+                       players=_upsample(players, n_out, ratio).astype(np.float32),
+                       slot_team=slot_team, period=period[nearest], pitch=(length, width), fps=fps,
+                       meta={"home": meta["home_team"]["name"], "away": meta["away_team"]["name"]})
+    table.labels = labels[nearest]
+    return table
+
+
+def skillcorner_ids():
+    """Match ids of the SkillCorner open data present on disk (empty if not cloned)."""
+    try:
+        folder = open_data_dir() / "skillcorner" / "data" / "matches"
+    except IOError:
+        return []
+    return sorted(p.name for p in folder.iterdir() if p.is_dir()) if folder.is_dir() else []
+
+
 LOADERS = {
     "metrica1": lambda: metrica_csv_game(1),
     "metrica2": lambda: metrica_csv_game(2),
     "metrica3": metrica_epts_game3,
 }
 LOADERS.update({"dfl_" + m: (lambda m=m: dfl_game(m)) for m in DFL_MATCHES})
+# Extra training-only matches: never part of the default cross-validation folds, so scores stay
+# comparable with runs made before they existed.
+EXTRA_LOADERS = {"sc_" + i: (lambda i=i: skillcorner_game(i)) for i in skillcorner_ids()}
 
 
 def remove_flicker(labels, runs, min_frames):
@@ -368,9 +459,9 @@ def load_open_match(name, cache_dir=None):
     if path.exists():
         table = MatchTable.load(path)
     else:
-        table = LOADERS[name]()
+        table = {**LOADERS, **EXTRA_LOADERS}[name]()
         table.save(path)
-    if name.startswith("dfl_") and DFL_MIN_SPELL:
+    if name.startswith(("dfl_", "sc_")) and DFL_MIN_SPELL:
         table.labels = remove_flicker(table.labels, table.runs(), DFL_MIN_SPELL)
     if name.startswith("metrica"):
         table = fill_dead_ball(table)
