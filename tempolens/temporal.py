@@ -16,7 +16,11 @@ Variants, chosen by TemporalConfig and saved inside each weights file:
 - aux_ball: weight of an auxiliary head that regresses the true ball position on frames where
   the simulator hid it, i.e. learning to place an unseen ball from how the players move;
 - smooth: weight of MS-TCN++'s truncated smoothing loss (Li et al., TPAMI 2020) on frame-to-frame
-  changes of the log-probabilities, which targets over-segmentation -- what spellF1 punishes.
+  changes of the log-probabilities, which targets over-segmentation -- what spellF1 punishes;
+- seg_balance: exponent a of a per-frame weight (median run length / own run length)^a, clipped
+  to [0.25, 4] -- spellF1 counts every possession once, so short ones should not be outvoted by
+  the frames of long ones (ASRF's segment-frequency balancing, Ishikawa et al. 2021);
+- focal: focal-loss exponent (Lin et al. 2017): down-weights frames the model already gets right.
 """
 
 from dataclasses import asdict, dataclass
@@ -45,6 +49,8 @@ class TemporalConfig:
     aux_ball: float = 0.0        # weight of the hidden-ball regression loss; 0 = no ball head
     epochs: int = EPOCHS
     smooth: float = 0.0          # weight of the truncated smoothing loss; 0 = off
+    seg_balance: float = 0.0     # exponent of the run-length frame weight; 0 = off
+    focal: float = 0.0           # focal-loss gamma; 0 = plain cross-entropy
 
     def tag(self):
         """Cache/file tag; the default config keeps the historical name "temporal"."""
@@ -58,6 +64,10 @@ class TemporalConfig:
             parts.append("e{}".format(self.epochs))
         if self.smooth:
             parts.append("sm{:g}".format(self.smooth))
+        if self.seg_balance:
+            parts.append("sb{:g}".format(self.seg_balance))
+        if self.focal:
+            parts.append("fg{:g}".format(self.focal))
         return "temporal" + ("_" + "_".join(parts) if parts else "")
 
 
@@ -264,12 +274,26 @@ def _sequences(samples, config=DEFAULT_CONFIG, normaliser=None):
                 y_run[y_run == X] = -100   # CrossEntropyLoss ignore_index
                 seq = {"x": normaliser(np.asarray(x[start:stop])).astype(np.float16),
                        "y": y_run, "c": change}
+                if config.seg_balance:
+                    seq["w"] = run_weights(y_run, config.seg_balance)
                 if tokens is not None:
                     seq["tok"] = tokens[start:stop]
                 if ball is not None:
                     seq["ball"] = np.asarray(ball[start:stop], dtype=np.float32)
                 out.append(seq)
     return out, normaliser
+
+
+def run_weights(labels, exponent, low=0.25, high=4.0):
+    """Per frame (median run length / length of the run it sits in)^exponent, clipped; 0 where
+    the label is unknown (-100). Every run of one label -- a possession or a stoppage -- then
+    weighs about the same in the loss whatever its length."""
+    bounds = np.r_[0, np.flatnonzero(labels[1:] != labels[:-1]) + 1, len(labels)]
+    lengths = np.repeat(np.diff(bounds), np.diff(bounds)).astype(np.float64)
+    known = labels >= 0
+    median = np.median(np.diff(bounds)[labels[bounds[:-1]] >= 0]) if known.any() else 1.0
+    w = np.clip((median / lengths) ** exponent, low, high)
+    return np.where(known, w, 0.0).astype(np.float32)
 
 
 def _chunk_index(sequences, chunk=CHUNK, stride=STRIDE):
@@ -322,7 +346,18 @@ def train(samples, epochs=None, device=None, seed=SEED, verbose=True,
             x, y, c = batch_of("x", batch, "float"), batch_of("y", batch), batch_of("c", batch)
             tokens = batch_of("tok", batch, "float") if config.encoder == "players" else None
             out = model(x, tokens)
-            loss = ce(out[..., :3].reshape(-1, 3), y.reshape(-1))
+            if config.seg_balance or config.focal:
+                logp = torch.log_softmax(out[..., :3].float(), dim=-1)
+                known = y >= 0
+                nll = -logp.gather(-1, y.clamp(min=0)[..., None])[..., 0]
+                w = batch_of("w", batch) if config.seg_balance else known.float()
+                if config.focal:
+                    w = w * (1 - torch.exp(-nll)).pow(config.focal)
+                w = w * known
+                loss = (nll * w).sum() / (batch_of("w", batch) * known if config.seg_balance
+                                           else known.float()).sum().clamp(min=1)
+            else:
+                loss = ce(out[..., :3].reshape(-1, 3), y.reshape(-1))
             valid = c >= 0
             change_loss = ((bce(out[..., 3], c.clamp(min=0)) * valid).sum()
                            / valid.sum().clamp(min=1))

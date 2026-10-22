@@ -217,7 +217,7 @@ class TemporalVariantTests(unittest.TestCase):
         table.ball[100:300] = np.nan
         configs = [temporal.TemporalConfig(aux_ball=1.0),
                    temporal.TemporalConfig(encoder="players", hidden=16),
-                   temporal.TemporalConfig(arch="tcn", hidden=16),
+                   temporal.TemporalConfig(arch="tcn", hidden=16, seg_balance=0.5, focal=2.0),
                    temporal.TemporalConfig(arch="lstm", hidden=16, smooth=0.15),
                    temporal.TemporalConfig(arch="transformer", hidden=16)]
         with tempfile.TemporaryDirectory() as folder:

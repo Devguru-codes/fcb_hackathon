@@ -318,6 +318,9 @@ def main(argv=None):
                         help="weight of the hidden-ball auxiliary loss (0 = off)")
     parser.add_argument("--smooth", type=float, default=0.0,
                         help="weight of the MS-TCN++ smoothing loss (0 = off)")
+    parser.add_argument("--seg-balance", type=float, default=0.0,
+                        help="exponent of the run-length frame weight (0 = off)")
+    parser.add_argument("--focal", type=float, default=0.0, help="focal-loss gamma (0 = off)")
     parser.add_argument("--protocol", default="sim", choices=("sim", "clean"))
     parser.add_argument("--refresh", action="store_true", help="retrain, ignoring the cache")
     args = parser.parse_args(argv)
@@ -328,7 +331,8 @@ def main(argv=None):
     from .temporal import TemporalConfig
     sizes = {k: v for k, v in (("hidden", args.hidden), ("epochs", args.epochs)) if v}
     config = TemporalConfig(arch=args.arch, encoder=args.encoder, aux_ball=args.aux_ball,
-                            smooth=args.smooth, **sizes)
+                            smooth=args.smooth, seg_balance=args.seg_balance,
+                            focal=args.focal, **sizes)
     run(args.matches, grid, args.model, args.protocol, args.refresh, args.member, config)
 
 
