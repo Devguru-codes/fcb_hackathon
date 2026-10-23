@@ -93,6 +93,15 @@ becomes public at submission).
 | 🚫 | hyunsungkim-ds/ballradar, pathcrf | need persistent player identities (the ATD has none) |
 | ⬜ | hyunsungkim-ds/elastic, ML-KULeuven/ETSY, databallpy | event–tracking synchronisation: only useful with event data we do not have for the match |
 
+## Research report review (agent report `github_repo.md`, 2026-10-23)
+
+Links checked through the GitHub API and web search. Kept: Lang et al. (Sci. Rep. 2022, in/out of
+play from player positions alone, 92% frame accuracy) → K; pitch control (LaurieOnTracking, MIT)
+→ next; domain adaptation (AdaTime/SSTDA, MIT) = H2; 19-frame label minimum = H3. Discarded: the
+report's code references (emission bonus, `merge_short_runs`, `tracking.py`) describe code removed
+long ago; its gain estimates are unmeasured; "Renner et al. arXiv:2610.11571" was not found; ASRF's
+dynamic switch cost is what our change bonus already does.
+
 ## D. Queue (ranked by expected gain ÷ cost)
 
 | | id | hypothesis | why (measured weakness) | test | cost |
@@ -105,6 +114,7 @@ becomes public at submission).
 | ✅ | H5 | Restart-spot features (features v4, branch `exp/restart-features`, kept): CV seed 0 −0.0031, seed 1 +0.0015 (mean −0.0008, neutral). Real match mixed: public spellF1 0.594 vs 0.573, macroF1 0.819 vs 0.790, 18 vs 20 possessions (17 true), dead-ball recall 0.534 vs 0.478 — but dead ball before goal-kick tags fell (0.37/0.59 vs 0.56/0.71), the very case targeted. Rule 3 says a CV tie cannot be decided by the public window; **adopted by the team's call** (gains on all four public numbers, 15-min switch, reversible) | real dead-ball recall 0.48 | CV 2 seeds + real-match checks | done |
 | ❌ | H7 | 5 members instead of 3: 0.7647 vs 0.7638 (+0.0009). Stochastic weight averaging not tried (same expected size) | small, safe | CV | done |
 | ⬜ | H2 | Adapt to the real match (domain-adversarial à la SSTDA, or self-training on confident frames) | real dead ball looks like live play | public + diagnostics | ~1 day · 🚫 until organisers answer whether weights derived from match data may be committed |
+| ⏳ | K | Collective kinematics features (features v5, branch `exp/kinematics`): fastest player's speed, 90th-percentile speed, share of players still, 2 s means — after Lang et al. 2022 | real dead-ball recall 0.53 | autoqueue K0/K1 (CV vs v5 seeds), Ktrain*, Kpredict, Kpublic, Ksetpiece | ~2.5 h, running |
 | ⬜ | H8 | Use the ATD's own per-object speed | tracker-smoothed speeds unused | needs simulating for open data | small |
 | ⬜ | H9 | Full HSMM with learned duration distributions | — | decode study | low value (decoder ceiling +0.002) |
 | 🚫 | H10 | Label-shift correction (Saerens EM, logit adjustment) | — | — | assumes classes look alike in train and test; real dead balls do not |
@@ -152,4 +162,13 @@ Written by `python -m tempolens.autoqueue` from `experiments/queue.json` (✅ he
 | ✅ | H6s1 | mirror augmentation (seed 1) | 0.7517 | 0.7415 | 0.7756 | (8.0, 8.0, 8.0, 0.5) | no gain (-0.0039) | 2026-10-23 01:59 |
 | ✅ | H7 | 5-member ensemble (vs 3) | 0.7647 | 0.7554 | 0.7864 | (1.5, 8.0, 8.0, 0.0) | no gain (+0.0009) | 2026-10-23 03:06 |
 | ✅ | Q1s2 | segment-balanced loss 0.5 (seed 2) | 0.7598 | 0.7535 | 0.7745 | (12.0, 8.0, 2.0, 0.5) | no gain (-0.0001) | 2026-10-23 07:47 |
+| ⏳ | K0 | collective kinematics features, CV seed 0 (vs v5 seed 0) |  |  |  |  |  |  |
+| ⬜ | K1 | collective kinematics features, CV seed 1 (vs v5 seed 1) |  |  |  |  |  |  |
+| ⬜ | Ktrain0 | kinematics: train member 0 |  |  |  |  |  |  |
+| ⬜ | Ktrain1 | kinematics: train member 1 |  |  |  |  |  |  |
+| ⬜ | Ktrain2 | kinematics: train member 2 |  |  |  |  |  |  |
+| ⬜ | Kpredict | kinematics: build tempolens_v6_kin.csv |  |  |  |  |  |  |
+| ⬜ | Kvalidate | kinematics: official validator |  |  |  |  |  |  |
+| ⬜ | Kpublic | kinematics: public window + dead-ball recall vs v5 |  |  |  |  |  |  |
+| ⬜ | Ksetpiece | kinematics: dead-ball share around set-piece tags |  |  |  |  |  |  |
 <!-- autoqueue:end -->
