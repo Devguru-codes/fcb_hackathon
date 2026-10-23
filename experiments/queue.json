@@ -155,8 +155,16 @@
     ],
     "baseline": null,
     "baseline_from": "Q10a",
-    "status": "running",
-    "started": "2026-10-22 23:49"
+    "status": "done",
+    "started": "2026-10-22 23:49",
+    "result": {
+      "all": 0.7592,
+      "dfl": 0.7508,
+      "metrica": 0.7789,
+      "costs": "(8.0, 8.0, 8.0, 1.0)"
+    },
+    "finished": "2026-10-23 00:21",
+    "exit_code": 0
   },
   {
     "id": "Q2s1",
@@ -171,7 +179,16 @@
     ],
     "baseline": null,
     "baseline_from": "Q10a",
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-23 00:21",
+    "result": {
+      "all": 0.7586,
+      "dfl": 0.7484,
+      "metrica": 0.7824,
+      "costs": "(1.5, 8.0, 8.0, 0.0)"
+    },
+    "finished": "2026-10-23 00:52",
+    "exit_code": 0
   },
   {
     "id": "H6",
@@ -186,7 +203,16 @@
       "dfl": 0.7456
     },
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-23 00:52",
+    "result": {
+      "all": 0.7566,
+      "dfl": 0.749,
+      "metrica": 0.7743,
+      "costs": "(6.0, 8.0, 8.0, 0.5)"
+    },
+    "finished": "2026-10-23 01:26",
+    "exit_code": 0
   },
   {
     "id": "H6s1",
@@ -200,7 +226,16 @@
     ],
     "baseline": null,
     "baseline_from": "Q10a",
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-23 01:26",
+    "result": {
+      "all": 0.7517,
+      "dfl": 0.7415,
+      "metrica": 0.7756,
+      "costs": "(8.0, 8.0, 8.0, 0.5)"
+    },
+    "finished": "2026-10-23 01:59",
+    "exit_code": 0
   },
   {
     "id": "H7",
@@ -216,6 +251,31 @@
       "dfl": 0.7538
     },
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-23 01:59",
+    "result": {
+      "all": 0.7647,
+      "dfl": 0.7554,
+      "metrica": 0.7864,
+      "costs": "(1.5, 8.0, 8.0, 0.0)"
+    },
+    "finished": "2026-10-23 03:06",
+    "exit_code": 0
+  },
+  {
+    "id": "Q1s2",
+    "title": "segment-balanced loss 0.5 (seed 2)",
+    "args": [
+      "--model",
+      "temporal",
+      "--seg-balance",
+      "0.5",
+      "--member",
+      "2"
+    ],
+    "baseline": null,
+    "baseline_from": "Q10b",
+    "status": "running",
+    "started": "2026-10-23 07:36"
   }
 ]

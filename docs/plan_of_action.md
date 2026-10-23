@@ -79,7 +79,7 @@ becomes public at submission).
 | ✅ | Simulator recalibration from the sim-vs-real feature audit | ball-acceleration shift 1.01 → 0.38; player count 1.40 → 0.70 | in simulator v2 |
 | ❌ | Smart Tagging set-piece starts as restart timing | tag start ≈ set-up phase, median 4.6 s before our restart | not a timing cue |
 | ❌ | Q1 segment-length-balanced loss (exponent 0.5) | 0.751 / 0.755 vs 0.746 / 0.754 (DFL +0.005, Metrica −0.010) | no gain beyond noise (seed-1 replicate queued) |
-| ❌ | Q2 focal loss (γ = 2) | −0.0023 vs baseline | no gain |
+| ❌ | Q2 focal loss (γ = 2) | seed 0 −0.0023, seed 1 +0.0030 (mean +0.0004) | noise |
 
 ## GitHub scan for data and code (2026-10-23)
 
@@ -100,9 +100,9 @@ becomes public at submission).
 | ❌ | H1 | **More training data**: SkillCorner open data (20 A-League matches, broadcast tracking, labels from phases of play + owner flag). Training-only extra data, same CV folds: seed 0 −0.0006, seed 1 −0.0116 (mean −0.006; Metrica −0.023). Not adopted. Likely cause: SkillCorner teaches longer *controlled* possessions (median 5–7 s) while the DFL/Metrica test labels keep short ones — CV cannot tell which definition the private truth uses. PFF World Cup 2022 🚫: form not accessible | only 10 training matches | CV with vs without, 2 seeds | done |
 | ⬜ | H1b | SkillCorner-trained ensemble checked on the real match only (public window + dead-ball diagnostics), since CV labels may not share the truth's definition of control — sanity-level evidence only (17 possessions) | H1 tie/loss may be a label-definition artefact | needs `train --extra-train`; compare with v4 | ~3 h |
 | ⬜ | H3 | Training labels match "control": minimum possession 19 frames (public truth's shortest) instead of 10 | short possessions recalled 45% (27% of all possessions) | retrain; per-duration recall + public sanity | hours |
-| ⏳ | H6 | Mirror augmentation (autoqueue H6, H6s1) (flip pitch y), reflection symmetry as in TacticAI | data scarcity | CV | ~2 h |
+| ❌ | H6 | Mirror augmentation (flip pitch y, as in TacticAI): seed 0 +0.0023, seed 1 −0.0039 (mean −0.0008) | data scarcity | CV, 2 seeds | done |
 | ⬜ | H5 | Restart-spot features (stationary ball at corner arc / touchline / 6-yard box, players walking) | real dead-ball recall 0.48 | CV + goal-kick/throw-in diagnostic | half a day + retrain |
-| ⏳ | H7 | 5 members instead of 3 (autoqueue H7); stochastic weight averaging still to do | small, safe | CV | GPU only |
+| ❌ | H7 | 5 members instead of 3: 0.7647 vs 0.7638 (+0.0009). Stochastic weight averaging not tried (same expected size) | small, safe | CV | done |
 | ⬜ | H2 | Adapt to the real match (domain-adversarial à la SSTDA, or self-training on confident frames) | real dead ball looks like live play | public + diagnostics | ~1 day · 🚫 until organisers answer whether weights derived from match data may be committed |
 | ⬜ | H8 | Use the ATD's own per-object speed | tracker-smoothed speeds unused | needs simulating for open data | small |
 | ⬜ | H9 | Full HSMM with learned duration distributions | — | decode study | low value (decoder ceiling +0.002) |
@@ -116,8 +116,9 @@ becomes public at submission).
 `python -m tempolens.autoqueue` (started in the background; works offline) runs the jobs in
 `experiments/queue.json` one after another, waits while any other training/CV run is active,
 parses each result and rewrites table F below. To add a test, append a job to the queue file;
-to stop, create `experiments/STOP`. Logs: `experiments/logs/` (not committed). Restart after a
-reboot from the repository root:
+to stop, create `experiments/STOP`. Logs: `experiments/logs/` (not committed). It stops when the
+laptop sleeps, reboots or the Claude app restarts (2026-10-23 03:25: one job lost 2 folds; finished folds
+are cached, so a restart resumes). Restart from the repository root:
 
     python -m tempolens.autoqueue
 
@@ -144,9 +145,10 @@ Written by `python -m tempolens.autoqueue` from `experiments/queue.json` (✅ he
 | ✅ | Q10b | seed check: default GRU, member 2 | 0.7599 | 0.7524 | 0.7773 | (4.0, 8.0, 8.0, 0.0) | measured | 2026-10-22 22:01 |
 | ✅ | H1sc | + 20 SkillCorner matches in training (seed 0) | 0.7537 | 0.7448 | 0.7744 | (2.0, 4.0, 8.0, 0.0) | no gain (-0.0006) | 2026-10-22 22:55 |
 | ✅ | H1sc_s1 | + 20 SkillCorner matches in training (seed 1) | 0.7440 | 0.7375 | 0.7594 | (4.0, 2.0, 4.0, 0.5) | no gain (-0.0116) | 2026-10-22 23:49 |
-| ⏳ | Q1s1 | segment-balanced loss 0.5 (seed 1) |  |  |  |  |  |  |
-| ⬜ | Q2s1 | focal loss gamma 2 (seed 1) |  |  |  |  |  |  |
-| ⬜ | H6 | mirror augmentation (seed 0) |  |  |  |  |  |  |
-| ⬜ | H6s1 | mirror augmentation (seed 1) |  |  |  |  |  |  |
-| ⬜ | H7 | 5-member ensemble (vs 3) |  |  |  |  |  |  |
+| ✅ | Q1s1 | segment-balanced loss 0.5 (seed 1) | 0.7592 | 0.7508 | 0.7789 | (8.0, 8.0, 8.0, 1.0) | no gain (+0.0036) | 2026-10-23 00:21 |
+| ✅ | Q2s1 | focal loss gamma 2 (seed 1) | 0.7586 | 0.7484 | 0.7824 | (1.5, 8.0, 8.0, 0.0) | no gain (+0.0030) | 2026-10-23 00:52 |
+| ✅ | H6 | mirror augmentation (seed 0) | 0.7566 | 0.7490 | 0.7743 | (6.0, 8.0, 8.0, 0.5) | no gain (+0.0023) | 2026-10-23 01:26 |
+| ✅ | H6s1 | mirror augmentation (seed 1) | 0.7517 | 0.7415 | 0.7756 | (8.0, 8.0, 8.0, 0.5) | no gain (-0.0039) | 2026-10-23 01:59 |
+| ✅ | H7 | 5-member ensemble (vs 3) | 0.7647 | 0.7554 | 0.7864 | (1.5, 8.0, 8.0, 0.0) | no gain (+0.0009) | 2026-10-23 03:06 |
+| ⏳ | Q1s2 | segment-balanced loss 0.5 (seed 2) |  |  |  |  |  |  |
 <!-- autoqueue:end -->
