@@ -22,7 +22,9 @@ Variants, chosen by TemporalConfig and saved inside each weights file:
   the frames of long ones (ASRF's segment-frequency balancing, Ishikawa et al. 2021);
 - focal: focal-loss exponent (Lin et al. 2017): down-weights frames the model already gets right;
 - mirror: reflect half the training sequences across the pitch's long axis (football is
-  left-right symmetric; TacticAI builds the same symmetry in) -- more data for free.
+  left-right symmetric; TacticAI builds the same symmetry in) -- more data for free;
+- dead_weight: cross-entropy weight of D frames -- the real match's stoppages are under-called
+  (dead-ball recall 0.53), so make missing one cost more.
 """
 
 from dataclasses import asdict, dataclass
@@ -54,6 +56,7 @@ class TemporalConfig:
     seg_balance: float = 0.0     # exponent of the run-length frame weight; 0 = off
     focal: float = 0.0           # focal-loss gamma; 0 = plain cross-entropy
     mirror: bool = False         # reflect half the training sequences across the long axis
+    dead_weight: float = 1.0     # cross-entropy weight of D frames; 1 = unweighted
 
     def tag(self):
         """Cache/file tag; the default config keeps the historical name "temporal"."""
@@ -73,6 +76,8 @@ class TemporalConfig:
             parts.append("fg{:g}".format(self.focal))
         if self.mirror:
             parts.append("mir")
+        if self.dead_weight != 1.0:
+            parts.append("dw{:g}".format(self.dead_weight))
         return "temporal" + ("_" + "_".join(parts) if parts else "")
 
 
@@ -350,7 +355,8 @@ def train(samples, epochs=None, device=None, seed=SEED, verbose=True,
     optimiser = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=1e-2)
     steps = epochs * int(np.ceil(len(index) / BATCH))
     schedule = torch.optim.lr_scheduler.OneCycleLR(optimiser, max_lr=LR, total_steps=steps)
-    ce = torch.nn.CrossEntropyLoss(ignore_index=-100)
+    ce = torch.nn.CrossEntropyLoss(ignore_index=-100, weight=None if config.dead_weight == 1.0
+                                   else torch.tensor([1.0, 1.0, config.dead_weight], device=device))
     bce = torch.nn.BCEWithLogitsLoss(reduction="none",
                                      pos_weight=torch.tensor(4.0, device=device))
     huber = torch.nn.SmoothL1Loss(reduction="none", beta=0.1)

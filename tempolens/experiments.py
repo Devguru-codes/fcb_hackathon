@@ -349,6 +349,8 @@ def main(argv=None):
     parser.add_argument("--focal", type=float, default=0.0, help="focal-loss gamma (0 = off)")
     parser.add_argument("--mirror", action="store_true",
                         help="reflect half the training sequences across the long axis")
+    parser.add_argument("--dead-weight", type=float, default=1.0,
+                        help="cross-entropy weight of dead-ball frames (1 = off)")
     parser.add_argument("--members", type=int, default=ENSEMBLE_MEMBERS,
                         help="ensemble only: number of members averaged")
     parser.add_argument("--extra-train", choices=("skillcorner",),
@@ -364,7 +366,8 @@ def main(argv=None):
     sizes = {k: v for k, v in (("hidden", args.hidden), ("epochs", args.epochs)) if v}
     config = TemporalConfig(arch=args.arch, encoder=args.encoder, aux_ball=args.aux_ball,
                             smooth=args.smooth, seg_balance=args.seg_balance,
-                            focal=args.focal, mirror=args.mirror, **sizes)
+                            focal=args.focal, mirror=args.mirror,
+                            dead_weight=args.dead_weight, **sizes)
     from .opendata import EXTRA_LOADERS
     extra = sorted(EXTRA_LOADERS) if args.extra_train == "skillcorner" else ()
     run(args.matches, grid, args.model, args.protocol, args.refresh, args.member, config,
