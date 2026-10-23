@@ -97,6 +97,7 @@ class EndToEndTests(unittest.TestCase):
             graded[11185:90652] = graded[110808:190198] = True
             self.assertTrue(np.all(labels[~graded] == "X"))
             self.assertFalse(np.any(labels[graded] == "X"))
+            self.assertTrue(np.all(labels[110808:113742] == "D"))    # pre-kickoff, FAQ.md
 
             # Reproduction: a second run, with the numpy Viterbi instead of numba, must give a
             # byte-identical file -- the rules require the organisers' re-run to match.

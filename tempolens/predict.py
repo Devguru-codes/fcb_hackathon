@@ -18,6 +18,9 @@ from games import GAME, half_video_blocks, source_frames
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DECODER = ROOT / "models" / "decoder.json"
+# First alive frame of the second half. FAQ.md: grading starts at 110,808 but the kickoff is
+# 113,742, and every graded frame before it is D. The model cannot see a whistle, so it is set here.
+SECOND_HALF_KICKOFF = {"BAR-ATH": 113742}
 
 
 def write_submission(path, labels):
@@ -121,6 +124,8 @@ def predict(data_root, output, model_paths=None, decoder_path=DEFAULT_DECODER, g
     for _, first, last in half_video_blocks(game):
         graded[first:last + 1] = True
     labels[~graded] = "X"
+    if game in SECOND_HALF_KICKOFF:
+        labels[half_video_blocks(game)[1][1]:SECOND_HALF_KICKOFF[game]] = "D"
     if np.any(labels[graded] == "X"):
         raise RuntimeError("abstention on a graded frame; the decoder must label every one")
     if len(labels) != source_frames("tactical", game):

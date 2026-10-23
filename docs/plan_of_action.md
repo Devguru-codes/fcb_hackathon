@@ -26,7 +26,7 @@ becomes public at submission).
 | | |
 |---|---|
 | version | **v5** — features v4 (v3 + restart-spot features), simulator v2, 3-GRU ensemble, decoder switch 4 / 8 / 8, change bonus 1.0 (costs from v4) |
-| file | `submissions/tempolens_v5_restart.csv` (outside git), sha256 `9091d4f4…`, validated, reproduced byte for byte from commit `d23ddf7` |
+| file | `submissions/tempolens_v5_kickoff.csv` (outside git), sha256 `8ed021bd…`, validated: v5 plus the pre-kickoff fix (frames 110,808–113,741 = D, FAQ.md; was 22% D). `predict.py` now writes this itself; full-run reproduction not yet re-checked. Before the fix: `tempolens_v5_restart.csv`, `9091d4f4…`, commit `d23ddf7` |
 | CV (simulator v2, single member) | ties v4 over 2 seeds (0.7512 / 0.7571 vs 0.7543 / 0.7556) |
 | public window (sanity) | spellF1 0.594 / macroF1 0.819, 18 possessions vs 17, dead-ball recall 0.534 (v4: 0.573 / 0.790 / 20 / 0.478; official baseline 0.326 / 0.621) |
 | full match | 324 possessions, mean 11.6 s; dead ball 40.7% of graded frames |
@@ -115,6 +115,7 @@ dynamic switch cost is what our change bonus already does.
 | ❌ | H7 | 5 members instead of 3: 0.7647 vs 0.7638 (+0.0009). Stochastic weight averaging not tried (same expected size) | small, safe | CV | done |
 | ⬜ | H2 | Adapt to the real match (domain-adversarial à la SSTDA, or self-training on confident frames) | real dead ball looks like live play | public + diagnostics | ~1 day · 🚫 until organisers answer whether weights derived from match data may be committed |
 | ❌ | K | Collective kinematics features (features v5, branch `exp/kinematics`): fastest player's speed, 90th-percentile speed, share of players still, 2 s means — after Lang et al. 2022 | real dead-ball recall 0.53 | CV +0.004 / −0.012 (2 seeds disagree); public spellF1 0.573 vs v5 0.594, macroF1 0.810 vs 0.819, 20/17 spells, dead-ball recall unchanged 0.534 | not adopted; v5 stays |
+| ✅ | B1 | Second half's pre-kickoff frames 110,808–113,741 are graded and all D (FAQ.md); the model labelled only 22% of them D | one false ~2-min possession plus ~2,300 wrong frames on the private truth; invisible on the public window | post-pass in `predict.py`, asserted in the end-to-end test | done |
 | ⬜ | H8 | Use the ATD's own per-object speed | tracker-smoothed speeds unused | needs simulating for open data | small |
 | ⬜ | H9 | Full HSMM with learned duration distributions | — | decode study | low value (decoder ceiling +0.002) |
 | 🚫 | H10 | Label-shift correction (Saerens EM, logit adjustment) | — | — | assumes classes look alike in train and test; real dead balls do not |
