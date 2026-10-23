@@ -305,7 +305,16 @@
       "dfl": 0.7428
     },
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-23 20:36",
+    "result": {
+      "all": 0.7554,
+      "dfl": 0.7461,
+      "metrica": 0.777,
+      "costs": "(4.0, 4.0, 4.0, 0.5)"
+    },
+    "finished": "2026-10-23 21:03",
+    "exit_code": 0
   },
   {
     "id": "K1",
@@ -328,7 +337,16 @@
       "dfl": 0.747
     },
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-23 21:03",
+    "result": {
+      "all": 0.7448,
+      "dfl": 0.731,
+      "metrica": 0.7771,
+      "costs": "(4.0, 4.0, 4.0, 0.0)"
+    },
+    "finished": "2026-10-23 21:42",
+    "exit_code": 0
   },
   {
     "id": "Ktrain0",
@@ -346,7 +364,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-23 21:42",
+    "result": null,
+    "finished": "2026-10-23 21:48",
+    "exit_code": 0
   },
   {
     "id": "Ktrain1",
@@ -364,7 +386,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-23 21:48",
+    "result": null,
+    "finished": "2026-10-23 21:54",
+    "exit_code": 0
   },
   {
     "id": "Ktrain2",
@@ -382,7 +408,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-23 21:54",
+    "result": null,
+    "finished": "2026-10-23 22:04",
+    "exit_code": 0
   },
   {
     "id": "Kpredict",
@@ -402,7 +432,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-23 22:04",
+    "result": null,
+    "finished": "2026-10-23 22:09",
+    "exit_code": 0
   },
   {
     "id": "Kvalidate",
@@ -418,7 +452,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-23 22:09",
+    "result": null,
+    "finished": "2026-10-23 22:09",
+    "exit_code": 0
   },
   {
     "id": "Kpublic",
@@ -436,7 +474,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-23 22:09",
+    "result": null,
+    "finished": "2026-10-23 22:09",
+    "exit_code": 0
   },
   {
     "id": "Ksetpiece",
@@ -454,6 +496,10 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-23 22:09",
+    "result": null,
+    "finished": "2026-10-23 22:10",
+    "exit_code": 0
   }
 ]
