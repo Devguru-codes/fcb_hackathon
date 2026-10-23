@@ -26,7 +26,7 @@ becomes public at submission).
 | | |
 |---|---|
 | version | **v5** — features v4 (v3 + restart-spot features), simulator v2, 3-GRU ensemble, decoder switch 4 / 8 / 8, change bonus 1.0 (costs from v4) |
-| file | `submissions/tempolens_v5_kickoff.csv` (outside git), sha256 `8ed021bd…`, validated: v5 plus the pre-kickoff fix (frames 110,808–113,741 = D, FAQ.md; was 22% D). `predict.py` now writes this itself; full-run reproduction not yet re-checked. Before the fix: `tempolens_v5_restart.csv`, `9091d4f4…`, commit `d23ddf7` |
+| file | `submissions/tempolens_v5_kickoff.csv` (outside git), sha256 `8ed021bd…`, validated: v5 plus the pre-kickoff fix (frames 110,808–113,741 = D, FAQ.md; was 22% D). `predict.py` now writes this itself: a clean full run reproduced it byte for byte (commit `1b061bb`). Before the fix: `tempolens_v5_restart.csv`, `9091d4f4…`, commit `d23ddf7` |
 | CV (simulator v2, single member) | ties v4 over 2 seeds (0.7512 / 0.7571 vs 0.7543 / 0.7556) |
 | public window (sanity) | spellF1 0.594 / macroF1 0.819, 18 possessions vs 17, dead-ball recall 0.534 (v4: 0.573 / 0.790 / 20 / 0.478; official baseline 0.326 / 0.621) |
 | full match | 324 possessions, mean 11.6 s; dead ball 40.7% of graded frames |
@@ -172,4 +172,12 @@ Written by `python -m tempolens.autoqueue` from `experiments/queue.json` (✅ he
 | ✅ | Kvalidate | kinematics: official validator |  |  |  |  |  | 2026-10-23 22:09 |
 | ✅ | Kpublic | kinematics: public window + dead-ball recall vs v5 |  |  |  |  |  | 2026-10-23 22:09 |
 | ✅ | Ksetpiece | kinematics: dead-ball share around set-piece tags |  |  |  |  |  | 2026-10-23 22:10 |
+| ✅ | R1 | kickoff fix: regenerate v5 from a clean predict run |  |  |  |  |  | 2026-10-24 01:16 |
+| ✅ | R2 | kickoff fix: regenerated file byte-identical to tempolens_v5_kickoff.csv |  |  |  |  |  | 2026-10-24 01:16 |
+| ⏳ | DW0 | dead-ball loss weight 2, CV seed 0 (vs v5 seed 0) |  |  |  |  |  |  |
+| ⬜ | KP0 | keeper-hold features (keeper distance, ball in box), CV seed 0 (vs v5 seed 0) |  |  |  |  |  |  |
+| ⬜ | BF0 | touch-recency + scramble features, CV seed 0 (vs v5 seed 0) |  |  |  |  |  |  |
+| ⬜ | DW1 | dead-ball loss weight 2, CV seed 1 (vs v5 seed 1) |  |  |  |  |  |  |
+| ⬜ | KP1 | keeper-hold features (keeper distance, ball in box), CV seed 1 (vs v5 seed 1) |  |  |  |  |  |  |
+| ⬜ | BF1 | touch-recency + scramble features, CV seed 1 (vs v5 seed 1) |  |  |  |  |  |  |
 <!-- autoqueue:end -->
