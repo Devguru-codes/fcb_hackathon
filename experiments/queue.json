@@ -275,7 +275,15 @@
     ],
     "baseline": null,
     "baseline_from": "Q10b",
-    "status": "running",
-    "started": "2026-10-23 07:36"
+    "status": "done",
+    "started": "2026-10-23 07:36",
+    "result": {
+      "all": 0.7598,
+      "dfl": 0.7535,
+      "metrica": 0.7745,
+      "costs": "(12.0, 8.0, 2.0, 0.5)"
+    },
+    "finished": "2026-10-23 07:47",
+    "exit_code": 0
   }
 ]
