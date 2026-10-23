@@ -130,6 +130,8 @@ class CachedSample:
             path.parent.mkdir(parents=True, exist_ok=True)
             for side in (False, True):
                 final = self._path(side, kind)
+                if final.exists():     # keep a file this process may already have memory-mapped
+                    continue
                 partial = final.with_name(final.stem + ".partial.npy")
                 np.save(partial, compute(side))
                 _replace_retry(partial, final)
@@ -161,7 +163,10 @@ class CachedSample:
             table = self.table()
             for side in (False, True):
                 # Write then rename, so an interrupted run never leaves a truncated cache file.
+                # Only missing files: one already mapped by this process cannot be replaced.
                 final = self._path(side)
+                if final.exists():
+                    continue
                 partial = final.with_name(final.stem + ".partial.npy")
                 np.save(partial, frame_features(table, swap=side)[0])
                 _replace_retry(partial, final)

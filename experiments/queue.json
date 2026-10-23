@@ -305,8 +305,7 @@
       "dfl": 0.7428
     },
     "baseline_from": null,
-    "status": "pending",
-    "started": "2026-10-23 20:24"
+    "status": "pending"
   },
   {
     "id": "K1",
@@ -329,8 +328,7 @@
       "dfl": 0.747
     },
     "baseline_from": null,
-    "status": "pending",
-    "started": "2026-10-23 20:25"
+    "status": "pending"
   },
   {
     "id": "Ktrain0",
@@ -348,8 +346,7 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending",
-    "started": "2026-10-23 20:25"
+    "status": "pending"
   },
   {
     "id": "Ktrain1",
