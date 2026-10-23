@@ -9,6 +9,8 @@ The queue is experiments/queue.json, a list of jobs:
      "baseline": {"all": 0.7543, "dfl": 0.7456} | null, "baseline_from": "<job id>" | null}
 
 Each job runs `python -m tempolens.experiments <args>` with its log in experiments/logs/<id>.log.
+A job may instead give "cmd" (arguments after `python`, e.g. ["-m", "tempolens.train"] or a script
+path), "cwd" (a branch worktree) and "env" (extra variables); such a job is done when it exits 0.
 Its best "mean A (dfl D, metrica M)  costs (...)" line is parsed into the job, compared with the
 baseline, and the results table in docs/plan_of_action.md (between the autoqueue markers) is
 rewritten. Before starting a job the runner waits while any other tempolens.experiments or
@@ -135,14 +137,17 @@ def run_job(job, jobs):
     job.update(status="running", started=datetime.now().strftime("%Y-%m-%d %H:%M"))
     save(jobs)
     write_plan(jobs)
-    print("{}  start {}: {}".format(now(), job["id"], " ".join(job["args"])), flush=True)
+    cmd = job.get("cmd") or ["-m", "tempolens.experiments"] + job["args"]
+    print("{}  start {}: {}".format(now(), job["id"], " ".join(cmd)), flush=True)
     with log.open("w", encoding="utf-8") as handle:
-        code = subprocess.call([sys.executable, "-u", "-W", "ignore", "-m", "tempolens.experiments"]
-                               + job["args"], cwd=ROOT, stdout=handle, stderr=subprocess.STDOUT)
+        code = subprocess.call([sys.executable, "-u", "-W", "ignore"] + cmd,
+                               cwd=job.get("cwd") or ROOT, env=dict(os.environ, **job.get("env", {})),
+                               stdout=handle, stderr=subprocess.STDOUT)
     jobs = load()                       # the queue may have been edited meanwhile
     job = next(j for j in jobs if j["id"] == job["id"])
     result = parse(log.read_text(encoding="utf-8", errors="replace"))
-    job.update(status="done" if code == 0 and result else "failed", result=result,
+    finished_ok = code == 0 and (result or job.get("cmd"))
+    job.update(status="done" if finished_ok else "failed", result=result,
                finished=datetime.now().strftime("%Y-%m-%d %H:%M"), exit_code=code)
     save(jobs)
     write_plan(jobs)
