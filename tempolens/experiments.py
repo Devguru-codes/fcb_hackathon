@@ -91,6 +91,17 @@ def decode_table(table, logp, transition, change_weight=0.0):
 
 # -- open matches as cached samples -----------------------------------------------------------
 
+def _replace_retry(src, dst, attempts=20):
+    """os.replace that waits out Windows' brief locks (antivirus scanning a file just written)."""
+    for attempt in range(attempts):
+        try:
+            return os.replace(src, dst)
+        except PermissionError:
+            if attempt == attempts - 1:
+                raise
+            time.sleep(0.5)
+
+
 class CachedSample:
     """An open match, optionally corrupted by one noise draw, with features cached on disk."""
 
@@ -121,7 +132,7 @@ class CachedSample:
                 final = self._path(side, kind)
                 partial = final.with_name(final.stem + ".partial.npy")
                 np.save(partial, compute(side))
-                os.replace(partial, final)
+                _replace_retry(partial, final)
         return np.load(path, mmap_mode="r")
 
     def tokens(self, swap=False):
@@ -153,7 +164,7 @@ class CachedSample:
                 final = self._path(side)
                 partial = final.with_name(final.stem + ".partial.npy")
                 np.save(partial, frame_features(table, swap=side)[0])
-                os.replace(partial, final)
+                _replace_retry(partial, final)
         return np.load(path, mmap_mode="r")
 
 
