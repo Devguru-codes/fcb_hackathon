@@ -10,11 +10,13 @@ Design rules:
 - Offline: the whole match is available, so context windows look both backwards and forwards.
 """
 
+import warnings
+
 import numpy as np
 
 from .match import A, H
 
-FEATURE_VERSION = 3       # bump whenever a feature changes, to invalidate on-disk caches
+FEATURE_VERSION = 4       # bump whenever a feature changes, to invalidate on-disk caches
 MAX_SPEED = 12.0          # m/s; faster "players" are identity switches or teleports
 MAX_BALL_SPEED = 40.0     # m/s
 IMPUTE_GAP = 50           # frames; ball gaps up to this long are linearly interpolated
@@ -59,6 +61,16 @@ def _one_sided_mean(x, half, forward):
     count = cn[hi] - cn[lo]
     with np.errstate(invalid="ignore", divide="ignore"):
         return np.where(count > 0, (cs[hi] - cs[lo]) / np.maximum(count, 1), np.nan)
+
+
+def _nan_window_max(x, half):
+    """Centred max over +/-half frames ignoring NaN; NaN where the window has no data."""
+    x = np.asarray(x, dtype=np.float64)
+    padded = np.pad(x, half, constant_values=np.nan)
+    windows = np.lib.stride_tricks.sliding_window_view(padded, 2 * half + 1)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)   # all-NaN windows -> NaN, by design
+        return np.nanmax(windows, axis=1)
 
 
 def _carry(values, forward):
@@ -276,6 +288,20 @@ def frame_features(table, swap=False):
         feats["ball_x_" + suffix] = carry_in_runs(ball_x_seen, forward)
         feats["ball_y_" + suffix] = carry_in_runs(ball_y_seen, forward)
     feats["gap_progress"] = np.where(gap > 0, since / np.maximum(gap, 1), 0.0)
+
+    # Restarts. The stoppages missed on the real match are set pieces with the ball visible and
+    # still: placed in the goal area for a goal kick, held on the touchline for a throw-in, at a
+    # corner flag. Fastest ball within +/-1 s (a placed ball stays slow until the kick), the
+    # restart spots, and how recently the ball was on or over a line (it went out of play).
+    feats["ball_speed_max_w25"] = _nan_window_max(bspeed, 25)
+    feats["ball_in_goal_area"] = (have & (np.abs(bx) > length / 2.0 - 5.5)
+                                  & (by < 9.16)).astype(np.float64)
+    feats["ball_at_corner"] = (have & (np.abs(bx) > length / 2.0 - 2.0)
+                               & (by > width / 2.0 - 2.0)).astype(np.float64)
+    on_line = have & ((np.abs(bx) > length / 2.0 - 0.5) | (by > width / 2.0 - 0.5))
+    _, since_line, until_line = _gap_lengths(on_line)
+    feats["since_on_line"] = np.minimum(since_line, 750)
+    feats["until_on_line"] = np.minimum(until_line, 750)
 
     # Frames outside every period are never scored or trained on; blank them. Windows can still
     # straddle two adjacent halves for a few seconds, which only touches the halves' dead edges.
