@@ -25,11 +25,12 @@ becomes public at submission).
 
 | | |
 |---|---|
-| version | **v4** — features v3, simulator v2, 3-GRU ensemble, decoder switch 4 / 8 / 8, change bonus 1.0 |
-| file | `submissions/tempolens_v4b.csv` (outside git), sha256 `e23d5c40…`, validated, reproduced byte for byte from commit `32b3a36` |
-| CV (simulator v2) | 0.764 all / 0.754 DFL |
-| public window (sanity) | spellF1 0.573 / macroF1 0.790, 20 possessions vs 17 (official baseline 0.326 / 0.621) |
-| full match | 322 possessions, mean 11.5 s; dead ball 41.9% of graded frames |
+| version | **v5** — features v4 (v3 + restart-spot features), simulator v2, 3-GRU ensemble, decoder switch 4 / 8 / 8, change bonus 1.0 (costs from v4) |
+| file | `submissions/tempolens_v5_restart.csv` (outside git), sha256 `9091d4f4…`, validated, reproduced byte for byte from commit `d23ddf7` |
+| CV (simulator v2, single member) | ties v4 over 2 seeds (0.7512 / 0.7571 vs 0.7543 / 0.7556) |
+| public window (sanity) | spellF1 0.594 / macroF1 0.819, 18 possessions vs 17, dead-ball recall 0.534 (v4: 0.573 / 0.790 / 20 / 0.478; official baseline 0.326 / 0.621) |
+| full match | 324 possessions, mean 11.6 s; dead ball 40.7% of graded frames |
+| previous | v4 `tempolens_v4b.csv` (sha256 `e23d5c40…`, commit `32b3a36`) stays reproducible from its commit |
 
 ## A. Pipeline milestones
 
@@ -101,7 +102,7 @@ becomes public at submission).
 | ⬜ | H1b | SkillCorner-trained ensemble checked on the real match only (public window + dead-ball diagnostics), since CV labels may not share the truth's definition of control — sanity-level evidence only (17 possessions) | H1 tie/loss may be a label-definition artefact | needs `train --extra-train`; compare with v4 | ~3 h |
 | ⬜ | H3 | Training labels match "control": minimum possession 19 frames (public truth's shortest) instead of 10 | short possessions recalled 45% (27% of all possessions) | retrain; per-duration recall + public sanity | hours |
 | ❌ | H6 | Mirror augmentation (flip pitch y, as in TacticAI): seed 0 +0.0023, seed 1 −0.0039 (mean −0.0008) | data scarcity | CV, 2 seeds | done |
-| ❌ | H5 | Restart-spot features (features v4, branch `exp/restart-features`, kept): CV seed 0 −0.0031, seed 1 +0.0015 (mean −0.0008, neutral). Real match mixed: public spellF1 0.594 vs 0.573, macroF1 0.819 vs 0.790, 18 vs 20 possessions (17 true), dead-ball recall 0.534 vs 0.478 — but dead ball before goal-kick tags fell (0.37/0.59 vs 0.56/0.71), the very case targeted. Rule 3: a CV tie cannot be decided by the public window | real dead-ball recall 0.48 | CV 2 seeds + real-match checks | done |
+| ✅ | H5 | Restart-spot features (features v4, branch `exp/restart-features`, kept): CV seed 0 −0.0031, seed 1 +0.0015 (mean −0.0008, neutral). Real match mixed: public spellF1 0.594 vs 0.573, macroF1 0.819 vs 0.790, 18 vs 20 possessions (17 true), dead-ball recall 0.534 vs 0.478 — but dead ball before goal-kick tags fell (0.37/0.59 vs 0.56/0.71), the very case targeted. Rule 3 says a CV tie cannot be decided by the public window; **adopted by the team's call** (gains on all four public numbers, 15-min switch, reversible) | real dead-ball recall 0.48 | CV 2 seeds + real-match checks | done |
 | ❌ | H7 | 5 members instead of 3: 0.7647 vs 0.7638 (+0.0009). Stochastic weight averaging not tried (same expected size) | small, safe | CV | done |
 | ⬜ | H2 | Adapt to the real match (domain-adversarial à la SSTDA, or self-training on confident frames) | real dead ball looks like live play | public + diagnostics | ~1 day · 🚫 until organisers answer whether weights derived from match data may be committed |
 | ⬜ | H8 | Use the ATD's own per-object speed | tracker-smoothed speeds unused | needs simulating for open data | small |

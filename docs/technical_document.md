@@ -157,14 +157,20 @@ official `possession_metrics.py`. The public five minutes are used only as an al
 | GRU, features v2, simulator v1 | 0.759 | 0.784 |
 | 3 GRUs (seeds × noise draws), features v2, simulator v1 | 0.768 | 0.792 |
 | 3 GRUs, features v3, simulator v1 | 0.770 | 0.794 |
-| **3 GRUs, features v3, simulator v2 — submitted** | **0.754** | **0.764** |
+| 3 GRUs, features v3, simulator v2 (v4) | 0.754 | 0.764 |
+| **3 GRUs, features v4 (+ restart spots), simulator v2 — submitted (v5)** | single member ties v4 | over 2 seeds |
 
 Simulator v2 is harder and closer to the real tracking (visible dead-time ball, tracker ball
 noise), so its scores are not comparable with v1's; the choice between them rests on the real
 match. On the public five minutes (17 possessions; a sanity check, never used for tuning):
-official baseline smooth50 0.326 spellF1 / 0.621 macroF1; v1 ensemble 0.518 / 0.732 (17
-possessions); **submitted v2 ensemble 0.573 / 0.790** (20 possessions). Full match: ~322
-possessions of mean 11.5 s.
+official baseline smooth50 0.326 spellF1 / 0.621 macroF1; v3 ensemble 0.518 / 0.732 (17
+possessions); v4 0.573 / 0.790 (20); **submitted v5 0.594 / 0.819** (18 possessions; dead-ball
+recall 0.534 vs 0.478). Full match: ~324 possessions of mean 11.6 s.
+
+Features v4 add five restart-spot features — fastest ball within ±1 s, ball in the goal area,
+ball at a corner flag, frames since/until the ball was on or over a line — aimed at the
+real-match stoppages still missed (dead-ball recall 0.48 on the public window). They tie in
+cross-validation; v5 was chosen on the real-match sanity numbers, a judgement call recorded as such.
 
 Earlier experiments ran under the first simulator (with jitter), so their absolute values are
 lower; they decided relative choices only: baseline 0.262 DFL, LightGBM 0.566, GRU 0.719, 3-GRU

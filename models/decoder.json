@@ -1,5 +1,5 @@
 {
-  "_provenance": "Best mean spellF1 (0.764 all, 0.754 DFL; official baseline 0.291 / 0.267 on the earlier simulator) of the 3-member GRU ensemble below, features v3, simulator v2 (Metrica's dead-time ball filled, tracker ball noise, 4% dropout -- harder and closer to the real ATD than v1, so not comparable with v1's 0.794 / 0.770), under 5-fold simulated-ATD cross-validation on 10 open matches (python -m tempolens.experiments --model ensemble). The change-head bonus helps for the first time.",
+  "_provenance": "Costs from the v4 ensemble's 5-fold CV (0.764 all / 0.754 DFL on simulator v2; features v3), used unchanged for the submitted v5 ensemble below (features v4 = v3 + restart-spot features, same simulator and recipe; single-member CV of v5 ties v4: 0.7512 / 0.7571 vs 0.7543 / 0.7556 over 2 seeds). python -m tempolens.experiments --model ensemble re-derives them.",
   "members": [
     "tempolens_gru.pt",
     "tempolens_gru_m1.pt",
