@@ -191,6 +191,18 @@ class SimulatorTests(unittest.TestCase):
         self.assertGreater(missing[table.labels == D].mean(),
                            2 * missing[np.isin(table.labels, [H, A])].mean())
 
+    def test_randomised_noise_is_seeded_varied_and_reached(self):
+        from tempolens.simulate import random_noise, simulate_atd
+        self.assertEqual(random_noise(7), random_noise(7))
+        settings = [random_noise(s) for s in range(20)]
+        self.assertGreater(np.ptp([n.ball_missing for n in settings]), 0.1)
+        self.assertTrue(all(0.30 <= n.ball_missing <= 0.50 and 0.40 <= n.dead_cover <= 0.90
+                            for n in settings))
+        table = self._labelled()
+        sim = simulate_atd(table, settings[0], seed=0)
+        self.assertAlmostEqual(np.isnan(sim.ball[table.period > 0, 0]).mean(),
+                               settings[0].ball_missing, delta=0.06)
+
 
 class EnsembleTests(unittest.TestCase):
     def test_combine_averages_probabilities_and_change_logits(self):

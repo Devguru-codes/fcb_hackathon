@@ -23,7 +23,7 @@ from .decoder import transition_matrix, viterbi_matrix
 from .features import FEATURE_VERSION, feature_names, frame_features, swap_labels
 from .match import A, D, H, X
 from .opendata import LOADERS, load_open_match, open_data_dir
-from .simulate import AtdNoise, simulate_atd
+from .simulate import AtdNoise, random_noise, simulate_atd
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "evaluation"))
@@ -43,6 +43,7 @@ N_FOLDS = 5
 # version 1 keeps the historical file names, so existing caches stay valid.
 SIM_VERSION = 2   # 2: Metrica's dead-time ball filled (opendata.fill_dead_ball)
 TRAIN_VERSION = 1
+RANDOM_VERSION = 1   # simulate.random_noise's ranges
 NOISE_TAG = hashlib.md5((repr(AtdNoise()) + ("" if SIM_VERSION == 1 else str(SIM_VERSION)))
                         .encode()).hexdigest()[:8]
 
@@ -103,10 +104,11 @@ def _replace_retry(src, dst, attempts=20):
 
 
 class CachedSample:
-    """An open match, optionally corrupted by one noise draw, with features cached on disk."""
+    """An open match, optionally corrupted by one noise draw, with features cached on disk.
+    `randomised`: the draw also picks its own noise setting (simulate.random_noise)."""
 
-    def __init__(self, name, seed=None):
-        self.name, self.seed = name, seed
+    def __init__(self, name, seed=None, randomised=False):
+        self.name, self.seed, self.randomised = name, seed, randomised
         clean = load_open_match(name)
         self.labels, self.period, self.n_frames = clean.labels, clean.period, clean.n_frames
         self._runs = clean.runs()
@@ -116,10 +118,14 @@ class CachedSample:
 
     def table(self):
         clean = load_open_match(self.name)
-        return clean if self.seed is None else simulate_atd(clean, seed=self.seed)
+        if self.seed is None:
+            return clean
+        noise = random_noise(self.seed) if self.randomised else AtdNoise()
+        return simulate_atd(clean, noise, seed=self.seed)
 
     def _path(self, swap, kind="f{}".format(FEATURE_VERSION)):
-        tag = "clean" if self.seed is None else "sim{}_{}".format(NOISE_TAG, self.seed)
+        tag = ("clean" if self.seed is None else "rnd{}v{}_{}".format(NOISE_TAG, RANDOM_VERSION,
+               self.seed) if self.randomised else "sim{}_{}".format(NOISE_TAG, self.seed))
         return (open_data_dir() / "cache" / "features" /
                 "{}_{}_{}_{}.npy".format(self.name, tag, kind, int(swap)))
 
@@ -219,8 +225,18 @@ def member_noise_seeds(member):
     return SIM_TRAIN_SEEDS if member == 0 else (2 * member + 1, 2 * member + 2)
 
 
+def training_samples(names, member, draws=0):
+    """Training draws of `names` for ensemble member k: the two fixed-noise draws, or with
+    `draws` > 0 that many randomised-noise draws (seeds 100 + 10k + i, so fewer draws are a
+    subset of more)."""
+    if draws:
+        return [CachedSample(n, 100 + 10 * member + i, randomised=True)
+                for n in sorted(names) for i in range(draws)]
+    return [CachedSample(n, s) for n in sorted(names) for s in member_noise_seeds(member)]
+
+
 def oof_logp(names, kind="gbm", protocol="sim", refresh=False, member=0,
-             members=ENSEMBLE_MEMBERS, config=None, extra_train=()):
+             members=ENSEMBLE_MEMBERS, config=None, extra_train=(), draws=0):
     """Held-out log-probabilities for every match, each from a model that never saw it.
 
     kind "temporal" trains the network described by `config` (default: the base GRU).
@@ -228,16 +244,20 @@ def oof_logp(names, kind="gbm", protocol="sim", refresh=False, member=0,
     which is trained (or read from cache) like kind "temporal" with that member index.
     `extra_train`: matches added to every fold's training set and never held out, so the
     held-out matches and their scores stay comparable with runs without them.
+    `draws` > 0: train on that many randomised-noise draws per match (training_samples); the
+    held-out matches keep the fixed test noise, so scores stay comparable.
     """
     if kind == "ensemble":
         from .temporal import combine
         outputs = [oof_logp(names, "temporal", protocol, refresh, k, config=config,
-                            extra_train=extra_train) for k in range(members)]
+                            extra_train=extra_train, draws=draws) for k in range(members)]
         return {n: combine([out[n] for out in outputs]) for n in names}
     if kind == "temporal":
         from .temporal import DEFAULT_CONFIG
         config = config or DEFAULT_CONFIG
         kind_tag = config.tag() + ("" if TRAIN_VERSION == 1 else "_t{}".format(TRAIN_VERSION))
+        if draws:
+            kind_tag += "_rnd{}v{}".format(draws, RANDOM_VERSION)
     else:
         kind_tag = kind
     cache = open_data_dir() / "cache" / "oof"
@@ -261,7 +281,9 @@ def oof_logp(names, kind="gbm", protocol="sim", refresh=False, member=0,
         t0 = time.time()
         # extra matches carry real broadcast-tracking noise already: one noise draw each keeps
         # memory in bounds (~3.8 GB of training arrays with 20 SkillCorner matches)
-        train = ([CachedSample(n, s) for n in sorted(set(names) - set(held)) for s in train_seeds]
+        rest = set(names) - set(held)
+        train = ((training_samples(rest, member, draws) if protocol == "sim"
+                  else [CachedSample(n) for n in sorted(rest)])
                  + [CachedSample(n, train_seeds[0]) for n in sorted(extra_train)])
         if kind == "gbm":
             model = train_gbm(train)
@@ -288,10 +310,10 @@ def _summary(rows, names):
 
 
 def run(names, grid, kind="gbm", protocol="sim", refresh=False, member=0, config=None,
-        members=ENSEMBLE_MEMBERS, extra_train=()):
+        members=ENSEMBLE_MEMBERS, extra_train=(), draws=0):
     test_seed = SIM_TEST_SEED if protocol == "sim" else None
     logps = oof_logp(names, kind, protocol, refresh, member, members, config=config,
-                     extra_train=extra_train)
+                     extra_train=extra_train, draws=draws)
     samples = {n: CachedSample(n, test_seed) for n in names}
 
     print("\n{:<14} {:>8} {:>8} {:>6} {:>6}".format("baseline50", "spellF1", "macroF1", "pred",
@@ -355,6 +377,9 @@ def main(argv=None):
                         help="ensemble only: number of members averaged")
     parser.add_argument("--extra-train", choices=("skillcorner",),
                         help="add these open matches to every fold's training set only")
+    parser.add_argument("--draws", type=int, default=0,
+                        help="train on this many randomised-noise draws per match (0 = the two "
+                             "fixed-noise draws)")
     parser.add_argument("--protocol", default="sim", choices=("sim", "clean"))
     parser.add_argument("--refresh", action="store_true", help="retrain, ignoring the cache")
     args = parser.parse_args(argv)
@@ -371,7 +396,7 @@ def main(argv=None):
     from .opendata import EXTRA_LOADERS
     extra = sorted(EXTRA_LOADERS) if args.extra_train == "skillcorner" else ()
     run(args.matches, grid, args.model, args.protocol, args.refresh, args.member, config,
-        args.members, extra)
+        args.members, extra, args.draws)
 
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@ import argparse
 from pathlib import Path
 
 from . import temporal
-from .experiments import CachedSample, member_noise_seeds
+from .experiments import training_samples
 from .opendata import LOADERS
 
 
@@ -24,17 +24,20 @@ def main(argv=None):
     parser.add_argument("--out", help="default models/tempolens_gru[_m<member>].pt")
     parser.add_argument("--matches", nargs="+", default=sorted(LOADERS))
     parser.add_argument("--epochs", type=int, default=temporal.EPOCHS)
+    parser.add_argument("--hidden", type=int, default=temporal.HIDDEN)
+    parser.add_argument("--draws", type=int, default=0,
+                        help="randomised-noise draws per match (0 = the two fixed-noise draws)")
     args = parser.parse_args(argv)
     out = args.out or ("models/tempolens_gru.pt" if args.member == 0
                        else "models/tempolens_gru_m{}.pt".format(args.member))
-    seeds = member_noise_seeds(args.member)
-    samples = [CachedSample(name, seed) for name in args.matches for seed in seeds]
-    model, normaliser = temporal.train(samples, epochs=args.epochs,
-                                       seed=temporal.SEED + args.member)
+    samples = training_samples(args.matches, args.member, args.draws)
+    config = temporal.TemporalConfig(hidden=args.hidden, epochs=args.epochs)
+    model, normaliser = temporal.train(samples, seed=temporal.SEED + args.member, config=config)
     Path(out).parent.mkdir(parents=True, exist_ok=True)
     temporal.save(model, normaliser, out)
-    print("saved {} (member {}, trained on {}, noise draws {})".format(
-        out, args.member, ", ".join(args.matches), seeds))
+    print("saved {} (member {}, trained on {}, {})".format(
+        out, args.member, ", ".join(args.matches),
+        "{} randomised draws each".format(args.draws) if args.draws else "fixed noise draws"))
 
 
 if __name__ == "__main__":

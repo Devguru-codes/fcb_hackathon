@@ -200,6 +200,18 @@ def _tracker_ball(table, noise, rng):
     return ball.astype(np.float32)
 
 
+def random_noise(seed, base=AtdNoise()):
+    """A noise setting drawn around the calibrated one (domain randomisation): training on many
+    trackers keeps the model from fitting one simulator's habits, which the real ATD may not
+    share. Bump experiments.RANDOM_VERSION when these ranges change."""
+    rng = np.random.default_rng(10_000 + seed)
+    return replace(base, ball_missing=rng.uniform(0.30, 0.50),
+                   dead_cover=rng.uniform(0.40, 0.90),
+                   gap_median=float(np.exp(rng.uniform(np.log(150), np.log(450)))),
+                   player_missing=rng.uniform(0.02, 0.08),
+                   ball_noise_m=rng.uniform(0.1, 0.4))
+
+
 def simulate_atd(table, noise=AtdNoise(), seed=0):
     """A corrupted copy of `table`. Labels and periods are untouched."""
     rng = np.random.default_rng(seed)
