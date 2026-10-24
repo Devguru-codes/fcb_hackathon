@@ -119,6 +119,7 @@ dynamic switch cost is what our change bonus already does.
 | ❌ | DW | Dead-ball frames weigh 2x in the loss (`--dead-weight 2`, the simplest dead-ball specialist) | real dead-ball recall 0.53 | CV seed 0 −0.0010, seed 1 −0.0015 | not adopted |
 | ❌ | KP | Keeper-hold features (branch `exp/keeper`): ball distance to each team's deepest player, ball in a penalty box | keeper catches called dead ball (video review) | CV seed 0 −0.0075, seed 1 −0.0055 | not adopted |
 | ❌ | BF | Boundary features after the best public rival (branch `exp/boundary`): frames since/until each team touched the ball, nearest-team flips within ±1/±2 s | rival's macroF1 0.874 vs 0.819 | CV seed 0 −0.0023, seed 1 −0.0054 | not adopted |
+| ⏸ | BC | Broadcast ball fill, one constant offset per half (rival's variant): offsets 4014 / 26,920 frames, 65% of 4 s blocks verified on players, fills 9.7% of ball gaps (missing ball 40.7% -> 36.7% of graded); where both see the ball, median 0.77 m apart, 74% within 2 m | ball missing on 41% of graded frames | public window unchanged (spellF1 0.5943 both; only 159 filled frames fall inside it). Full match: fill-all changes 2.1% of graded frames (35 stretches >= 1 s, 321 possessions vs 313); fill-alive 1.4% (20 stretches, 316) | needs a human look at the changed stretches (review reel); no open-data CV possible |
 | ⬜ | H8 | Use the ATD's own per-object speed | tracker-smoothed speeds unused | needs simulating for open data | small |
 | ⬜ | H9 | Full HSMM with learned duration distributions | — | decode study | low value (decoder ceiling +0.002) |
 | 🚫 | H10 | Label-shift correction (Saerens EM, logit adjustment) | — | — | assumes classes look alike in train and test; real dead balls do not |
@@ -183,4 +184,12 @@ Written by `python -m tempolens.autoqueue` from `experiments/queue.json` (✅ he
 | ✅ | DW1 | dead-ball loss weight 2, CV seed 1 (vs v5 seed 1) | 0.7556 | 0.7419 | 0.7875 | (6.0, 2.0, 8.0, 1.0) | no gain (-0.0015) | 2026-10-24 02:51 |
 | ✅ | KP1 | keeper-hold features (keeper distance, ball in box), CV seed 1 (vs v5 seed 1) | 0.7516 | 0.7423 | 0.7733 | (2.0, 4.0, 4.0, 0.0) | no gain (-0.0055) | 2026-10-24 03:15 |
 | ✅ | BF1 | touch-recency + scramble features, CV seed 1 (vs v5 seed 1) | 0.7517 | 0.7418 | 0.7748 | (2.0, 8.0, 8.0, 0.0) | no gain (-0.0054) | 2026-10-24 03:38 |
+| ✅ | BCALLpred | broadcast ball fill (all): predict |  |  |  |  |  | 2026-10-24 16:52 |
+| ✅ | BCALLval | broadcast ball fill (all): official validator |  |  |  |  |  | 2026-10-24 16:52 |
+| ✅ | BCALLpub | broadcast ball fill (all): public window + dead-ball recall vs v5 |  |  |  |  |  | 2026-10-24 16:52 |
+| ✅ | BCALLset | broadcast ball fill (all): dead-ball share around set pieces |  |  |  |  |  | 2026-10-24 16:52 |
+| ✅ | BCLIVEpred | broadcast ball fill (alive): predict |  |  |  |  |  | 2026-10-24 16:56 |
+| ✅ | BCLIVEval | broadcast ball fill (alive): official validator |  |  |  |  |  | 2026-10-24 16:56 |
+| ✅ | BCLIVEpub | broadcast ball fill (alive): public window + dead-ball recall vs v5 |  |  |  |  |  | 2026-10-24 16:56 |
+| ✅ | BCLIVEset | broadcast ball fill (alive): dead-ball share around set pieces |  |  |  |  |  | 2026-10-24 16:56 |
 <!-- autoqueue:end -->
