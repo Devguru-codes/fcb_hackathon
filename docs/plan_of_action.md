@@ -116,6 +116,9 @@ dynamic switch cost is what our change bonus already does.
 | ⬜ | H2 | Adapt to the real match (domain-adversarial à la SSTDA, or self-training on confident frames) | real dead ball looks like live play | public + diagnostics | ~1 day · 🚫 until organisers answer whether weights derived from match data may be committed |
 | ❌ | K | Collective kinematics features (features v5, branch `exp/kinematics`): fastest player's speed, 90th-percentile speed, share of players still, 2 s means — after Lang et al. 2022 | real dead-ball recall 0.53 | CV +0.004 / −0.012 (2 seeds disagree); public spellF1 0.573 vs v5 0.594, macroF1 0.810 vs 0.819, 20/17 spells, dead-ball recall unchanged 0.534 | not adopted; v5 stays |
 | ✅ | B1 | Second half's pre-kickoff frames 110,808–113,741 are graded and all D (FAQ.md); the model labelled only 22% of them D | one false ~2-min possession plus ~2,300 wrong frames on the private truth; invisible on the public window | post-pass in `predict.py`, asserted in the end-to-end test | done |
+| ❌ | DW | Dead-ball frames weigh 2x in the loss (`--dead-weight 2`, the simplest dead-ball specialist) | real dead-ball recall 0.53 | CV seed 0 −0.0010, seed 1 −0.0015 | not adopted |
+| ❌ | KP | Keeper-hold features (branch `exp/keeper`): ball distance to each team's deepest player, ball in a penalty box | keeper catches called dead ball (video review) | CV seed 0 −0.0075, seed 1 −0.0055 | not adopted |
+| ❌ | BF | Boundary features after the best public rival (branch `exp/boundary`): frames since/until each team touched the ball, nearest-team flips within ±1/±2 s | rival's macroF1 0.874 vs 0.819 | CV seed 0 −0.0023, seed 1 −0.0054 | not adopted |
 | ⬜ | H8 | Use the ATD's own per-object speed | tracker-smoothed speeds unused | needs simulating for open data | small |
 | ⬜ | H9 | Full HSMM with learned duration distributions | — | decode study | low value (decoder ceiling +0.002) |
 | 🚫 | H10 | Label-shift correction (Saerens EM, logit adjustment) | — | — | assumes classes look alike in train and test; real dead balls do not |
@@ -174,10 +177,10 @@ Written by `python -m tempolens.autoqueue` from `experiments/queue.json` (✅ he
 | ✅ | Ksetpiece | kinematics: dead-ball share around set-piece tags |  |  |  |  |  | 2026-10-23 22:10 |
 | ✅ | R1 | kickoff fix: regenerate v5 from a clean predict run |  |  |  |  |  | 2026-10-24 01:16 |
 | ✅ | R2 | kickoff fix: regenerated file byte-identical to tempolens_v5_kickoff.csv |  |  |  |  |  | 2026-10-24 01:16 |
-| ⏳ | DW0 | dead-ball loss weight 2, CV seed 0 (vs v5 seed 0) |  |  |  |  |  |  |
-| ⬜ | KP0 | keeper-hold features (keeper distance, ball in box), CV seed 0 (vs v5 seed 0) |  |  |  |  |  |  |
-| ⬜ | BF0 | touch-recency + scramble features, CV seed 0 (vs v5 seed 0) |  |  |  |  |  |  |
-| ⬜ | DW1 | dead-ball loss weight 2, CV seed 1 (vs v5 seed 1) |  |  |  |  |  |  |
-| ⬜ | KP1 | keeper-hold features (keeper distance, ball in box), CV seed 1 (vs v5 seed 1) |  |  |  |  |  |  |
-| ⬜ | BF1 | touch-recency + scramble features, CV seed 1 (vs v5 seed 1) |  |  |  |  |  |  |
+| ✅ | DW0 | dead-ball loss weight 2, CV seed 0 (vs v5 seed 0) | 0.7502 | 0.7419 | 0.7693 | (2.0, 2.0, 2.0, 0.5) | no gain (-0.0010) | 2026-10-24 01:39 |
+| ✅ | KP0 | keeper-hold features (keeper distance, ball in box), CV seed 0 (vs v5 seed 0) | 0.7437 | 0.7337 | 0.7668 | (4.0, 8.0, 8.0, 1.0) | no gain (-0.0075) | 2026-10-24 02:04 |
+| ✅ | BF0 | touch-recency + scramble features, CV seed 0 (vs v5 seed 0) | 0.7489 | 0.7398 | 0.7701 | (4.0, 8.0, 8.0, 1.0) | no gain (-0.0023) | 2026-10-24 02:28 |
+| ✅ | DW1 | dead-ball loss weight 2, CV seed 1 (vs v5 seed 1) | 0.7556 | 0.7419 | 0.7875 | (6.0, 2.0, 8.0, 1.0) | no gain (-0.0015) | 2026-10-24 02:51 |
+| ✅ | KP1 | keeper-hold features (keeper distance, ball in box), CV seed 1 (vs v5 seed 1) | 0.7516 | 0.7423 | 0.7733 | (2.0, 4.0, 4.0, 0.0) | no gain (-0.0055) | 2026-10-24 03:15 |
+| ✅ | BF1 | touch-recency + scramble features, CV seed 1 (vs v5 seed 1) | 0.7517 | 0.7418 | 0.7748 | (2.0, 8.0, 8.0, 0.0) | no gain (-0.0054) | 2026-10-24 03:38 |
 <!-- autoqueue:end -->
