@@ -15,7 +15,8 @@ Its best "mean A (dfl D, metrica M)  costs (...)" line is parsed into the job, c
 baseline, and the results table in docs/plan_of_action.md (between the autoqueue markers) is
 rewritten. Before starting a job the runner waits while any other tempolens.experiments or
 tempolens.train process is running, so manual runs and the queue never share the GPU. A failed
-job is marked and skipped. Create experiments/STOP to end the loop after the current job.
+job is marked and skipped. Create experiments/STOP to end the loop after the current job. While
+jobs are pending the runner asks Windows not to idle-sleep (SetThreadExecutionState).
 Nothing is committed or pushed.
 """
 
@@ -154,6 +155,15 @@ def run_job(job, jobs):
     print("{}  {} {}: {}".format(now(), job["status"], job["id"], verdict(job, jobs)), flush=True)
 
 
+def stay_awake(on):
+    """Ask Windows not to idle-sleep while jobs are pending (released when idle or on exit).
+    Per-process, like a video player's request: no power setting is changed."""
+    if os.name == "nt":
+        import ctypes
+        # ES_CONTINUOUS | ES_SYSTEM_REQUIRED, or ES_CONTINUOUS alone to release
+        ctypes.windll.kernel32.SetThreadExecutionState(0x80000001 if on else 0x80000000)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--once", action="store_true", help="exit when nothing is pending")
@@ -167,6 +177,7 @@ def main(argv=None):
             if job["status"] == "running":      # interrupted earlier (reboot, crash): run again
                 job["status"] = "pending"
         pending = [j for j in jobs if j["status"] == "pending"]
+        stay_awake(bool(pending))
         if pending:
             run_job(pending[0], jobs)
             continue

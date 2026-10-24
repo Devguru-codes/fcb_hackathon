@@ -72,3 +72,6 @@ env/
 experiments/logs/
 experiments/STOP
 experiments/*.tmp
+
+# -- experiment weights (trained from open data; committed only once adopted) --
+models/exp/
