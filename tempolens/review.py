@@ -119,6 +119,7 @@ def main(argv=None):
     parser.add_argument("--names", nargs=2, default=("A", "B"))
     parser.add_argument("--min-frames", type=int, default=25, help="shortest disagreement shown")
     parser.add_argument("--context", type=int, default=125, help="frames shown before and after")
+    parser.add_argument("--suffix", default="", help="appended to the output names, e.g. _v5_v7")
     args = parser.parse_args(argv)
     from games import GAME, asset_paths
     a = pm.label_codes(pm.read_label_csv(args.a))
@@ -128,12 +129,13 @@ def main(argv=None):
     cores, spans = disagreements(a, b, args.min_frames, args.context)
     folder = Path(args.data_root) / "derived" / "review"
     folder.mkdir(parents=True, exist_ok=True)
-    write_sheet(folder / "review_sheet.csv", cores, a, b, args.names)
+    write_sheet(folder / "review_sheet{}.csv".format(args.suffix), cores, a, b, args.names)
     print("{} disagreements >= {} frames; reel {:.1f} min".format(
         len(cores), args.min_frames, sum(hi - lo for lo, hi in spans) / FPS / 60), flush=True)
-    written = render(asset_paths(GAME, args.data_root)["video"], folder / "reel.mp4", a, b, truth,
-                     cores, spans, args.names)
-    print("wrote {} frames to {}".format(written, folder / "reel.mp4"), flush=True)
+    reel = folder / "reel{}.mp4".format(args.suffix)
+    written = render(asset_paths(GAME, args.data_root)["video"], reel, a, b, truth, cores, spans,
+                     args.names)
+    print("wrote {} frames to {}".format(written, reel), flush=True)
 
 
 if __name__ == "__main__":
