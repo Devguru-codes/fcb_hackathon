@@ -108,6 +108,16 @@ class EndToEndTests(unittest.TestCase):
                 predict.predict(folder, again, model, decoder)
             self.assertEqual(output.read_bytes(), again.read_bytes())
 
+            # Test-time adaptation, set in the decoder JSON, is deterministic too.
+            settings = json.loads(decoder.read_text())
+            adapted = Path(folder) / "d_tta.json"
+            adapted.write_text(json.dumps(dict(settings, tta_alpha=1.0)))
+            first, second = Path(folder) / "tta1.csv", Path(folder) / "tta2.csv"
+            predict.predict(folder, first, model, adapted)
+            predict.predict(folder, second, model, adapted)
+            self.assertIsNone(pm.validate_submission(pm.read_label_csv(first), N_FRAMES))
+            self.assertEqual(first.read_bytes(), second.read_bytes())
+
             report = diagnostics.run(folder, model, decoder)
             self.assertEqual(report["visibility"]["track_slots"], N_SLOTS)
             sides = {name: entry["side"] for name, entry in report["tag_teams"].items()}

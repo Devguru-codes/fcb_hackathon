@@ -66,9 +66,9 @@ frames), which the model already labels dead ball (96%).
 | asset | use |
 |---|---|
 | tactical ATD | the only input to the model: player and ball positions in metres, slots treated as anonymous tracklets |
-| Smart Tagging | optional self-calibrated prior on which team has the ball (§6a); defensive codes (`DEFENDING IN …`, `DEFENSIVE TRANSITION`) name the side *without* the ball and are inverted; team names matched fuzzily ("Atletic Club"); set pieces not used yet |
+| Smart Tagging | optional self-calibrated prior on which team has the ball (§6a); defensive codes (`DEFENDING IN …`, `DEFENSIVE TRANSITION`) name the side *without* the ball and are inverted; team names matched fuzzily ("Atletic Club"); set-piece tags used only as a check of dead ball around restarts, and tested as a restart prior (§7b) |
 | homography, tactical video | tried, not used: a ball detector trained on ATD-projected labels was too imprecise on the real video to fill gaps safely (§6b) |
-| broadcast feed | tried, not used: its tracking aligns to the tactical one (39.5% of frames) but its ball fills only 5.3% of the tactical ball gaps (§6b) |
+| broadcast feed | tried, not used so far: aligned to the tactical tracking with one constant offset per half, its ball fills 9.7% of the tactical ball gaps, but a filled position is off by more than 2 m about a quarter of the time and the public window cannot judge it (§6b, §7b) |
 | open data | Metrica Sports sample games 1–3 (labels from events), DFL/Sportec seven matches (Bassek et al., CC-BY 4.0; labels from the provider's per-frame ball status and owner) |
 
 ## 4. Labels on open data, and the possession rules they encode
@@ -207,6 +207,56 @@ team-mates, duplicate tracks and phantom (non-player) tracks near the ball — 7
 up to 24 tracked objects per frame as in the real ATD. spellF1 0.7087 → 0.7114 and
 0.7134 → 0.7157: no loss, so the features' slot-free design absorbs these faults.
 
+## 7b. After v5: the real match decides
+
+Simulated cross-validation chose every version up to v5. After v5 it stopped being enough, and
+every candidate is now also judged on the real match. Three checks are used, none of which feeds
+back into training: the public window (spellF1, macroF1, dead-ball recall); dead-ball share in the
+seconds around Smart Tagging's 59 set-piece tags; and a **human review of every disagreement of
+1 s or more** between two full-match submissions. The review is a reel rendered from the tactical
+video with both submissions' labels drawn on it (`python -m tempolens.review`), and a person marks
+which one is right. Hand labels only validate, as the rules allow.
+
+- **Pre-kickoff frames.** The second half is graded from frame 110,808 but kicks off at 113,742
+  (FAQ). Every graded frame before that is dead ball, but the model labelled only 22% of them D.
+  `predict.py` now sets them after decoding, and the end-to-end test asserts it.
+- **Human review.** v5 was right on 34 of the 62 disagreements with v4, against 24 for v4 (3 both
+  wrong, 1 unclear). v4 splits open play with false dead stretches. v5 misses dead ball at goal
+  kicks and restarts. The clips both get wrong are restarts and aerial hand-overs.
+- **Domain randomisation** (v7): each training match gets 4 noise draws, each with its own
+  simulator settings (ball missing 30–50%, stoppages lost 40–90%, gap median 6–18 s, player
+  dropout 2–8%, ball noise 0.1–0.4 m). It was the clearest cross-validation gain we measured: the
+  ensemble scored 0.7716 vs 0.7636, and the gain held at every decoder setting and for three seeds.
+  **It did not transfer:** on the review, v5 was right 38 times and v7 29 times, because v7 merges
+  across real turnovers. Not adopted on its own. Since this result, no simulated gain is adopted
+  without real-match evidence.
+- **Test-time adaptation** (allowed by the organisers): each member's feature scaling is re-fitted
+  to the real match's own medians and spreads before predicting, with no labels
+  (`temporal.adapt_normaliser`, set by `tta_alpha` in the decoder settings). On open data it costs
+  0.019 spellF1, as expected, because simulated test matches have no domain shift to correct. On
+  the real match it lifts every measure we have. For v7 with adaptation: public spellF1 0.629 vs
+  0.594, macroF1 0.849 vs 0.819, dead-ball recall 0.647 vs 0.534 (precision 0.88), and dead ball
+  in the last 5 s before goal kicks 0.77 vs 0.59. **[TBD: human review of v5 vs v7 with
+  adaptation; final choice.]**
+- **Simulator check.** Ball missing on 40.7% of graded frames in both simulation and the real
+  match, with the same share in gaps of 20 s or more (0.68 real, 0.65–0.78 simulated) and the same
+  missing rate around stoppages (0.65–0.73 real, 0.70 simulated). The public window is atypical:
+  the ball is missing only ~12% of the time there.
+
+Tried after v5 and not adopted:
+
+| idea | result |
+|---|---|
+| collective kinematics features (fastest player, share of still players) | CV +0.004 / −0.012; public 0.573 |
+| keeper-hold features (ball near each team's deepest player, ball in the box) | CV −0.0075 / −0.0055 |
+| touch-recency and nearest-team flip features (after the best public rival) | CV −0.0023 / −0.0054 |
+| dead-ball frames weighted 2× in the loss | CV −0.0010 / −0.0015 |
+| randomisation plus identity swaps, duplicates and phantoms; 6 draws instead of 4 | CV −0.0052; −0.0038 |
+| 60 s training windows (inference reads 120 s) | CV +0.0013 / −0.0064; real match mixed (spellF1 0.635, macroF1 0.794) |
+| minimum possession length 19 / 25 frames on the real match | public 0.583 vs 0.594 |
+| Smart Tagging restart prior (log P(D) raised from 5 s before each set-piece tag to 3.5 s after) | public spellF1 unchanged, macroF1 +0.004 |
+| broadcast ball, one constant offset per half (4014 / 26,920 frames) | missing ball 40.7% → 36.7% of graded frames; public window unchanged; 2.1% of the match relabelled, with no evidence of which version is right |
+
 ## 6b. Video ball detector (built, tested on the real video, not used)
 
 A TrackNet-style heatmap network (3 stacked frames in, ball probability per pixel out) trained
@@ -238,7 +288,10 @@ matched to the tactical frame with the same ball position and velocity, verified
 positions (median distance < 1.5 m), then grouped into constant-offset segments that also pass
 the player check every second. 39.5% of broadcast frames align. Yet its ball fills only 5.3% of
 the tactical ball gaps (about 2% of graded frames): both cameras lose the ball in the same hard
-moments. Not used.
+moments. A second attempt uses one constant offset per half (4014 and 26,920 frames, voted by
+the verified pairs; about 65% of 4 s blocks pass the player check, replays and close-ups fail).
+It fills 9.7% of the gaps, but where both cameras see the ball they disagree by more than 2 m
+about a quarter of the time. Not used so far (§7b).
 
 PathCRF (Kim et al., KDD 2026) was reviewed but its released weights were not used: it needs 22
 persistent player identities (the ATD has anonymous, fragmented tracklets), models only live
@@ -264,6 +317,9 @@ per match +0.0024 — decoding is still not the bottleneck.
   typical error of ~0.8 s, and dead-ball onsets are the most often missed.
 - Cross-validation cannot see faults that open tracking lacks (see §2): the slot-count bugs were
   found by reading the code, not by a score.
+- A gain under the simulator can fail to transfer (domain randomisation, §7b). Real-match
+  evidence is the public window (17 possessions, a 95% interval roughly ±0.16 wide), the set-piece
+  tags and human review, all small samples.
 
 ## 9. Reproduction
 
@@ -274,7 +330,9 @@ python evaluation/validate_submission.py <team>.csv
 ```
 
 The ensemble members are listed in `models/decoder.json`, whose costs were tuned for exactly
-them; each weights file records its feature version and refuses to load against another.
+them; each weights file records its feature version and refuses to load against another. The same
+file carries `tta_alpha`, the test-time re-normalisation strength (0 = off), and the end-to-end
+test checks that an adapted run reproduces byte for byte.
 Inference runs on the CPU in float64 and rounds to 4 decimals, so a different CPU (e.g. AVX2 vs
 AVX-512) gives the same file. Retraining from open data: `python -m tempolens.train --member k`
 (GPU training is not bit-reproducible, which is why the weights used for the submission are
