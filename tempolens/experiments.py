@@ -377,6 +377,8 @@ def main(argv=None):
                         help="reflect half the training sequences across the long axis")
     parser.add_argument("--dead-weight", type=float, default=1.0,
                         help="cross-entropy weight of dead-ball frames (1 = off)")
+    parser.add_argument("--chunk", type=int, default=None,
+                        help="temporal training sequence length in frames (default 750 = 30 s)")
     parser.add_argument("--members", type=int, default=ENSEMBLE_MEMBERS,
                         help="ensemble only: number of members averaged")
     parser.add_argument("--extra-train", choices=("skillcorner",),
@@ -394,7 +396,8 @@ def main(argv=None):
     grid = [(s, ad, da) for s in (1.0, 1.5, 2.0, 4.0, 6.0, 8.0, 12.0) for ad in (2.0, 4.0, 8.0)
             for da in (2.0, 4.0, 8.0)]
     from .temporal import TemporalConfig
-    sizes = {k: v for k, v in (("hidden", args.hidden), ("epochs", args.epochs)) if v}
+    sizes = {k: v for k, v in (("hidden", args.hidden), ("epochs", args.epochs),
+                               ("chunk", args.chunk)) if v}
     config = TemporalConfig(arch=args.arch, encoder=args.encoder, aux_ball=args.aux_ball,
                             smooth=args.smooth, seg_balance=args.seg_balance,
                             focal=args.focal, mirror=args.mirror,

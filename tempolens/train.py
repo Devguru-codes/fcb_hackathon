@@ -25,6 +25,8 @@ def main(argv=None):
     parser.add_argument("--matches", nargs="+", default=sorted(LOADERS))
     parser.add_argument("--epochs", type=int, default=temporal.EPOCHS)
     parser.add_argument("--hidden", type=int, default=temporal.HIDDEN)
+    parser.add_argument("--chunk", type=int, default=temporal.CHUNK,
+                        help="training sequence length in frames")
     parser.add_argument("--draws", type=int, default=0,
                         help="randomised-noise draws per match (0 = the two fixed-noise draws)")
     parser.add_argument("--faults", action="store_true",
@@ -33,7 +35,7 @@ def main(argv=None):
     out = args.out or ("models/tempolens_gru.pt" if args.member == 0
                        else "models/tempolens_gru_m{}.pt".format(args.member))
     samples = training_samples(args.matches, args.member, args.draws, args.faults)
-    config = temporal.TemporalConfig(hidden=args.hidden, epochs=args.epochs)
+    config = temporal.TemporalConfig(hidden=args.hidden, epochs=args.epochs, chunk=args.chunk)
     model, normaliser = temporal.train(samples, seed=temporal.SEED + args.member, config=config)
     Path(out).parent.mkdir(parents=True, exist_ok=True)
     temporal.save(model, normaliser, out)

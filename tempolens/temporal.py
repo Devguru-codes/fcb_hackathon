@@ -57,6 +57,7 @@ class TemporalConfig:
     focal: float = 0.0           # focal-loss gamma; 0 = plain cross-entropy
     mirror: bool = False         # reflect half the training sequences across the long axis
     dead_weight: float = 1.0     # cross-entropy weight of D frames; 1 = unweighted
+    chunk: int = CHUNK           # frames per training sequence (inference reads 3000)
 
     def tag(self):
         """Cache/file tag; the default config keeps the historical name "temporal"."""
@@ -78,6 +79,8 @@ class TemporalConfig:
             parts.append("mir")
         if self.dead_weight != 1.0:
             parts.append("dw{:g}".format(self.dead_weight))
+        if self.chunk != CHUNK:
+            parts.append("c{}".format(self.chunk))
         return "temporal" + ("_" + "_".join(parts) if parts else "")
 
 
@@ -362,7 +365,7 @@ def train(samples, epochs=None, device=None, seed=SEED, verbose=True,
     np.random.seed(seed)
     device = device or ("cuda" if torch.cuda.is_available() else "cpu")
     sequences, normaliser = _sequences(samples, config)
-    index = _chunk_index(sequences)
+    index = _chunk_index(sequences, config.chunk, config.chunk // 2)
     n_fields = sequences[0]["tok"].shape[-1] if "tok" in sequences[0] else None
     model = build_model(sequences[0]["x"].shape[1], config, n_fields).to(device)
     optimiser = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=1e-2)
@@ -376,7 +379,7 @@ def train(samples, epochs=None, device=None, seed=SEED, verbose=True,
     rng = np.random.default_rng(seed)
 
     def batch_of(key, batch, dtype=None):
-        array = np.stack([np.asarray(sequences[k][key][s:s + CHUNK]) for k, s in batch])
+        array = np.stack([np.asarray(sequences[k][key][s:s + config.chunk]) for k, s in batch])
         tensor = torch.from_numpy(array).to(device)
         return tensor.float() if dtype == "float" else tensor
 
