@@ -1680,8 +1680,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "running",
-    "started": "2026-10-25 19:53"
+    "status": "done",
+    "started": "2026-10-25 19:53",
+    "result": null,
+    "finished": "2026-10-25 20:56",
+    "exit_code": 0
   },
   {
     "id": "TTAv7a1",
@@ -1703,7 +1706,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 20:56",
+    "result": null,
+    "finished": "2026-10-25 21:00",
+    "exit_code": 0
   },
   {
     "id": "TTAv7a05",
@@ -1725,7 +1732,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 21:00",
+    "result": null,
+    "finished": "2026-10-25 21:04",
+    "exit_code": 0
   },
   {
     "id": "TTAv5a1",
@@ -1747,7 +1758,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 21:04",
+    "result": null,
+    "finished": "2026-10-25 21:09",
+    "exit_code": 0
   },
   {
     "id": "TTApub",
@@ -1768,7 +1783,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 21:09",
+    "result": null,
+    "finished": "2026-10-25 21:09",
+    "exit_code": 0
   },
   {
     "id": "TTAset",
@@ -1779,6 +1798,159 @@
       "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
       "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/bundle",
       "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_v7_tta1.csv"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-10-25 21:09",
+    "result": null,
+    "finished": "2026-10-25 21:09",
+    "exit_code": 0
+  },
+  {
+    "id": "ENV",
+    "title": "Smart Tagging restart envelope on v5: 4 variants",
+    "args": [],
+    "cmd": [
+      "C:/Users/devgu/AppData/Local/Temp/claude/C--Users-devgu-Downloads-fcb-hackathon--claude-worktrees-more-than-hack-2027-a8761a/a29a4749-e50b-408d-818f-689163487b56/scratchpad/tag_envelope.py",
+      "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/bundle",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "running",
+    "started": "2026-10-25 21:09"
+  },
+  {
+    "id": "ENVpub",
+    "title": "restart envelope: public window + dead-ball recall vs v5",
+    "args": [],
+    "cmd": [
+      "C:/Users/devgu/AppData/Local/Temp/claude/C--Users-devgu-Downloads-fcb-hackathon--claude-worktrees-more-than-hack-2027-a8761a/a29a4749-e50b-408d-818f-689163487b56/scratchpad/public_cmp.py",
+      "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_v5_kickoff.csv",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_v5_env_a.csv",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_v5_env_b.csv",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_v5_env_c.csv",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_v5_env_d.csv"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "pending"
+  },
+  {
+    "id": "ENVseta",
+    "title": "restart envelope a: dead-ball share around set pieces",
+    "args": [],
+    "cmd": [
+      "C:/Users/devgu/AppData/Local/Temp/claude/C--Users-devgu-Downloads-fcb-hackathon--claude-worktrees-more-than-hack-2027-a8761a/a29a4749-e50b-408d-818f-689163487b56/scratchpad/setpiece_align.py",
+      "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/bundle",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_v5_env_a.csv"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "pending"
+  },
+  {
+    "id": "ENVsetb",
+    "title": "restart envelope b: dead-ball share around set pieces",
+    "args": [],
+    "cmd": [
+      "C:/Users/devgu/AppData/Local/Temp/claude/C--Users-devgu-Downloads-fcb-hackathon--claude-worktrees-more-than-hack-2027-a8761a/a29a4749-e50b-408d-818f-689163487b56/scratchpad/setpiece_align.py",
+      "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/bundle",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_v5_env_b.csv"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "pending"
+  },
+  {
+    "id": "ENVsetc",
+    "title": "restart envelope c: dead-ball share around set pieces",
+    "args": [],
+    "cmd": [
+      "C:/Users/devgu/AppData/Local/Temp/claude/C--Users-devgu-Downloads-fcb-hackathon--claude-worktrees-more-than-hack-2027-a8761a/a29a4749-e50b-408d-818f-689163487b56/scratchpad/setpiece_align.py",
+      "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/bundle",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_v5_env_c.csv"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "pending"
+  },
+  {
+    "id": "ENVsetd",
+    "title": "restart envelope d: dead-ball share around set pieces",
+    "args": [],
+    "cmd": [
+      "C:/Users/devgu/AppData/Local/Temp/claude/C--Users-devgu-Downloads-fcb-hackathon--claude-worktrees-more-than-hack-2027-a8761a/a29a4749-e50b-408d-818f-689163487b56/scratchpad/setpiece_align.py",
+      "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/bundle",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_v5_env_d.csv"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "pending"
+  },
+  {
+    "id": "MIND",
+    "title": "minimum possession length 19 / 25 frames on the real match (v5 ensemble)",
+    "args": [],
+    "cmd": [
+      "C:/Users/devgu/AppData/Local/Temp/claude/C--Users-devgu-Downloads-fcb-hackathon--claude-worktrees-more-than-hack-2027-a8761a/a29a4749-e50b-408d-818f-689163487b56/scratchpad/mindur_real.py",
+      "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/bundle",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "pending"
+  },
+  {
+    "id": "MINDpub",
+    "title": "minimum length: public window + dead-ball recall vs v5",
+    "args": [],
+    "cmd": [
+      "C:/Users/devgu/AppData/Local/Temp/claude/C--Users-devgu-Downloads-fcb-hackathon--claude-worktrees-more-than-hack-2027-a8761a/a29a4749-e50b-408d-818f-689163487b56/scratchpad/public_cmp.py",
+      "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_v5_kickoff.csv",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_v5_min19.csv",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_v5_min25.csv"
     ],
     "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
     "env": {

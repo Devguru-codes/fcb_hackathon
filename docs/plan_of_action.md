@@ -123,6 +123,7 @@ dynamic switch cost is what our change bonus already does.
 | ✅ | SC | Simulator calibration: where the ball goes missing, real vs simulated | CV 0.75 vs real public 0.59 | Ball missing on 40.7% of graded frames in both, and the share inside gaps of 20 s or more matches (real 0.68, sim 0.65–0.78). Around the 59 set-piece tags (5 s before / 3 s after) the real ball is missing 0.73 / 0.65 of the time vs sim P(missing given dead) 0.70. Implied real P(missing given live) is about 0.20 if the match is ~42% dead, vs sim 0.19. The public window is atypical (ball missing only ~12%; its dead frames missing 0.34) | no large mismatch: no retrain. Possible small follow-up: train with fewer lost stoppages (dead_cover < 0.67) so dead ball is learned with the ball visible; judged on the real match only |
 | ❌ | RN | **Domain randomisation** (`--draws 4`): each training match gets 4 noise draws with their own simulator settings (ball missing 30–50%, stoppages lost 40–90%, gap median 6–18 s, player dropout 2–8%, ball noise 0.1–0.4 m); held-out matches keep the fixed test noise | CV 0.75 vs real 0.59 | **CV: single members +0.0064 / +0.0106 / +0.0130 (seeds 0/1/2); 3-member ensemble 0.7716 vs v5 ensemble 0.7636 (+0.0080, DFL +0.0071, 8 of 10 matches); ahead at every decoder cost tried (+0.006 to +0.013), at v5's submitted costs (4, 8, 8, 1.0) 0.7682 vs 0.7591.** 2 draws: −0.004 (mean); 4 draws + width 160: +0.005. Real match, v7 at v5's costs (`tempolens_v7_rnd4.csv`): public spellF1 0.582 vs 0.594 (16 vs 18 possessions, truth 17; bootstrap 95% CI 0.41–0.74 vs 0.42–0.74), macroF1 0.820 vs 0.819, dead-ball recall 0.542 vs 0.534, 292 vs 313 possessions; less dead ball before goal kicks (0.48 vs 0.59 over the last 5 s) and corners (0.82 vs 0.91), more before kick-offs. v7 at its CV-tuned costs (2, 2, 2, 0.5): public 0.549, so cheap switches do not transfer | **not adopted: full human review of all 71 v5/v7 disagreements: v5 right 38, v7 right 29** (v7 merges across real turnovers). Follow-ups: + tracker faults seed 0 −0.0052 vs v7 recipe; 6 draws seed 0 −0.0038 (plateau); seed-1 runs cancelled. Lesson: a CV gain under the simulator did not transfer to the real match |
 | ✅ | HR | Human review of every disagreement of 1 s or more (user, 2026-10-25) | the real match is the only truth that counts | v4 vs v5: v5 right 34/62, v4 24, both wrong 3, unclear 1. v5 vs v7: v5 right 38/71, v7 29. Failure modes: v4 splits open play with false dead stretches; v5 misses goal-kick and restart dead ball; v7 merges across turnovers; both-wrong clips are restarts and aerial handovers | v5 confirmed as the submission; next target: dead ball at restarts |
+| ⏸ | TTA | **Test-time re-normalisation** (`temporal.adapt_normaliser`): each member's feature scaling moved to the target match's own medians and spreads, no labels (AdaBN-style; organisers allow test-time adaptation, per the user) | sim-to-real gap; dead ball at restarts | Open data, paired (same weights, no shift to correct): alpha 0.5 −0.006, alpha 1 −0.019. **Real match, alpha 1:** v7 models: public spellF1 0.629 vs v5 0.594 (CI 0.46–0.79), macroF1 0.849 vs 0.819, dead-ball recall 0.647 vs 0.534 (precision 0.88), last 5 s before goal kicks dead 0.77 vs 0.59, corners 0.99 vs 0.91; v5 models: spellF1 0.594, macroF1 0.851, dead-ball recall 0.680. Full match dead 0.455–0.465 vs 0.421 | real match improves on every measure we have; open data cannot show a shift it does not contain. Awaiting the user's reel review (v5 vs v7+TTA, top 20) |
 | ⬜ | H8 | Use the ATD's own per-object speed | tracker-smoothed speeds unused | needs simulating for open data | small |
 | ⬜ | H9 | Full HSMM with learned duration distributions | — | decode study | low value (decoder ceiling +0.002) |
 | 🚫 | H10 | Label-shift correction (Saerens EM, logit adjustment) | — | — | assumes classes look alike in train and test; real dead balls do not |
@@ -222,10 +223,18 @@ Written by `python -m tempolens.autoqueue` from `experiments/queue.json` (✅ he
 | ✅ | RN6s0 | randomised noise 6 draws, CV seed 0 (vs RN4s0) | 0.7538 | 0.7415 | 0.7826 | (4.0, 8.0, 8.0, 0.5) | no gain (-0.0038) | 2026-10-25 19:48 |
 | ❌ | RF4s1 | randomised noise 4 draws + tracker faults, CV seed 1 (vs RN4s1) |  |  |  |  |  | 2026-10-25 19:53 |
 | ? | RN6s1 | randomised noise 6 draws, CV seed 1 (vs RN4s1) |  |  |  |  |  |  |
-| ⏳ | TTAcv | test-time re-normalisation on open data, paired (alpha 0 / 0.5 / 1) |  |  |  |  |  |  |
-| ⬜ | TTAv7a1 | TTA alpha 1 on the real match, v7 models |  |  |  |  |  |  |
-| ⬜ | TTAv7a05 | TTA alpha 0.5 on the real match, v7 models |  |  |  |  |  |  |
-| ⬜ | TTAv5a1 | TTA alpha 1 on the real match, v5 models |  |  |  |  |  |  |
-| ⬜ | TTApub | TTA: public window + dead-ball recall |  |  |  |  |  |  |
-| ⬜ | TTAset | TTA alpha 1 (v7): dead-ball share around set pieces |  |  |  |  |  |  |
+| ✅ | TTAcv | test-time re-normalisation on open data, paired (alpha 0 / 0.5 / 1) |  |  |  |  |  | 2026-10-25 20:56 |
+| ✅ | TTAv7a1 | TTA alpha 1 on the real match, v7 models |  |  |  |  |  | 2026-10-25 21:00 |
+| ✅ | TTAv7a05 | TTA alpha 0.5 on the real match, v7 models |  |  |  |  |  | 2026-10-25 21:04 |
+| ✅ | TTAv5a1 | TTA alpha 1 on the real match, v5 models |  |  |  |  |  | 2026-10-25 21:09 |
+| ✅ | TTApub | TTA: public window + dead-ball recall |  |  |  |  |  | 2026-10-25 21:09 |
+| ✅ | TTAset | TTA alpha 1 (v7): dead-ball share around set pieces |  |  |  |  |  | 2026-10-25 21:09 |
+| ⏳ | ENV | Smart Tagging restart envelope on v5: 4 variants |  |  |  |  |  |  |
+| ⬜ | ENVpub | restart envelope: public window + dead-ball recall vs v5 |  |  |  |  |  |  |
+| ⬜ | ENVseta | restart envelope a: dead-ball share around set pieces |  |  |  |  |  |  |
+| ⬜ | ENVsetb | restart envelope b: dead-ball share around set pieces |  |  |  |  |  |  |
+| ⬜ | ENVsetc | restart envelope c: dead-ball share around set pieces |  |  |  |  |  |  |
+| ⬜ | ENVsetd | restart envelope d: dead-ball share around set pieces |  |  |  |  |  |  |
+| ⬜ | MIND | minimum possession length 19 / 25 frames on the real match (v5 ensemble) |  |  |  |  |  |  |
+| ⬜ | MINDpub | minimum length: public window + dead-ball recall vs v5 |  |  |  |  |  |  |
 <!-- autoqueue:end -->
