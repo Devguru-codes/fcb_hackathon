@@ -1827,8 +1827,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "running",
-    "started": "2026-10-25 21:09"
+    "status": "done",
+    "started": "2026-10-25 21:09",
+    "result": null,
+    "finished": "2026-10-25 21:13",
+    "exit_code": 0
   },
   {
     "id": "ENVpub",
@@ -1849,7 +1852,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 21:13",
+    "result": null,
+    "finished": "2026-10-25 21:13",
+    "exit_code": 0
   },
   {
     "id": "ENVseta",
@@ -1867,7 +1874,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 21:13",
+    "result": null,
+    "finished": "2026-10-25 21:13",
+    "exit_code": 0
   },
   {
     "id": "ENVsetb",
@@ -1885,7 +1896,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 21:13",
+    "result": null,
+    "finished": "2026-10-25 21:13",
+    "exit_code": 0
   },
   {
     "id": "ENVsetc",
@@ -1903,7 +1918,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 21:13",
+    "result": null,
+    "finished": "2026-10-25 21:13",
+    "exit_code": 0
   },
   {
     "id": "ENVsetd",
@@ -1921,7 +1940,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 21:13",
+    "result": null,
+    "finished": "2026-10-25 21:13",
+    "exit_code": 0
   },
   {
     "id": "MIND",
@@ -1939,7 +1962,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 21:13",
+    "result": null,
+    "finished": "2026-10-25 21:13",
+    "exit_code": 0
   },
   {
     "id": "MINDpub",
@@ -1951,6 +1978,228 @@
       "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_v5_kickoff.csv",
       "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_v5_min19.csv",
       "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_v5_min25.csv"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-10-25 21:13",
+    "result": null,
+    "finished": "2026-10-25 21:13",
+    "exit_code": 0
+  },
+  {
+    "id": "CH0",
+    "title": "60 s training windows (chunk 1500), CV seed 0 (vs v5)",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.experiments",
+      "--model",
+      "temporal",
+      "--member",
+      "0",
+      "--chunk",
+      "1500"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": {
+      "all": 0.7512,
+      "dfl": 0.7428
+    },
+    "baseline_from": null,
+    "status": "pending"
+  },
+  {
+    "id": "CH1",
+    "title": "60 s training windows (chunk 1500), CV seed 1 (vs v5)",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.experiments",
+      "--model",
+      "temporal",
+      "--member",
+      "1",
+      "--chunk",
+      "1500"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": {
+      "all": 0.7571,
+      "dfl": 0.747
+    },
+    "baseline_from": null,
+    "status": "pending"
+  },
+  {
+    "id": "CHtrain0",
+    "title": "60 s windows: train member 0 (models/exp/)",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.train",
+      "--member",
+      "0",
+      "--chunk",
+      "1500",
+      "--out",
+      "models/exp/c1500_m0.pt"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "pending"
+  },
+  {
+    "id": "CHtrain1",
+    "title": "60 s windows: train member 1 (models/exp/)",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.train",
+      "--member",
+      "1",
+      "--chunk",
+      "1500",
+      "--out",
+      "models/exp/c1500_m1.pt"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "pending"
+  },
+  {
+    "id": "CHtrain2",
+    "title": "60 s windows: train member 2 (models/exp/)",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.train",
+      "--member",
+      "2",
+      "--chunk",
+      "1500",
+      "--out",
+      "models/exp/c1500_m2.pt"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "pending"
+  },
+  {
+    "id": "CHpred",
+    "title": "60 s windows: build tempolens_v8_c1500.csv (v5 decoder)",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.predict",
+      "--data-root",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/bundle",
+      "--output",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_v8_c1500.csv",
+      "--model",
+      "models/exp/c1500_m0.pt",
+      "models/exp/c1500_m1.pt",
+      "models/exp/c1500_m2.pt"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "pending"
+  },
+  {
+    "id": "CHtta",
+    "title": "60 s windows + test-time re-normalisation (alpha 1)",
+    "args": [],
+    "cmd": [
+      "C:/Users/devgu/AppData/Local/Temp/claude/C--Users-devgu-Downloads-fcb-hackathon--claude-worktrees-more-than-hack-2027-a8761a/a29a4749-e50b-408d-818f-689163487b56/scratchpad/tta_real.py",
+      "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/bundle",
+      "1.0",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_v8_c1500_tta1.csv",
+      "models/exp/c1500_m0.pt",
+      "models/exp/c1500_m1.pt",
+      "models/exp/c1500_m2.pt"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "pending"
+  },
+  {
+    "id": "CHpub",
+    "title": "60 s windows: public window + dead-ball recall",
+    "args": [],
+    "cmd": [
+      "C:/Users/devgu/AppData/Local/Temp/claude/C--Users-devgu-Downloads-fcb-hackathon--claude-worktrees-more-than-hack-2027-a8761a/a29a4749-e50b-408d-818f-689163487b56/scratchpad/public_cmp.py",
+      "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_v5_kickoff.csv",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_v5_tta1.csv",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_v8_c1500.csv",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_v8_c1500_tta1.csv"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "pending"
+  },
+  {
+    "id": "CHset",
+    "title": "60 s windows (no TTA): dead-ball share around set pieces",
+    "args": [],
+    "cmd": [
+      "C:/Users/devgu/AppData/Local/Temp/claude/C--Users-devgu-Downloads-fcb-hackathon--claude-worktrees-more-than-hack-2027-a8761a/a29a4749-e50b-408d-818f-689163487b56/scratchpad/setpiece_align.py",
+      "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/bundle",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_v8_c1500.csv"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "pending"
+  },
+  {
+    "id": "CHsettta",
+    "title": "60 s windows + TTA: dead-ball share around set pieces",
+    "args": [],
+    "cmd": [
+      "C:/Users/devgu/AppData/Local/Temp/claude/C--Users-devgu-Downloads-fcb-hackathon--claude-worktrees-more-than-hack-2027-a8761a/a29a4749-e50b-408d-818f-689163487b56/scratchpad/setpiece_align.py",
+      "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/bundle",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_v8_c1500_tta1.csv"
     ],
     "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
     "env": {
