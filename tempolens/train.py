@@ -27,10 +27,12 @@ def main(argv=None):
     parser.add_argument("--hidden", type=int, default=temporal.HIDDEN)
     parser.add_argument("--draws", type=int, default=0,
                         help="randomised-noise draws per match (0 = the two fixed-noise draws)")
+    parser.add_argument("--faults", action="store_true",
+                        help="with --draws: add tracker faults to the training draws")
     args = parser.parse_args(argv)
     out = args.out or ("models/tempolens_gru.pt" if args.member == 0
                        else "models/tempolens_gru_m{}.pt".format(args.member))
-    samples = training_samples(args.matches, args.member, args.draws)
+    samples = training_samples(args.matches, args.member, args.draws, args.faults)
     config = temporal.TemporalConfig(hidden=args.hidden, epochs=args.epochs)
     model, normaliser = temporal.train(samples, seed=temporal.SEED + args.member, config=config)
     Path(out).parent.mkdir(parents=True, exist_ok=True)

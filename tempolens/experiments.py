@@ -23,7 +23,7 @@ from .decoder import transition_matrix, viterbi_matrix
 from .features import FEATURE_VERSION, feature_names, frame_features, swap_labels
 from .match import A, D, H, X
 from .opendata import LOADERS, load_open_match, open_data_dir
-from .simulate import AtdNoise, random_noise, simulate_atd
+from .simulate import AtdNoise, add_tracker_faults, random_noise, simulate_atd
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "evaluation"))
@@ -105,10 +105,11 @@ def _replace_retry(src, dst, attempts=20):
 
 class CachedSample:
     """An open match, optionally corrupted by one noise draw, with features cached on disk.
-    `randomised`: the draw also picks its own noise setting (simulate.random_noise)."""
+    `randomised`: the draw also picks its own noise setting (simulate.random_noise);
+    `faults`: and adds tracker faults (identity swaps, duplicate and phantom tracks)."""
 
-    def __init__(self, name, seed=None, randomised=False):
-        self.name, self.seed, self.randomised = name, seed, randomised
+    def __init__(self, name, seed=None, randomised=False, faults=False):
+        self.name, self.seed, self.randomised, self.faults = name, seed, randomised, faults
         clean = load_open_match(name)
         self.labels, self.period, self.n_frames = clean.labels, clean.period, clean.n_frames
         self._runs = clean.runs()
@@ -121,11 +122,13 @@ class CachedSample:
         if self.seed is None:
             return clean
         noise = random_noise(self.seed) if self.randomised else AtdNoise()
-        return simulate_atd(clean, noise, seed=self.seed)
+        table = simulate_atd(clean, noise, seed=self.seed)
+        return add_tracker_faults(table, seed=self.seed) if self.faults else table
 
     def _path(self, swap, kind="f{}".format(FEATURE_VERSION)):
-        tag = ("clean" if self.seed is None else "rnd{}v{}_{}".format(NOISE_TAG, RANDOM_VERSION,
-               self.seed) if self.randomised else "sim{}_{}".format(NOISE_TAG, self.seed))
+        tag = ("clean" if self.seed is None else "{}{}v{}_{}".format(
+               "rnf" if self.faults else "rnd", NOISE_TAG, RANDOM_VERSION, self.seed)
+               if self.randomised else "sim{}_{}".format(NOISE_TAG, self.seed))
         return (open_data_dir() / "cache" / "features" /
                 "{}_{}_{}_{}.npy".format(self.name, tag, kind, int(swap)))
 
@@ -225,18 +228,18 @@ def member_noise_seeds(member):
     return SIM_TRAIN_SEEDS if member == 0 else (2 * member + 1, 2 * member + 2)
 
 
-def training_samples(names, member, draws=0):
+def training_samples(names, member, draws=0, faults=False):
     """Training draws of `names` for ensemble member k: the two fixed-noise draws, or with
     `draws` > 0 that many randomised-noise draws (seeds 100 + 10k + i, so fewer draws are a
-    subset of more)."""
+    subset of more); `faults` adds tracker faults to those draws."""
     if draws:
-        return [CachedSample(n, 100 + 10 * member + i, randomised=True)
+        return [CachedSample(n, 100 + 10 * member + i, randomised=True, faults=faults)
                 for n in sorted(names) for i in range(draws)]
     return [CachedSample(n, s) for n in sorted(names) for s in member_noise_seeds(member)]
 
 
 def oof_logp(names, kind="gbm", protocol="sim", refresh=False, member=0,
-             members=ENSEMBLE_MEMBERS, config=None, extra_train=(), draws=0):
+             members=ENSEMBLE_MEMBERS, config=None, extra_train=(), draws=0, faults=False):
     """Held-out log-probabilities for every match, each from a model that never saw it.
 
     kind "temporal" trains the network described by `config` (default: the base GRU).
@@ -250,14 +253,15 @@ def oof_logp(names, kind="gbm", protocol="sim", refresh=False, member=0,
     if kind == "ensemble":
         from .temporal import combine
         outputs = [oof_logp(names, "temporal", protocol, refresh, k, config=config,
-                            extra_train=extra_train, draws=draws) for k in range(members)]
+                            extra_train=extra_train, draws=draws, faults=faults)
+                   for k in range(members)]
         return {n: combine([out[n] for out in outputs]) for n in names}
     if kind == "temporal":
         from .temporal import DEFAULT_CONFIG
         config = config or DEFAULT_CONFIG
         kind_tag = config.tag() + ("" if TRAIN_VERSION == 1 else "_t{}".format(TRAIN_VERSION))
         if draws:
-            kind_tag += "_rnd{}v{}".format(draws, RANDOM_VERSION)
+            kind_tag += "_rnd{}v{}{}".format(draws, RANDOM_VERSION, "f" if faults else "")
     else:
         kind_tag = kind
     cache = open_data_dir() / "cache" / "oof"
@@ -282,7 +286,7 @@ def oof_logp(names, kind="gbm", protocol="sim", refresh=False, member=0,
         # extra matches carry real broadcast-tracking noise already: one noise draw each keeps
         # memory in bounds (~3.8 GB of training arrays with 20 SkillCorner matches)
         rest = set(names) - set(held)
-        train = ((training_samples(rest, member, draws) if protocol == "sim"
+        train = ((training_samples(rest, member, draws, faults) if protocol == "sim"
                   else [CachedSample(n) for n in sorted(rest)])
                  + [CachedSample(n, train_seeds[0]) for n in sorted(extra_train)])
         if kind == "gbm":
@@ -310,10 +314,10 @@ def _summary(rows, names):
 
 
 def run(names, grid, kind="gbm", protocol="sim", refresh=False, member=0, config=None,
-        members=ENSEMBLE_MEMBERS, extra_train=(), draws=0):
+        members=ENSEMBLE_MEMBERS, extra_train=(), draws=0, faults=False):
     test_seed = SIM_TEST_SEED if protocol == "sim" else None
     logps = oof_logp(names, kind, protocol, refresh, member, members, config=config,
-                     extra_train=extra_train, draws=draws)
+                     extra_train=extra_train, draws=draws, faults=faults)
     samples = {n: CachedSample(n, test_seed) for n in names}
 
     print("\n{:<14} {:>8} {:>8} {:>6} {:>6}".format("baseline50", "spellF1", "macroF1", "pred",
@@ -380,6 +384,8 @@ def main(argv=None):
     parser.add_argument("--draws", type=int, default=0,
                         help="train on this many randomised-noise draws per match (0 = the two "
                              "fixed-noise draws)")
+    parser.add_argument("--faults", action="store_true",
+                        help="with --draws: add tracker faults to the training draws")
     parser.add_argument("--protocol", default="sim", choices=("sim", "clean"))
     parser.add_argument("--refresh", action="store_true", help="retrain, ignoring the cache")
     args = parser.parse_args(argv)
@@ -396,7 +402,7 @@ def main(argv=None):
     from .opendata import EXTRA_LOADERS
     extra = sorted(EXTRA_LOADERS) if args.extra_train == "skillcorner" else ()
     run(args.matches, grid, args.model, args.protocol, args.refresh, args.member, config,
-        args.members, extra, args.draws)
+        args.members, extra, args.draws, args.faults)
 
 
 if __name__ == "__main__":
