@@ -121,6 +121,7 @@ dynamic switch cost is what our change bonus already does.
 | ❌ | BF | Boundary features after the best public rival (branch `exp/boundary`): frames since/until each team touched the ball, nearest-team flips within ±1/±2 s | rival's macroF1 0.874 vs 0.819 | CV seed 0 −0.0023, seed 1 −0.0054 | not adopted |
 | ⏸ | BC | Broadcast ball fill, one constant offset per half (rival's variant): offsets 4014 / 26,920 frames, 65% of 4 s blocks verified on players, fills 9.7% of ball gaps (missing ball 40.7% -> 36.7% of graded); where both see the ball, median 0.77 m apart, 74% within 2 m | ball missing on 41% of graded frames | public window unchanged (spellF1 0.5943 both; only 159 filled frames fall inside it). Full match: fill-all changes 2.1% of graded frames (35 stretches >= 1 s, 321 possessions vs 313); fill-alive 1.4% (20 stretches, 316) | needs a human look at the changed stretches (review reel); no open-data CV possible |
 | ✅ | SC | Simulator calibration: where the ball goes missing, real vs simulated | CV 0.75 vs real public 0.59 | Ball missing on 40.7% of graded frames in both, and the share inside gaps of 20 s or more matches (real 0.68, sim 0.65–0.78). Around the 59 set-piece tags (5 s before / 3 s after) the real ball is missing 0.73 / 0.65 of the time vs sim P(missing given dead) 0.70. Implied real P(missing given live) is about 0.20 if the match is ~42% dead, vs sim 0.19. The public window is atypical (ball missing only ~12%; its dead frames missing 0.34) | no large mismatch: no retrain. Possible small follow-up: train with fewer lost stoppages (dead_cover < 0.67) so dead ball is learned with the ball visible; judged on the real match only |
+| ⏸ | RN | **Domain randomisation** (`--draws 4`): each training match gets 4 noise draws with their own simulator settings (ball missing 30–50%, stoppages lost 40–90%, gap median 6–18 s, player dropout 2–8%, ball noise 0.1–0.4 m); held-out matches keep the fixed test noise | CV 0.75 vs real 0.59 | **CV: single members +0.0064 / +0.0106 / +0.0130 (seeds 0/1/2); 3-member ensemble 0.7716 vs v5 ensemble 0.7636 (+0.0080, DFL +0.0071, 8 of 10 matches); ahead at every decoder cost tried (+0.006 to +0.013), at v5's submitted costs (4, 8, 8, 1.0) 0.7682 vs 0.7591.** 2 draws: −0.004 (mean); 4 draws + width 160: +0.005. Real match, v7 at v5's costs (`tempolens_v7_rnd4.csv`): public spellF1 0.582 vs 0.594 (16 vs 18 possessions, truth 17; bootstrap 95% CI 0.41–0.74 vs 0.42–0.74), macroF1 0.820 vs 0.819, dead-ball recall 0.542 vs 0.534, 292 vs 313 possessions; less dead ball before goal kicks (0.48 vs 0.59 over the last 5 s) and corners (0.82 vs 0.91), more before kick-offs. v7 at its CV-tuned costs (2, 2, 2, 0.5): public 0.549, so cheap switches do not transfer | strongest CV gain so far; real-match evidence within noise; adoption is the user's call |
 | ⬜ | H8 | Use the ATD's own per-object speed | tracker-smoothed speeds unused | needs simulating for open data | small |
 | ⬜ | H9 | Full HSMM with learned duration distributions | — | decode study | low value (decoder ceiling +0.002) |
 | 🚫 | H10 | Label-shift correction (Saerens EM, logit adjustment) | — | — | assumes classes look alike in train and test; real dead balls do not |
@@ -193,4 +194,27 @@ Written by `python -m tempolens.autoqueue` from `experiments/queue.json` (✅ he
 | ✅ | BCLIVEval | broadcast ball fill (alive): official validator |  |  |  |  |  | 2026-10-24 16:56 |
 | ✅ | BCLIVEpub | broadcast ball fill (alive): public window + dead-ball recall vs v5 |  |  |  |  |  | 2026-10-24 16:56 |
 | ✅ | BCLIVEset | broadcast ball fill (alive): dead-ball share around set pieces |  |  |  |  |  | 2026-10-24 16:56 |
+| ✅ | RN2s0 | randomised noise, 2 draws/match, CV seed 0 (vs v5) | 0.7529 | 0.7453 | 0.7705 | (2.0, 8.0, 8.0, 0.0) | no gain (+0.0017) | 2026-10-25 05:16 |
+| ✅ | RN4s0 | randomised noise, 4 draws/match, CV seed 0 (vs v5) | 0.7576 | 0.7467 | 0.7830 | (4.0, 2.0, 4.0, 0.5) | candidate (+0.0064) | 2026-10-25 05:50 |
+| ✅ | RN4Hs0 | randomised noise, 4 draws, width 160, 12 epochs, CV seed 0 (vs v5) | 0.7592 | 0.7526 | 0.7746 | (6.0, 2.0, 8.0, 0.0) | candidate (+0.0080) | 2026-10-25 08:46 |
+| ✅ | RN2s1 | randomised noise, 2 draws/match, CV seed 1 (vs v5) | 0.7479 | 0.7408 | 0.7646 | (4.0, 8.0, 8.0, 0.5) | no gain (-0.0092) | 2026-10-25 09:08 |
+| ✅ | RN4s1 | randomised noise, 4 draws/match, CV seed 1 (vs v5) | 0.7677 | 0.7538 | 0.8003 | (6.0, 8.0, 8.0, 1.0) | candidate (+0.0106) | 2026-10-25 09:45 |
+| ✅ | RN4Hs1 | randomised noise, 4 draws, width 160, 12 epochs, CV seed 1 (vs v5) | 0.7591 | 0.7526 | 0.7744 | (6.0, 8.0, 8.0, 1.0) | no gain (+0.0020) | 2026-10-25 12:45 |
+| ✅ | RNtrain0 | randomised noise 4 draws: train member 0 (models/exp/, not committed) |  |  |  |  |  | 2026-10-25 12:52 |
+| ✅ | RNtrain1 | randomised noise 4 draws: train member 1 (models/exp/, not committed) |  |  |  |  |  | 2026-10-25 12:58 |
+| ✅ | RNtrain2 | randomised noise 4 draws: train member 2 (models/exp/, not committed) |  |  |  |  |  | 2026-10-25 13:11 |
+| ✅ | RNpred | randomised noise 4 draws: build tempolens_v7_rnd4.csv |  |  |  |  |  | 2026-10-25 13:13 |
+| ✅ | RNval | randomised noise: official validator |  |  |  |  |  | 2026-10-25 13:13 |
+| ✅ | RNpub | randomised noise: public window + dead-ball recall vs v5 |  |  |  |  |  | 2026-10-25 13:13 |
+| ✅ | RNset | randomised noise: dead-ball share around set pieces |  |  |  |  |  | 2026-10-25 13:13 |
+| ✅ | V5s2 | v5 recipe: CV member 2 (completes the v5 ensemble) | 0.7503 | 0.7394 | 0.7756 | (2.0, 8.0, 8.0, 0.0) | measured | 2026-10-25 16:10 |
+| ✅ | RN4s2 | randomised noise 4 draws: CV member 2 (completes the v7 ensemble) | 0.7633 | 0.7529 | 0.7877 | (6.0, 2.0, 4.0, 0.0) | measured | 2026-10-25 16:52 |
+| ✅ | V5ens | v5 recipe: 3-member ensemble CV (decoder costs tuned) | 0.7636 | 0.7526 | 0.7892 | (2.0, 2.0, 8.0, 0.0) | measured | 2026-10-25 16:54 |
+| ✅ | RN4ens | randomised noise 4 draws: 3-member ensemble CV (vs v5 ensemble) | 0.7716 | 0.7597 | 0.7994 | (2.0, 2.0, 2.0, 0.5) | candidate (+0.0080) | 2026-10-25 16:57 |
+| ✅ | RN4dec | v7: decoder settings from RN4ens's best costs |  |  |  |  |  | 2026-10-25 16:57 |
+| ✅ | RN4pred | v7: build tempolens_v7_rnd4_tuned.csv with its own decoder costs |  |  |  |  |  | 2026-10-25 17:01 |
+| ✅ | RN4val | v7 tuned: official validator |  |  |  |  |  | 2026-10-25 17:01 |
+| ✅ | RN4pub | v7 tuned: public window + dead-ball recall vs v5 |  |  |  |  |  | 2026-10-25 17:01 |
+| ✅ | RN4set | v7 tuned: dead-ball share around set pieces |  |  |  |  |  | 2026-10-25 17:01 |
+| ✅ | V5set | v5 (submitted): dead-ball share around set pieces, for comparison |  |  |  |  |  | 2026-10-25 17:01 |
 <!-- autoqueue:end -->

@@ -943,7 +943,16 @@
       "dfl": 0.7428
     },
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 04:55",
+    "result": {
+      "all": 0.7529,
+      "dfl": 0.7453,
+      "metrica": 0.7705,
+      "costs": "(2.0, 8.0, 8.0, 0.0)"
+    },
+    "finished": "2026-10-25 05:16",
+    "exit_code": 0
   },
   {
     "id": "RN4s0",
@@ -968,7 +977,16 @@
       "dfl": 0.7428
     },
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 05:16",
+    "result": {
+      "all": 0.7576,
+      "dfl": 0.7467,
+      "metrica": 0.783,
+      "costs": "(4.0, 2.0, 4.0, 0.5)"
+    },
+    "finished": "2026-10-25 05:50",
+    "exit_code": 0
   },
   {
     "id": "RN4Hs0",
@@ -997,7 +1015,16 @@
       "dfl": 0.7428
     },
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 05:50",
+    "result": {
+      "all": 0.7592,
+      "dfl": 0.7526,
+      "metrica": 0.7746,
+      "costs": "(6.0, 2.0, 8.0, 0.0)"
+    },
+    "finished": "2026-10-25 08:46",
+    "exit_code": 0
   },
   {
     "id": "RN2s1",
@@ -1022,7 +1049,16 @@
       "dfl": 0.747
     },
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 08:46",
+    "result": {
+      "all": 0.7479,
+      "dfl": 0.7408,
+      "metrica": 0.7646,
+      "costs": "(4.0, 8.0, 8.0, 0.5)"
+    },
+    "finished": "2026-10-25 09:08",
+    "exit_code": 0
   },
   {
     "id": "RN4s1",
@@ -1047,7 +1083,16 @@
       "dfl": 0.747
     },
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 09:08",
+    "result": {
+      "all": 0.7677,
+      "dfl": 0.7538,
+      "metrica": 0.8003,
+      "costs": "(6.0, 8.0, 8.0, 1.0)"
+    },
+    "finished": "2026-10-25 09:45",
+    "exit_code": 0
   },
   {
     "id": "RN4Hs1",
@@ -1076,7 +1121,16 @@
       "dfl": 0.747
     },
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 09:45",
+    "result": {
+      "all": 0.7591,
+      "dfl": 0.7526,
+      "metrica": 0.7744,
+      "costs": "(6.0, 8.0, 8.0, 1.0)"
+    },
+    "finished": "2026-10-25 12:45",
+    "exit_code": 0
   },
   {
     "id": "RNtrain0",
@@ -1098,7 +1152,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 12:45",
+    "result": null,
+    "finished": "2026-10-25 12:52",
+    "exit_code": 0
   },
   {
     "id": "RNtrain1",
@@ -1120,7 +1178,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 12:52",
+    "result": null,
+    "finished": "2026-10-25 12:58",
+    "exit_code": 0
   },
   {
     "id": "RNtrain2",
@@ -1142,7 +1204,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 12:59",
+    "result": null,
+    "finished": "2026-10-25 13:11",
+    "exit_code": 0
   },
   {
     "id": "RNpred",
@@ -1166,7 +1232,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 13:11",
+    "result": null,
+    "finished": "2026-10-25 13:13",
+    "exit_code": 0
   },
   {
     "id": "RNval",
@@ -1182,7 +1252,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 13:13",
+    "result": null,
+    "finished": "2026-10-25 13:13",
+    "exit_code": 0
   },
   {
     "id": "RNpub",
@@ -1200,7 +1274,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 13:13",
+    "result": null,
+    "finished": "2026-10-25 13:13",
+    "exit_code": 0
   },
   {
     "id": "RNset",
@@ -1218,6 +1296,262 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 13:13",
+    "result": null,
+    "finished": "2026-10-25 13:13",
+    "exit_code": 0
+  },
+  {
+    "id": "V5s2",
+    "title": "v5 recipe: CV member 2 (completes the v5 ensemble)",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.experiments",
+      "--model",
+      "temporal",
+      "--member",
+      "2"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-10-25 15:43",
+    "result": {
+      "all": 0.7503,
+      "dfl": 0.7394,
+      "metrica": 0.7756,
+      "costs": "(2.0, 8.0, 8.0, 0.0)"
+    },
+    "finished": "2026-10-25 16:10",
+    "exit_code": 0
+  },
+  {
+    "id": "RN4s2",
+    "title": "randomised noise 4 draws: CV member 2 (completes the v7 ensemble)",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.experiments",
+      "--model",
+      "temporal",
+      "--member",
+      "2",
+      "--draws",
+      "4"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-10-25 16:10",
+    "result": {
+      "all": 0.7633,
+      "dfl": 0.7529,
+      "metrica": 0.7877,
+      "costs": "(6.0, 2.0, 4.0, 0.0)"
+    },
+    "finished": "2026-10-25 16:52",
+    "exit_code": 0
+  },
+  {
+    "id": "V5ens",
+    "title": "v5 recipe: 3-member ensemble CV (decoder costs tuned)",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.experiments",
+      "--model",
+      "ensemble"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-10-25 16:52",
+    "result": {
+      "all": 0.7636,
+      "dfl": 0.7526,
+      "metrica": 0.7892,
+      "costs": "(2.0, 2.0, 8.0, 0.0)"
+    },
+    "finished": "2026-10-25 16:54",
+    "exit_code": 0
+  },
+  {
+    "id": "RN4ens",
+    "title": "randomised noise 4 draws: 3-member ensemble CV (vs v5 ensemble)",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.experiments",
+      "--model",
+      "ensemble",
+      "--draws",
+      "4"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": "V5ens",
+    "status": "done",
+    "started": "2026-10-25 16:54",
+    "result": {
+      "all": 0.7716,
+      "dfl": 0.7597,
+      "metrica": 0.7994,
+      "costs": "(2.0, 2.0, 2.0, 0.5)"
+    },
+    "finished": "2026-10-25 16:57",
+    "exit_code": 0
+  },
+  {
+    "id": "RN4dec",
+    "title": "v7: decoder settings from RN4ens's best costs",
+    "args": [],
+    "cmd": [
+      "C:/Users/devgu/AppData/Local/Temp/claude/C--Users-devgu-Downloads-fcb-hackathon--claude-worktrees-more-than-hack-2027-a8761a/a29a4749-e50b-408d-818f-689163487b56/scratchpad/make_decoder.py",
+      "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+      "RN4ens",
+      "exp/rnd4_m{}.pt",
+      "models/exp/decoder_rnd4.json"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-10-25 16:57",
+    "result": null,
+    "finished": "2026-10-25 16:57",
+    "exit_code": 0
+  },
+  {
+    "id": "RN4pred",
+    "title": "v7: build tempolens_v7_rnd4_tuned.csv with its own decoder costs",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.predict",
+      "--data-root",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/bundle",
+      "--output",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_v7_rnd4_tuned.csv",
+      "--decoder",
+      "models/exp/decoder_rnd4.json"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-10-25 16:57",
+    "result": null,
+    "finished": "2026-10-25 17:01",
+    "exit_code": 0
+  },
+  {
+    "id": "RN4val",
+    "title": "v7 tuned: official validator",
+    "args": [],
+    "cmd": [
+      "evaluation/validate_submission.py",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_v7_rnd4_tuned.csv"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-10-25 17:01",
+    "result": null,
+    "finished": "2026-10-25 17:01",
+    "exit_code": 0
+  },
+  {
+    "id": "RN4pub",
+    "title": "v7 tuned: public window + dead-ball recall vs v5",
+    "args": [],
+    "cmd": [
+      "C:/Users/devgu/AppData/Local/Temp/claude/C--Users-devgu-Downloads-fcb-hackathon--claude-worktrees-more-than-hack-2027-a8761a/a29a4749-e50b-408d-818f-689163487b56/scratchpad/public_cmp.py",
+      "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_v5_kickoff.csv",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_v7_rnd4.csv",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_v7_rnd4_tuned.csv"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-10-25 17:01",
+    "result": null,
+    "finished": "2026-10-25 17:01",
+    "exit_code": 0
+  },
+  {
+    "id": "RN4set",
+    "title": "v7 tuned: dead-ball share around set pieces",
+    "args": [],
+    "cmd": [
+      "C:/Users/devgu/AppData/Local/Temp/claude/C--Users-devgu-Downloads-fcb-hackathon--claude-worktrees-more-than-hack-2027-a8761a/a29a4749-e50b-408d-818f-689163487b56/scratchpad/setpiece_align.py",
+      "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/bundle",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_v7_rnd4_tuned.csv"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-10-25 17:01",
+    "result": null,
+    "finished": "2026-10-25 17:01",
+    "exit_code": 0
+  },
+  {
+    "id": "V5set",
+    "title": "v5 (submitted): dead-ball share around set pieces, for comparison",
+    "args": [],
+    "cmd": [
+      "C:/Users/devgu/AppData/Local/Temp/claude/C--Users-devgu-Downloads-fcb-hackathon--claude-worktrees-more-than-hack-2027-a8761a/a29a4749-e50b-408d-818f-689163487b56/scratchpad/setpiece_align.py",
+      "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/bundle",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_v5_kickoff.csv"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-10-25 17:01",
+    "result": null,
+    "finished": "2026-10-25 17:01",
+    "exit_code": 0
   }
 ]
