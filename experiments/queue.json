@@ -2324,8 +2324,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "running",
-    "started": "2026-10-26 01:10"
+    "status": "done",
+    "started": "2026-10-26 01:10",
+    "result": null,
+    "finished": "2026-10-26 01:14",
+    "exit_code": 0
   },
   {
     "id": "ETTApub",
@@ -2345,6 +2348,10 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-26 01:14",
+    "result": null,
+    "finished": "2026-10-26 01:14",
+    "exit_code": 0
   }
 ]
