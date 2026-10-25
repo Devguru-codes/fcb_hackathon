@@ -1553,5 +1553,96 @@
     "result": null,
     "finished": "2026-10-25 17:01",
     "exit_code": 0
+  },
+  {
+    "id": "RF4s0",
+    "title": "randomised noise 4 draws + tracker faults, CV seed 0 (vs RN4s0)",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.experiments",
+      "--model",
+      "temporal",
+      "--member",
+      "0",
+      "--draws",
+      "4",
+      "--faults"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": "RN4s0",
+    "status": "running",
+    "started": "2026-10-25 17:41"
+  },
+  {
+    "id": "RN6s0",
+    "title": "randomised noise 6 draws, CV seed 0 (vs RN4s0)",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.experiments",
+      "--model",
+      "temporal",
+      "--member",
+      "0",
+      "--draws",
+      "6"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": "RN4s0",
+    "status": "pending"
+  },
+  {
+    "id": "RF4s1",
+    "title": "randomised noise 4 draws + tracker faults, CV seed 1 (vs RN4s1)",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.experiments",
+      "--model",
+      "temporal",
+      "--member",
+      "1",
+      "--draws",
+      "4",
+      "--faults"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": "RN4s1",
+    "status": "pending"
+  },
+  {
+    "id": "RN6s1",
+    "title": "randomised noise 6 draws, CV seed 1 (vs RN4s1)",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.experiments",
+      "--model",
+      "temporal",
+      "--member",
+      "1",
+      "--draws",
+      "6"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": "RN4s1",
+    "status": "pending"
   }
 ]

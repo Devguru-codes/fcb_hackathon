@@ -16,7 +16,8 @@ baseline, and the results table in docs/plan_of_action.md (between the autoqueue
 rewritten. Before starting a job the runner waits while any other tempolens.experiments or
 tempolens.train process is running, so manual runs and the queue never share the GPU. A failed
 job is marked and skipped. Create experiments/STOP to end the loop after the current job. While
-jobs are pending the runner asks Windows not to idle-sleep (SetThreadExecutionState).
+jobs are pending the runner asks Windows not to idle-sleep (SetThreadExecutionState), and it
+waits instead of starting a job while the disk has under MIN_FREE_GB free.
 Nothing is committed or pushed.
 """
 
@@ -24,6 +25,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -38,6 +40,7 @@ PLAN = ROOT / "docs" / "plan_of_action.md"
 START, END = "<!-- autoqueue:start -->", "<!-- autoqueue:end -->"
 NOISE = 0.005        # a gain in mean spellF1 below this is noise until the seed check says more
 IDLE_SECONDS = 300
+MIN_FREE_GB = 25   # a CV run with new noise draws writes ~15 GB of feature cache
 RESULT = re.compile(r"^mean ([0-9.]+) \(dfl ([0-9.]+), metrica ([0-9.]+)\)\s+costs (\(.*\))")
 
 
@@ -129,9 +132,17 @@ def write_plan(jobs):
     os.replace(tmp, PLAN)
 
 
+def free_gb():
+    return shutil.disk_usage(os.environ.get("MTAH_OPEN_DATA_DIR") or ROOT).free / 1e9
+
+
 def run_job(job, jobs):
     while other_runs():
         print("{}  waiting: another training/CV run is active".format(now()), flush=True)
+        time.sleep(IDLE_SECONDS)
+    while free_gb() < MIN_FREE_GB:      # never fill the disk: wait for space to be freed
+        print("{}  waiting: only {:.0f} GB free (need {})".format(now(), free_gb(), MIN_FREE_GB),
+              flush=True)
         time.sleep(IDLE_SECONDS)
     LOGS.mkdir(parents=True, exist_ok=True)
     log = LOGS / "{}.log".format(job["id"])
