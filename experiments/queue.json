@@ -2014,7 +2014,16 @@
       "dfl": 0.7428
     },
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 21:23",
+    "result": {
+      "all": 0.7525,
+      "dfl": 0.7442,
+      "metrica": 0.7718,
+      "costs": "(4.0, 8.0, 8.0, 0.0)"
+    },
+    "finished": "2026-10-25 21:51",
+    "exit_code": 0
   },
   {
     "id": "CH1",
@@ -2039,7 +2048,16 @@
       "dfl": 0.747
     },
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 21:52",
+    "result": {
+      "all": 0.7507,
+      "dfl": 0.7454,
+      "metrica": 0.7633,
+      "costs": "(2.0, 8.0, 8.0, 0.0)"
+    },
+    "finished": "2026-10-25 22:21",
+    "exit_code": 0
   },
   {
     "id": "CHtrain0",
@@ -2061,7 +2079,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 22:21",
+    "result": null,
+    "finished": "2026-10-25 22:25",
+    "exit_code": 0
   },
   {
     "id": "CHtrain1",
@@ -2083,7 +2105,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 22:25",
+    "result": null,
+    "finished": "2026-10-25 22:30",
+    "exit_code": 0
   },
   {
     "id": "CHtrain2",
@@ -2105,7 +2131,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 22:30",
+    "result": null,
+    "finished": "2026-10-25 22:33",
+    "exit_code": 0
   },
   {
     "id": "CHpred",
@@ -2129,7 +2159,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 22:33",
+    "result": null,
+    "finished": "2026-10-25 22:37",
+    "exit_code": 0
   },
   {
     "id": "CHtta",
@@ -2151,7 +2185,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 22:37",
+    "result": null,
+    "finished": "2026-10-25 22:41",
+    "exit_code": 0
   },
   {
     "id": "CHpub",
@@ -2171,7 +2209,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 22:41",
+    "result": null,
+    "finished": "2026-10-25 22:41",
+    "exit_code": 0
   },
   {
     "id": "CHset",
@@ -2189,7 +2231,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 22:41",
+    "result": null,
+    "finished": "2026-10-25 22:41",
+    "exit_code": 0
   },
   {
     "id": "CHsettta",
@@ -2207,6 +2253,10 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-10-25 22:41",
+    "result": null,
+    "finished": "2026-10-25 22:41",
+    "exit_code": 0
   }
 ]

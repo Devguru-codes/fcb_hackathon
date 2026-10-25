@@ -126,6 +126,7 @@ dynamic switch cost is what our change bonus already does.
 | ⏸ | TTA | **Test-time re-normalisation** (`temporal.adapt_normaliser`): each member's feature scaling moved to the target match's own medians and spreads, no labels (AdaBN-style; organisers allow test-time adaptation, per the user) | sim-to-real gap; dead ball at restarts | Open data, paired (same weights, no shift to correct): alpha 0.5 −0.006, alpha 1 −0.019. **Real match, alpha 1:** v7 models: public spellF1 0.629 vs v5 0.594 (CI 0.46–0.79), macroF1 0.849 vs 0.819, dead-ball recall 0.647 vs 0.534 (precision 0.88), last 5 s before goal kicks dead 0.77 vs 0.59, corners 0.99 vs 0.91; v5 models: spellF1 0.594, macroF1 0.851, dead-ball recall 0.680. Full match dead 0.455–0.465 vs 0.421 | real match improves on every measure we have; open data cannot show a shift it does not contain. Awaiting the user's reel review (v5 vs v7+TTA, top 20) |
 | ⏸ | ENV | Smart Tagging restart envelope: +1.5 / +3 to log P(D) from 5–10 s before each SET PIECES tag opens until 2–3.5 s after (tags are a fixed 35 s long, so only the start informs) | dead ball at restarts | changes 0.6–1.2% of graded frames; public spellF1 unchanged (0.594), macroF1 up to 0.823 (variant d), dead-ball recall up to 0.554 (precision 0.977); the set-piece table improves by construction, so it cannot judge this | small; revisit on top of test-time adaptation |
 | ❌ | MIND | Minimum possession length 19 / 25 frames on the real match (v5 ensemble, `mbr.decode_min_duration`) | short false possessions in the review | public spellF1 0.583 vs 0.594 (one boundary worse), macroF1 0.817; 309 vs 313 possessions | not adopted (matches the open-data +0.001) |
+| ❌ | CH | 60 s training windows (`--chunk 1500`; inference reads 120 s) | train/infer context mismatch | CV seed 0 +0.0013, seed 1 −0.0064. Real match (v5 decoder): public spellF1 0.635 (17 of 17 possessions) but macroF1 0.794 and dead-ball recall 0.460 (v5 0.819 / 0.534); with test-time adaptation 0.582 / 0.801 | not adopted: CV flat and the real match mixed (spellF1 up on one lucky count, tie-break and dead ball down) |
 | ⬜ | H8 | Use the ATD's own per-object speed | tracker-smoothed speeds unused | needs simulating for open data | small |
 | ⬜ | H9 | Full HSMM with learned duration distributions | — | decode study | low value (decoder ceiling +0.002) |
 | 🚫 | H10 | Label-shift correction (Saerens EM, logit adjustment) | — | — | assumes classes look alike in train and test; real dead balls do not |
@@ -239,4 +240,14 @@ Written by `python -m tempolens.autoqueue` from `experiments/queue.json` (✅ he
 | ✅ | ENVsetd | restart envelope d: dead-ball share around set pieces |  |  |  |  |  | 2026-10-25 21:13 |
 | ✅ | MIND | minimum possession length 19 / 25 frames on the real match (v5 ensemble) |  |  |  |  |  | 2026-10-25 21:13 |
 | ✅ | MINDpub | minimum length: public window + dead-ball recall vs v5 |  |  |  |  |  | 2026-10-25 21:13 |
+| ✅ | CH0 | 60 s training windows (chunk 1500), CV seed 0 (vs v5) | 0.7525 | 0.7442 | 0.7718 | (4.0, 8.0, 8.0, 0.0) | no gain (+0.0013) | 2026-10-25 21:51 |
+| ✅ | CH1 | 60 s training windows (chunk 1500), CV seed 1 (vs v5) | 0.7507 | 0.7454 | 0.7633 | (2.0, 8.0, 8.0, 0.0) | no gain (-0.0064) | 2026-10-25 22:21 |
+| ✅ | CHtrain0 | 60 s windows: train member 0 (models/exp/) |  |  |  |  |  | 2026-10-25 22:25 |
+| ✅ | CHtrain1 | 60 s windows: train member 1 (models/exp/) |  |  |  |  |  | 2026-10-25 22:30 |
+| ✅ | CHtrain2 | 60 s windows: train member 2 (models/exp/) |  |  |  |  |  | 2026-10-25 22:33 |
+| ✅ | CHpred | 60 s windows: build tempolens_v8_c1500.csv (v5 decoder) |  |  |  |  |  | 2026-10-25 22:37 |
+| ✅ | CHtta | 60 s windows + test-time re-normalisation (alpha 1) |  |  |  |  |  | 2026-10-25 22:41 |
+| ✅ | CHpub | 60 s windows: public window + dead-ball recall |  |  |  |  |  | 2026-10-25 22:41 |
+| ✅ | CHset | 60 s windows (no TTA): dead-ball share around set pieces |  |  |  |  |  | 2026-10-25 22:41 |
+| ✅ | CHsettta | 60 s windows + TTA: dead-ball share around set pieces |  |  |  |  |  | 2026-10-25 22:41 |
 <!-- autoqueue:end -->
