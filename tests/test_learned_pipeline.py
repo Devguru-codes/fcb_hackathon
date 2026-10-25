@@ -205,6 +205,20 @@ class SimulatorTests(unittest.TestCase):
 
 
 class EnsembleTests(unittest.TestCase):
+    def test_adapted_normaliser_moves_to_the_target_and_keeps_the_width(self):
+        from tempolens.features import frame_features
+        from tempolens.temporal import Normaliser, adapt_normaliser
+        table = SimulatorTests()._labelled(4000)
+        x = frame_features(table)[0]
+        base = Normaliser(np.asarray(x[table.period > 0][::10]) + 5.0)   # a shifted "training" fit
+        same = adapt_normaliser(base, table, alpha=0.0)
+        np.testing.assert_array_equal(same.median, base.median)
+        full = adapt_normaliser(base, table, alpha=1.0)
+        own = Normaliser(np.asarray(x[table.period > 0][::10]))
+        np.testing.assert_allclose(full.median, own.median)
+        np.testing.assert_array_equal(full.flagged, base.flagged)
+        self.assertEqual(full(x).shape, base(x).shape)
+
     def test_combine_averages_probabilities_and_change_logits(self):
         from tempolens.temporal import combine
         a = np.column_stack([np.log([[0.8, 0.1, 0.1]]), [[2.0]]])

@@ -115,6 +115,19 @@ class Normaliser:
         return self
 
 
+def adapt_normaliser(normaliser, sample, alpha=1.0):
+    """Test-time adaptation by re-centring: the scaling moved `alpha` of the way to the target
+    match's own medians and spreads (unlabelled; AdaBN for a model without normalisation
+    layers). The missing-value flags keep the training columns, so the network's inputs keep
+    their width."""
+    sample = _as_sample(sample)
+    own = Normaliser(np.asarray(sample.features(False))[sample.period > 0][::10])
+    out = Normaliser.from_state(normaliser.state())
+    out.median = (1 - alpha) * normaliser.median + alpha * own.median
+    out.scale = (1 - alpha) * normaliser.scale + alpha * own.scale
+    return out
+
+
 def change_targets(labels, dilate=CHANGE_DILATE):
     """1 where the label changes within +/-dilate frames, 0 elsewhere, -1 where unknown."""
     change = np.zeros(len(labels), dtype=np.float32)
