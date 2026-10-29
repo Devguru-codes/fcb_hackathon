@@ -1,14 +1,15 @@
 {
-  "_provenance": "Costs from the v4 ensemble's 5-fold CV (0.764 all / 0.754 DFL on simulator v2; features v3), used unchanged for the submitted v5 ensemble below (features v4 = v3 + restart-spot features, same simulator and recipe; single-member CV of v5 ties v4: 0.7512 / 0.7571 vs 0.7543 / 0.7556 over 2 seeds). python -m tempolens.experiments --model ensemble re-derives them.",
+  "_provenance": "v7+TTA, adopted 2026-10-29. Members trained with domain randomisation (python -m tempolens.train --member k --draws 4: 4 noise draws per open match, each with its own simulator settings). Costs are v5's (switch 4, alive>dead 8, dead>alive 8, change bonus 1.0): the CV-tuned costs (2, 2, 2, 0.5) allow cheap switches and lowered the public window to 0.549. tta_alpha 1: test-time re-normalisation of every member's feature scaling on the match itself (temporal.adapt_normaliser). Evidence: ensemble CV 0.7682 vs v5 0.7591 at these costs; real match public spellF1 0.629 vs 0.594, macroF1 0.849 vs 0.819, dead-ball recall 0.647 vs 0.534; human review of all 88 disagreements with v5: 45 vs 33, the 20 longest 14 vs 4. Previous: v5 = tempolens_gru*.pt, tta_alpha 0.",
   "members": [
-    "tempolens_gru.pt",
-    "tempolens_gru_m1.pt",
-    "tempolens_gru_m2.pt"
+    "tempolens_rnd4_m0.pt",
+    "tempolens_rnd4_m1.pt",
+    "tempolens_rnd4_m2.pt"
   ],
   "switch": 4.0,
   "alive_to_dead": 8.0,
   "dead_to_alive": 8.0,
   "change_weight": 1.0,
+  "tta_alpha": 1.0,
   "tag_prior": "off",
   "_tag_prior": "'auto' adds the self-calibrated Smart Tagging prior (tagprior.py). Off: on the real match the tags agree with a confident model 83% (attacking codes) and 94% (defensive codes) of the time, yet the prior lowered the public-window spellF1 (0.43 vs 0.59, single GRU)."
 }
