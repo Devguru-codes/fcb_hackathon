@@ -243,6 +243,14 @@ which one is right. Hand labels only validate, as the rules allow.
   stoppages (keepers holding the ball, set pieces being prepared, injuries, ball out). Its
   remaining weakness is the reverse: live balls at restarts (corner deliveries, balls a keeper
   releases) called dead ball.
+- **Output-layer adaptation (EATA, Niu et al. 2022)**, after the re-scaling: each member's
+  output layer (192 × 4 weights plus 4 biases; the rest of the network frozen) takes 30
+  full-batch Adam steps that lower the H/A/D entropy of frames that are already confident
+  (entropy < 0.4 ln 3), weighted exp(E0 − E), over every 5th frame inside the halves and both
+  team views (`temporal.adapt_head`, `eata_steps` in the decoder settings). It is CPU float64 in a
+  fixed order, so it is deterministic. Public window 0.647 / 0.8725 (17 of 17 possessions),
+  dead-ball recall 0.728 (precision 0.876). Human review of all 24 disagreements with the
+  version without it: 20 to 4. **Submitted.**
 - **Simulator check.** Ball missing on 40.7% of graded frames in both simulation and the real
   match, with the same share in gaps of 20 s or more (0.68 real, 0.65–0.78 simulated) and the same
   missing rate around stoppages (0.65–0.73 real, 0.70 simulated). The public window is atypical:

@@ -25,13 +25,12 @@ becomes public at submission).
 
 | | |
 |---|---|
-| version | **v7+TTA** — features v4, simulator v2, 3-GRU ensemble trained with domain randomisation (4 noise draws per match, each with its own simulator settings), test-time re-normalisation on the match (`tta_alpha` 1), decoder switch 4 / 8 / 8, change bonus 1.0 |
-| file | `submissions/tempolens_v7_final.csv` (outside git), sha256 `83d89f66…`, validated, reproduced byte for byte by `python -m tempolens.predict` from a clean checkout of commit `c3ba16f` |
-| CV (simulator v2, ensemble, these costs) | 0.7682 vs v5 0.7591 (adaptation off; on simulated test data it cannot help) |
-| public window (sanity) | spellF1 0.629 / macroF1 0.849, 18 possessions vs 17, dead-ball recall 0.647 (precision 0.88) — v5: 0.594 / 0.819 / 0.534 |
-| human review vs v5 | all 88 disagreements of 1 s or more: v7+TTA right 45, v5 33 (4 both wrong, 6 unclear); 20 longest 14 vs 4 |
-| full match | 302 possessions, mean 11.5 s; dead ball 45.5% of graded frames |
-| previous | v5 + kickoff fix `tempolens_v5_kickoff.csv` (sha256 `8ed021bd…`, commit `1b061bb`) stays reproducible from its commit |
+| version | **v7+TTA+EATA** — features v4, simulator v2, 3-GRU ensemble trained with domain randomisation (4 noise draws per match, each with its own simulator settings); on the match: feature scaling re-fitted (`tta_alpha` 1), then each member's output layer adapted, EATA-style (`eata_steps` 30); decoder switch 4 / 8 / 8, change bonus 1.0 |
+| file | `submissions/tempolens_final.csv` (outside git), sha256 `b483d0a3…`, validated, reproduced byte for byte by `python -m tempolens.predict` from a clean checkout of commit `88bed2e` |
+| public window (sanity) | spellF1 0.647 / macroF1 0.8725, 17 possessions vs 17, dead-ball recall 0.728 (precision 0.876) — v7+TTA 0.629 / 0.849; v5 0.594 / 0.819 |
+| human review | vs v7+TTA: all 24 disagreements, EATA right 20, v7+TTA 4 (20 longest 16 vs 4). v7+TTA vs v5: 45 vs 33 |
+| full match | 301 possessions, mean 11.2 s |
+| previous | v7+TTA `tempolens_v7_final.csv` (sha256 `83d89f66…`, commit `c3ba16f`); v5 + kickoff fix (commit `1b061bb`) |
 
 ## A. Pipeline milestones
 
@@ -125,7 +124,7 @@ dynamic switch cost is what our change bonus already does.
 | ❌ | RN | **Domain randomisation** (`--draws 4`): each training match gets 4 noise draws with their own simulator settings (ball missing 30–50%, stoppages lost 40–90%, gap median 6–18 s, player dropout 2–8%, ball noise 0.1–0.4 m); held-out matches keep the fixed test noise | CV 0.75 vs real 0.59 | **CV: single members +0.0064 / +0.0106 / +0.0130 (seeds 0/1/2); 3-member ensemble 0.7716 vs v5 ensemble 0.7636 (+0.0080, DFL +0.0071, 8 of 10 matches); ahead at every decoder cost tried (+0.006 to +0.013), at v5's submitted costs (4, 8, 8, 1.0) 0.7682 vs 0.7591.** 2 draws: −0.004 (mean); 4 draws + width 160: +0.005. Real match, v7 at v5's costs (`tempolens_v7_rnd4.csv`): public spellF1 0.582 vs 0.594 (16 vs 18 possessions, truth 17; bootstrap 95% CI 0.41–0.74 vs 0.42–0.74), macroF1 0.820 vs 0.819, dead-ball recall 0.542 vs 0.534, 292 vs 313 possessions; less dead ball before goal kicks (0.48 vs 0.59 over the last 5 s) and corners (0.82 vs 0.91), more before kick-offs. v7 at its CV-tuned costs (2, 2, 2, 0.5): public 0.549, so cheap switches do not transfer | **not adopted: full human review of all 71 v5/v7 disagreements: v5 right 38, v7 right 29** (v7 merges across real turnovers). Follow-ups: + tracker faults seed 0 −0.0052 vs v7 recipe; 6 draws seed 0 −0.0038 (plateau); seed-1 runs cancelled. Lesson: a CV gain under the simulator did not transfer to the real match |
 | ✅ | HR | Human review of every disagreement of 1 s or more (user, 2026-10-25) | the real match is the only truth that counts | v4 vs v5: v5 right 34/62, v4 24, both wrong 3, unclear 1. v5 vs v7: v5 right 38/71, v7 29. Failure modes: v4 splits open play with false dead stretches; v5 misses goal-kick and restart dead ball; v7 merges across turnovers; both-wrong clips are restarts and aerial handovers | v5 confirmed as the submission; next target: dead ball at restarts |
 | ✅ | TTA | **Test-time re-normalisation** (`temporal.adapt_normaliser`): each member's feature scaling moved to the target match's own medians and spreads, no labels (AdaBN-style; organisers allow test-time adaptation, per the user) | sim-to-real gap; dead ball at restarts | Open data, paired (same weights, no shift to correct): alpha 0.5 −0.006, alpha 1 −0.019. **Real match, alpha 1:** v7 models: public spellF1 0.629 vs v5 0.594 (CI 0.46–0.79), macroF1 0.849 vs 0.819, dead-ball recall 0.647 vs 0.534 (precision 0.88), last 5 s before goal kicks dead 0.77 vs 0.59, corners 0.99 vs 0.91; v5 models: spellF1 0.594, macroF1 0.851, dead-ball recall 0.680. Full match dead 0.455–0.465 vs 0.421 | real match improves on every measure we have; open data cannot show a shift it does not contain. **adopted with v7 (submission v7+TTA)**: human review of all 88 disagreements 45 vs 33 for v7+TTA |
-| ⏸ | EATA | Entropy-gated adaptation of each member's output layer on the real match (EATA, Niu et al. 2022; from the rival sweep), on top of test-time re-normalisation: full-batch Adam on frames with entropy < 0.4 ln 3, weighted exp(E0 − E), halves only, CPU float64 | tie-break gap, dead ball | public: 10 steps 0.629 / 0.852, **30 steps spellF1 0.647, macroF1 0.8725, 17 of 17 possessions, dead-ball recall 0.728 (precision 0.876)**; submitted 0.629 / 0.849 / 0.647 | reel review pending (`reel_v7_eata30.mp4`) |
+| ✅ | EATA | Entropy-gated adaptation of each member's output layer on the real match (EATA, Niu et al. 2022; from the rival sweep), on top of test-time re-normalisation: full-batch Adam on frames with entropy < 0.4 ln 3, weighted exp(E0 − E), halves only, CPU float64 | tie-break gap, dead ball | public: 10 steps 0.629 / 0.852, **30 steps spellF1 0.647, macroF1 0.8725, 17 of 17 possessions, dead-ball recall 0.728 (precision 0.876)**; submitted 0.629 / 0.849 / 0.647 | **adopted**: human review 20 vs 4 (all 24 disagreements); `eata_steps` 30 in `decoder.json` |
 | ❌ | BD | Turnover back-dating (Remontada / Polyamal / INVICTA): move each H↔A change back to the new team's first close contact | rivals' causal rules switch late | open-data CV, v7 ensemble: 50-frame lookback 0.7066 vs 0.7682, 25 frames 0.7356; v5 the same. Our bidirectional model plus Viterbi has a median offset of 0 frames on ~4,000 open-data boundaries | not adopted |
 | ⏸ | OB | Out-of-pitch bridge (INVICTA's OFF_BRIDGE): dead ball starts where the seen ball was last outside the pitch, up to 7 s before | stoppage onset 45 frames late on the public window | open-data CV −0.002; real: public spellF1 unchanged, macroF1 0.8513 vs 0.8489, dead-ball recall 0.655 | small; reel pending |
 | ❌ | MIX | v5 + v7 members (6) with test-time adaptation | v5 better on turnovers, v7 on dead ball | public 0.589 / 0.824 vs 0.629 / 0.849, dead-ball precision 0.847 | not adopted |
@@ -272,13 +271,16 @@ Written by `python -m tempolens.autoqueue` from `experiments/queue.json` (✅ he
 | ✅ | EATA | EATA head adaptation (10 / 30 steps) and out-of-pitch bridge on the real match |  |  |  |  |  | 2026-10-29 20:57 |
 | ✅ | EApub | EATA and bridge: public window + dead-ball recall vs v7+TTA |  |  |  |  |  | 2026-10-29 20:57 |
 | ✅ | EAset | EATA 10: dead-ball share around set pieces |  |  |  |  |  | 2026-10-29 20:57 |
-| ⏳ | REELeata10 | review reel v7+TTA vs eata10 |  |  |  |  |  |  |
-| ⬜ | TOPeata10 | top-20 sheet v7+TTA vs eata10 |  |  |  |  |  |  |
-| ⬜ | REELbridge | review reel v7+TTA vs bridge |  |  |  |  |  |  |
-| ⬜ | TOPbridge | top-20 sheet v7+TTA vs bridge |  |  |  |  |  |  |
-| ⬜ | TCNcv | TCN residual corrector on the frozen v7 ensemble: 5-fold CV on open data |  |  |  |  |  |  |
-| ⬜ | TCNreal | TCN corrector trained on all open matches, applied to v7+TTA on the real match |  |  |  |  |  |  |
-| ⬜ | TCNpub | TCN corrector: public window + dead-ball recall vs v7+TTA |  |  |  |  |  |  |
-| ⬜ | REELtcn | review reel v7+TTA vs TCN corrector |  |  |  |  |  |  |
-| ⬜ | TOPtcn | top-20 sheet v7+TTA vs TCN corrector |  |  |  |  |  |  |
+| ✅ | REELeata10 | review reel v7+TTA vs eata10 |  |  |  |  |  | 2026-10-29 21:02 |
+| ✅ | TOPeata10 | top-20 sheet v7+TTA vs eata10 |  |  |  |  |  | 2026-10-29 21:02 |
+| ✅ | EAset30 | EATA 30: dead-ball share around set pieces |  |  |  |  |  | 2026-10-29 21:02 |
+| ✅ | REELeata30 | review reel v7+TTA vs eata30 |  |  |  |  |  | 2026-10-29 21:08 |
+| ✅ | TOPeata30 | top-20 sheet v7+TTA vs eata30 |  |  |  |  |  | 2026-10-29 21:08 |
+| ✅ | REELbridge | review reel v7+TTA vs bridge |  |  |  |  |  | 2026-10-29 21:12 |
+| ✅ | TOPbridge | top-20 sheet v7+TTA vs bridge |  |  |  |  |  | 2026-10-29 21:12 |
+| ✅ | TCNcv | TCN residual corrector on the frozen v7 ensemble: 5-fold CV on open data |  |  |  |  |  | 2026-10-29 21:25 |
+| ✅ | TCNreal | TCN corrector trained on all open matches, applied to v7+TTA on the real match |  |  |  |  |  | 2026-10-29 21:32 |
+| ✅ | TCNpub | TCN corrector: public window + dead-ball recall vs v7+TTA |  |  |  |  |  | 2026-10-29 21:32 |
+| ✅ | REELtcn | review reel v7+TTA vs TCN corrector |  |  |  |  |  | 2026-10-29 21:44 |
+| ✅ | TOPtcn | top-20 sheet v7+TTA vs TCN corrector |  |  |  |  |  | 2026-10-29 21:44 |
 <!-- autoqueue:end -->
