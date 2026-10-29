@@ -28,7 +28,7 @@ becomes public at submission).
 | version | **v7+TTA+EATA** — features v4, simulator v2, 3-GRU ensemble trained with domain randomisation (4 noise draws per match, each with its own simulator settings); on the match: feature scaling re-fitted (`tta_alpha` 1), then each member's output layer adapted, EATA-style (`eata_steps` 30); decoder switch 4 / 8 / 8, change bonus 1.0 |
 | file | `submissions/tempolens_final.csv` (outside git), sha256 `b483d0a3…`, validated, reproduced byte for byte by `python -m tempolens.predict` from a clean checkout of commit `88bed2e` |
 | public window (sanity) | spellF1 0.647 / macroF1 0.8725, 17 possessions vs 17, dead-ball recall 0.728 (precision 0.876) — v7+TTA 0.629 / 0.849; v5 0.594 / 0.819 |
-| human review | vs v7+TTA: all 24 disagreements, EATA right 20, v7+TTA 4 (20 longest 16 vs 4). v7+TTA vs v5: 45 vs 33 |
+| human review | vs v5 (everything changed since v5): all 96 disagreements, final right 54 (277 s), v5 33 (93 s), both wrong 4, unclear 5; 20 longest 16 vs 2. vs v7+TTA: all 24, 20 vs 4 (20 longest 16 vs 4). v7+TTA vs v5: 45 vs 33 |
 | full match | 301 possessions, mean 11.2 s |
 | previous | v7+TTA `tempolens_v7_final.csv` (sha256 `83d89f66…`, commit `c3ba16f`); v5 + kickoff fix (commit `1b061bb`) |
 

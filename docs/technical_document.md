@@ -250,7 +250,8 @@ which one is right. Hand labels only validate, as the rules allow.
   team views (`temporal.adapt_head`, `eata_steps` in the decoder settings). It is CPU float64 in a
   fixed order, so it is deterministic. Public window 0.647 / 0.8725 (17 of 17 possessions),
   dead-ball recall 0.728 (precision 0.876). Human review of all 24 disagreements with the
-  version without it: 20 to 4. **Submitted.**
+  version without it: 20 to 4. **Submitted.** Against v5, over all 96 disagreements of 1 s or
+  more, the submission was right 54 times (277 s) and v5 33 times (93 s); 4 both wrong, 5 unclear.
 - **Simulator check.** Ball missing on 40.7% of graded frames in both simulation and the real
   match, with the same share in gaps of 20 s or more (0.68 real, 0.65–0.78 simulated) and the same
   missing rate around stoppages (0.65–0.73 real, 0.70 simulated). The public window is atypical:
