@@ -131,6 +131,44 @@ def adapt_normaliser(normaliser, sample, alpha=1.0):
     return out
 
 
+def adapt_head(model, normaliser, sample, steps, lr=1e-3, gate=0.4):
+    """Test-time adaptation of the output layer (EATA, Niu et al. 2022): the backbone's head
+    inputs over the whole target match (both team views, frames outside the halves dropped,
+    every 5th frame) are captured once, then the head takes `steps` full-batch Adam steps that
+    lower the H/A/D entropy of frames already confident (entropy < gate * ln 3), each weighted
+    exp(E0 - E). Unlabelled; CPU float64 in a fixed order, so deterministic. Modifies `model`."""
+    torch = _torch()
+    sample = _as_sample(sample)
+    heads, inputs = [], []
+    hooks = [model.head.register_forward_hook(lambda m, i, o: heads.append(i[0].detach())),
+             model.inp.register_forward_hook(lambda m, i, o: inputs.append(i[0].detach()))]
+    try:
+        predict(model, normaliser, sample)
+    finally:
+        for hook in hooks:
+            hook.remove()
+    h = torch.cat([c.reshape(-1, c.shape[-1]) for c in heads])
+    x = torch.cat([c.reshape(-1, c.shape[-1]) for c in inputs])
+    flags = len(normaliser.flagged)
+    # a frame outside the halves has every feature missing: all its missing-value flags are set
+    keep = ~(x[:, -flags:] > 0.5).all(dim=1) if flags else torch.ones(len(x), dtype=torch.bool)
+    h = h[keep][::5]
+    e0 = gate * np.log(3)
+    optimiser = torch.optim.Adam(model.head.parameters(), lr=lr)
+    for _ in range(steps):
+        p = torch.softmax(model.head(h)[:, :3], dim=1)
+        entropy = -(p * torch.log(p.clamp_min(1e-12))).sum(dim=1)
+        confident = entropy < e0
+        if not confident.any():
+            break
+        weight = torch.exp(e0 - entropy[confident]).detach()
+        loss = (weight * entropy[confident]).mean()
+        optimiser.zero_grad()
+        loss.backward()
+        optimiser.step()
+    return model.eval()
+
+
 def change_targets(labels, dilate=CHANGE_DILATE):
     """1 where the label changes within +/-dilate frames, 0 elsewhere, -1 where unknown."""
     change = np.zeros(len(labels), dtype=np.float32)

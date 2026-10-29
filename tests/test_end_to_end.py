@@ -108,10 +108,11 @@ class EndToEndTests(unittest.TestCase):
                 predict.predict(folder, again, model, decoder)
             self.assertEqual(output.read_bytes(), again.read_bytes())
 
-            # Test-time adaptation, set in the decoder JSON, is deterministic too.
+            # Test-time adaptation (scaling and output layer), set in the decoder JSON, is
+            # deterministic too.
             settings = json.loads(decoder.read_text())
             adapted = Path(folder) / "d_tta.json"
-            adapted.write_text(json.dumps(dict(settings, tta_alpha=1.0)))
+            adapted.write_text(json.dumps(dict(settings, tta_alpha=1.0, eata_steps=5)))
             first, second = Path(folder) / "tta1.csv", Path(folder) / "tta2.csv"
             predict.predict(folder, first, model, adapted)
             predict.predict(folder, second, model, adapted)

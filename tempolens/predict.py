@@ -49,11 +49,12 @@ def _paths(model_paths):
 
 
 def learned_logp(data_root, game, model_paths, video_ball=None, video_fill="alive",
-                 tta_alpha=0.0):
+                 tta_alpha=0.0, eata_steps=0):
     """(competition MatchTable, ensemble output (n, 4)). The slow part: run it once.
 
     `tta_alpha` > 0: test-time adaptation -- each member's feature scaling is moved that far
     toward this match's own medians and spreads (temporal.adapt_normaliser), unlabelled.
+    `eata_steps` > 0: then each member's output layer adapts to the match (temporal.adapt_head).
 
     `video_ball`: optional ball_filled.npz from tempolens.vision.run. Its detections fill the
     tracking's ball gaps -- everywhere ("all"), or ("alive") only where a first pass of the
@@ -69,11 +70,16 @@ def learned_logp(data_root, game, model_paths, video_ball=None, video_fill="aliv
     if not paths:
         raise IOError("no model weights given and none found in models/")
     members = [temporal.load(path) for path in paths]
+    from .features import TableSample
+    sample = TableSample(table)      # features computed once, shared by every member
     if tta_alpha:
-        members = [(model, temporal.adapt_normaliser(normaliser, table, tta_alpha))
+        members = [(model, temporal.adapt_normaliser(normaliser, sample, tta_alpha))
+                   for model, normaliser in members]
+    if eata_steps:
+        members = [(temporal.adapt_head(model, normaliser, sample, eata_steps), normaliser)
                    for model, normaliser in members]
     if video_ball is None:
-        return table, temporal.predict_ensemble(members, table)
+        return table, temporal.predict_ensemble(members, sample)
     filled = np.load(video_ball)
     from_video = filled["source"] == 2
     if len(from_video) != table.n_frames:
@@ -124,7 +130,7 @@ def predict(data_root, output, model_paths=None, decoder_path=DEFAULT_DECODER, g
     model_paths = model_paths or default_models(decoder_path)
     settings = load_decoder(decoder_path)
     table, logp = learned_logp(data_root, game, model_paths, video_ball, video_fill,
-                               settings.get("tta_alpha", 0.0))
+                               settings.get("tta_alpha", 0.0), settings.get("eata_steps", 0))
     states, _ = decode_learned(table, logp, settings, data_root, game)
     labels = np.array(["H", "A", "D", "X"])[np.where(states > 2, 3, states)].astype("<U1")
     # Only the two halves are graded. X elsewhere is free, and says plainly that halftime was not

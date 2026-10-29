@@ -1,5 +1,5 @@
 {
-  "_provenance": "v7+TTA, adopted 2026-10-29. Members trained with domain randomisation (python -m tempolens.train --member k --draws 4: 4 noise draws per open match, each with its own simulator settings). Costs are v5's (switch 4, alive>dead 8, dead>alive 8, change bonus 1.0): the CV-tuned costs (2, 2, 2, 0.5) allow cheap switches and lowered the public window to 0.549. tta_alpha 1: test-time re-normalisation of every member's feature scaling on the match itself (temporal.adapt_normaliser). Evidence: ensemble CV 0.7682 vs v5 0.7591 at these costs; real match public spellF1 0.629 vs 0.594, macroF1 0.849 vs 0.819, dead-ball recall 0.647 vs 0.534; human review of all 88 disagreements with v5: 45 vs 33, the 20 longest 14 vs 4. Previous: v5 = tempolens_gru*.pt, tta_alpha 0.",
+  "_provenance": "v7+TTA+EATA. eata_steps 30 (adopted 2026-10-29): each member's output layer then adapts to the match, EATA-style (temporal.adapt_head); public 0.647 / 0.8725 vs 0.629 / 0.849, human review of all 24 disagreements 20 vs 4. v7+TTA, adopted earlier the same day. Members trained with domain randomisation (python -m tempolens.train --member k --draws 4: 4 noise draws per open match, each with its own simulator settings). Costs are v5's (switch 4, alive>dead 8, dead>alive 8, change bonus 1.0): the CV-tuned costs (2, 2, 2, 0.5) allow cheap switches and lowered the public window to 0.549. tta_alpha 1: test-time re-normalisation of every member's feature scaling on the match itself (temporal.adapt_normaliser). Evidence: ensemble CV 0.7682 vs v5 0.7591 at these costs; real match public spellF1 0.629 vs 0.594, macroF1 0.849 vs 0.819, dead-ball recall 0.647 vs 0.534; human review of all 88 disagreements with v5: 45 vs 33, the 20 longest 14 vs 4. Previous: v5 = tempolens_gru*.pt, tta_alpha 0.",
   "members": [
     "tempolens_rnd4_m0.pt",
     "tempolens_rnd4_m1.pt",
@@ -10,6 +10,7 @@
   "dead_to_alive": 8.0,
   "change_weight": 1.0,
   "tta_alpha": 1.0,
+  "eata_steps": 30,
   "tag_prior": "off",
   "_tag_prior": "'auto' adds the self-calibrated Smart Tagging prior (tagprior.py). Off: on the real match the tags agree with a confident model 83% (attacking codes) and 94% (defensive codes) of the time, yet the prior lowered the public-window spellF1 (0.43 vs 0.59, single GRU)."
 }

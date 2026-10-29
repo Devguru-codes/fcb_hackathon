@@ -219,6 +219,25 @@ class EnsembleTests(unittest.TestCase):
         np.testing.assert_array_equal(full.flagged, base.flagged)
         self.assertEqual(full(x).shape, base(x).shape)
 
+    def test_head_adaptation_is_deterministic_and_lowers_entropy(self):
+        import copy
+        from tempolens import temporal
+        table = SimulatorTests()._labelled(3000)
+        model, normaliser = temporal.train([table], epochs=1, device="cpu", verbose=False,
+                                           config=temporal.TemporalConfig(hidden=16))
+        model = model.double()
+
+        def entropy(m):
+            p = np.exp(temporal.predict(m, normaliser, table)[table.period > 0, :3])
+            return float(-(p * np.log(np.clip(p, 1e-12, 1))).sum(axis=1).mean())
+        first = temporal.adapt_head(copy.deepcopy(model), normaliser, table, steps=20, lr=1e-2,
+                                    gate=1.0)
+        second = temporal.adapt_head(copy.deepcopy(model), normaliser, table, steps=20, lr=1e-2,
+                                     gate=1.0)
+        np.testing.assert_array_equal(first.head.weight.detach().numpy(),
+                                      second.head.weight.detach().numpy())
+        self.assertLess(entropy(first), entropy(model))
+
     def test_combine_averages_probabilities_and_change_logits(self):
         from tempolens.temporal import combine
         a = np.column_stack([np.log([[0.8, 0.1, 0.1]]), [[2.0]]])
