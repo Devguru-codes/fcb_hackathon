@@ -158,7 +158,8 @@ official `possession_metrics.py`. The public five minutes are used only as an al
 | 3 GRUs (seeds × noise draws), features v2, simulator v1 | 0.768 | 0.792 |
 | 3 GRUs, features v3, simulator v1 | 0.770 | 0.794 |
 | 3 GRUs, features v3, simulator v2 (v4) | 0.754 | 0.764 |
-| **3 GRUs, features v4 (+ restart spots), simulator v2 — submitted (v5)** | single member ties v4 | over 2 seeds |
+| 3 GRUs, features v4 (+ restart spots), simulator v2 (v5) | 0.7482 | 0.7591 |
+| **3 GRUs, v5 recipe + domain randomisation (v7); submitted with test-time adaptation** | 0.7555 | 0.7682 |
 
 Simulator v2 is harder and closer to the real tracking (visible dead-time ball, tracker ball
 noise), so its scores are not comparable with v1's; the choice between them rests on the real
@@ -236,8 +237,12 @@ which one is right. Hand labels only validate, as the rules allow.
   0.019 spellF1, as expected, because simulated test matches have no domain shift to correct. On
   the real match it lifts every measure we have. For v7 with adaptation: public spellF1 0.629 vs
   0.594, macroF1 0.849 vs 0.819, dead-ball recall 0.647 vs 0.534 (precision 0.88), and dead ball
-  in the last 5 s before goal kicks 0.77 vs 0.59. **[TBD: human review of v5 vs v7 with
-  adaptation; final choice.]**
+  in the last 5 s before goal kicks 0.77 vs 0.59. **Submitted:** on human review of all 88
+  disagreements with v5, v7 with adaptation was right 45 times and v5 33 (4 both wrong, 6
+  unclear), and 14 to 4 on the 20 longest. Most of its wins drop v5's stale "live" labels during
+  stoppages (keepers holding the ball, set pieces being prepared, injuries, ball out). Its
+  remaining weakness is the reverse: live balls at restarts (corner deliveries, balls a keeper
+  releases) called dead ball.
 - **Simulator check.** Ball missing on 40.7% of graded frames in both simulation and the real
   match, with the same share in gaps of 20 s or more (0.68 real, 0.65–0.78 simulated) and the same
   missing rate around stoppages (0.65–0.73 real, 0.70 simulated). The public window is atypical:
