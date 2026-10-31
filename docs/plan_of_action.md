@@ -66,6 +66,8 @@ becomes public at submission).
 | ❌ | Player-set attention encoder (PathCRF-style) | 0.714 vs 0.719 alone; 0.726 vs 0.730 in ensemble | slower, no gain |
 | ❌ | TCN | 0.717; ensemble 0.727 | no gain |
 | ⏸ | BCF | Broadcast ball fill (one offset per half, 9.7% of gaps) on top of the final (v7+TTA+EATA) | ball missing on 41% of graded frames | public window unchanged (0.6471); fill-all macroF1 0.8731 vs 0.8725, dead-ball precision 0.894 vs 0.876, but **310 possessions vs 301** (more splits), 28 disagreements (81 s); fill-alive: 9 disagreements (42 s), otherwise identical | negligible on every measure; adopt only if the user's reel review clearly favours it |
+| ❌ | FRA | Flank-aware run absorption (ra189zor): a H/A run shorter than 12 / 25 frames with the other team on both sides joins them | split penalty | open-data CV +0.0013 (12) / −0.0078 (25); on the real final it changes **0 frames** at 12 and 22 frames at 25 (public unchanged): the decoder already removes such runs | not adopted |
+| ✅ | ORC | Oracle diagnostic on open-data CV (v7 ensemble): true dead/live with our team calls vs our dead/live with true team calls | where is the headroom? | ours 0.7682; **perfect dead/live 0.7830 (+0.015); perfect team calls 0.9635 (+0.195)**. We also predict 3,464 possessions where there are 4,069 (−15%): short possessions are missed. Opposite of ra189zor's finding for their system. Caveat: simulated data; on the real match dead ball still mattered (TTA/EATA) | headroom is in who-has-the-ball within live play and short possessions, not in dead ball |
 | ❌ | Bi-LSTM | 0.707; ensemble 0.729 | no gain |
 | ❌ | Bigger GRU (128 units, 16 epochs) | 0.715; ensemble 0.731 | within noise |
 | ❌ | Transformer over tracking | 0.656; ensemble 0.724 | too coarse |
