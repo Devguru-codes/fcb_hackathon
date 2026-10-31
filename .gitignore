@@ -75,3 +75,18 @@ experiments/*.tmp
 
 # -- experiment weights (trained from open data; committed only once adopted) --
 models/exp/
+
+# -- local copies of the competition bundle and open data, and anything derived from them --
+# They live beside the repo on the author's machine; the repo is public, so they must never be
+# added, whatever their name.
+Real_dataset_downloaded_from_google_drive/
+external_data/
+derived/
+handlabel/
+
+# -- local research notes (they quote submission rows and paths; not part of the solution) --
+github_repo.md
+info.md
+research.md
+plan-by-chatgpt.md
+hand_score.py

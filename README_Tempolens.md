@@ -30,9 +30,11 @@ with a **simulator calibrated so the official baseline reproduces its published 
 | data | `match.py`, `opendata.py` | one per-frame table (metres, anonymous slots) for the ATD and every open match; open labels from DFL's ball status/owner flag or Metrica events |
 | noise | `simulate.py` | stoppage-aligned and long log-normal ball gaps, player dropout (no position jitter: the real tracking is smooth) |
 | features | `features.py` | ~140 identity-free, team-symmetric features: control geometry, ball state, formation, memory across ball gaps, context windows |
-| model | `temporal.py` | bidirectional GRU: P(H/A/D) per frame plus a possession-change head; LightGBM in `experiments.py` as a comparison |
-| decoding | `decoder.py` | Viterbi with switch/stoppage costs tuned by cross-validated spellF1 |
-| tags | `tags.py` | Smart Tagging as an optional prior, with defensive codes pointing at the other team |
+| model | `temporal.py` | bidirectional GRU: P(H/A/D) per frame plus a possession-change head, three members trained with domain randomisation (each noise draw its own simulator settings); LightGBM in `experiments.py` as a comparison |
+| adaptation | `temporal.py` | on the match itself, unlabelled: feature scaling re-fitted (`adapt_normaliser`), then each member's output layer adapted, EATA-style (`adapt_head`) |
+| decoding | `decoder.py` | Viterbi with switch/stoppage costs from cross-validated spellF1, a possession-change bonus, dead ball before the second-half kickoff (FAQ) |
+| tags | `tags.py` | Smart Tagging as an optional prior (off in the submission), with defensive codes pointing at the other team |
+| checks | `realcheck.py`, `review.py` | real-match checks that print aggregates only, and a review reel of where two submissions disagree, for human validation |
 
 ## Run
 
@@ -49,12 +51,15 @@ python -m tempolens.diagnostics --data-root data
 # Research loop on open data (MTAH_OPEN_DATA_DIR -> folder with metrica_sample_data/, dfl_idsse/):
 python -m tempolens.experiments --model gbm
 python -m tempolens.experiments --model temporal
-python -m tempolens.train --out models/tempolens_gru.pt
+python -m tempolens.train --member 0 --draws 4 --out models/tempolens_rnd4_m0.pt   # members 1, 2 likewise
 ```
 
 `predict` uses the ensemble members listed in `models/decoder.json` (the costs there were tuned for
 exactly them); `--model` overrides it. Weights record the feature version they were trained on and
 refuse to load against another.
+The same file sets the test-time adaptation (`tta_alpha`, `eata_steps`). Everything runs on the
+CPU in float64 with a fixed order, so the same data gives the same file byte for byte; a full run
+takes about 8 minutes on a laptop.
 
 ## Open data
 
