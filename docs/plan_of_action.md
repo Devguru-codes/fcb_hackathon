@@ -65,6 +65,7 @@ becomes public at submission).
 | ❌ | LightGBM on the same features | 0.566 DFL vs GRU 0.719 (sim v1) | GRU kept |
 | ❌ | Player-set attention encoder (PathCRF-style) | 0.714 vs 0.719 alone; 0.726 vs 0.730 in ensemble | slower, no gain |
 | ❌ | TCN | 0.717; ensemble 0.727 | no gain |
+| ⏸ | BCF | Broadcast ball fill (one offset per half, 9.7% of gaps) on top of the final (v7+TTA+EATA) | ball missing on 41% of graded frames | public window unchanged (0.6471); fill-all macroF1 0.8731 vs 0.8725, dead-ball precision 0.894 vs 0.876, but **310 possessions vs 301** (more splits), 28 disagreements (81 s); fill-alive: 9 disagreements (42 s), otherwise identical | negligible on every measure; adopt only if the user's reel review clearly favours it |
 | ❌ | Bi-LSTM | 0.707; ensemble 0.729 | no gain |
 | ❌ | Bigger GRU (128 units, 16 epochs) | 0.715; ensemble 0.731 | within noise |
 | ❌ | Transformer over tracking | 0.656; ensemble 0.724 | too coarse |
