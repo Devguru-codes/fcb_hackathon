@@ -381,7 +381,9 @@ The ensemble members are listed in `models/decoder.json`, with the decoder costs
 adaptation settings (`tta_alpha`, `eata_steps`); each weights file records its feature version
 and refuses to load against another. Inference and adaptation run on the CPU in float64 in a
 fixed order and outputs are rounded to 4 decimals; the end-to-end test checks that an adapted run
-reproduces byte for byte, and the submission was regenerated identically from a clean checkout.
+reproduces byte for byte. The submission was regenerated identically from a clean checkout, with
+PyTorch limited to one thread instead of four, and from a fresh clone of the repository into a new
+virtual environment with only `requirements-tempolens.txt` installed (PyPI's CPU build of PyTorch).
 A full run takes about 8 minutes on a laptop CPU. Retraining from open data:
 `python -m tempolens.train --member k --draws 4 --out models/tempolens_rnd4_m<k>.pt` (GPU training
 is not bit-reproducible, which is why the weights used for the submission are committed).

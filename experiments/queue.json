@@ -2980,5 +2980,50 @@
     "result": null,
     "finished": "2026-10-29 21:44",
     "exit_code": 0
+  },
+  {
+    "id": "CHKA",
+    "title": "check A: submission with 1 torch thread equals the 4-thread file",
+    "args": [],
+    "cmd": [
+      "C:/Users/devgu/AppData/Local/Temp/claude/C--Users-devgu-Downloads-fcb-hackathon--claude-worktrees-more-than-hack-2027-a8761a/5a3694b0-ff79-4c2b-b70f-e6fce215f277/scratchpad/repro_threads.py",
+      "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/bundle",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_final.csv",
+      "C:/Users/devgu/AppData/Local/Temp/claude/C--Users-devgu-Downloads-fcb-hackathon--claude-worktrees-more-than-hack-2027-a8761a/5a3694b0-ff79-4c2b-b70f-e6fce215f277/scratchpad/final_1thread.csv"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-11-01 16:42",
+    "result": null,
+    "finished": "2026-11-01 16:45",
+    "exit_code": 0
+  },
+  {
+    "id": "CHKB",
+    "title": "check B: fresh clone + new venv + pinned requirements + one command = same file",
+    "args": [],
+    "cmd": [
+      "C:/Users/devgu/AppData/Local/Temp/claude/C--Users-devgu-Downloads-fcb-hackathon--claude-worktrees-more-than-hack-2027-a8761a/5a3694b0-ff79-4c2b-b70f-e6fce215f277/scratchpad/fresh_clone.py",
+      "C:/Users/devgu/AppData/Local/Temp/claude/C--Users-devgu-Downloads-fcb-hackathon--claude-worktrees-more-than-hack-2027-a8761a/5a3694b0-ff79-4c2b-b70f-e6fce215f277/scratchpad",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/bundle",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_final.csv"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-11-01 16:45",
+    "result": null,
+    "finished": "2026-11-01 16:51",
+    "exit_code": 0
   }
 ]

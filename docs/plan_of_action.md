@@ -26,7 +26,7 @@ becomes public at submission).
 | | |
 |---|---|
 | version | **v7+TTA+EATA** — features v4, simulator v2, 3-GRU ensemble trained with domain randomisation (4 noise draws per match, each with its own simulator settings); on the match: feature scaling re-fitted (`tta_alpha` 1), then each member's output layer adapted, EATA-style (`eata_steps` 30); decoder switch 4 / 8 / 8, change bonus 1.0 |
-| file | `submissions/tempolens_final.csv` (outside git), sha256 `b483d0a3…`, validated, reproduced byte for byte by `python -m tempolens.predict` from a clean checkout of commit `88bed2e` |
+| file | `submissions/tempolens_final.csv` (outside git), sha256 `b483d0a3…`, validated, reproduced byte for byte by `python -m tempolens.predict` from a clean checkout of commit `88bed2e`, with 1 torch thread instead of 4 (169 s), and from a fresh GitHub clone in a new venv with only the pinned requirements (CPU PyTorch from PyPI; install 141 s, run 210 s) |
 | public window (sanity) | spellF1 0.647 / macroF1 0.8725, 17 possessions vs 17, dead-ball recall 0.728 (precision 0.876) — v7+TTA 0.629 / 0.849; v5 0.594 / 0.819 |
 | human review | vs v5 (everything changed since v5): all 96 disagreements, final right 54 (277 s), v5 33 (93 s), both wrong 4, unclear 5; 20 longest 16 vs 2. vs v7+TTA: all 24, 20 vs 4 (20 longest 16 vs 4). v7+TTA vs v5: 45 vs 33 |
 | full match | 301 possessions, mean 11.2 s |
@@ -292,4 +292,6 @@ Written by `python -m tempolens.autoqueue` from `experiments/queue.json` (✅ he
 | ✅ | TCNpub | TCN corrector: public window + dead-ball recall vs v7+TTA |  |  |  |  |  | 2026-10-29 21:32 |
 | ✅ | REELtcn | review reel v7+TTA vs TCN corrector |  |  |  |  |  | 2026-10-29 21:44 |
 | ✅ | TOPtcn | top-20 sheet v7+TTA vs TCN corrector |  |  |  |  |  | 2026-10-29 21:44 |
+| ✅ | CHKA | check A: submission with 1 torch thread equals the 4-thread file |  |  |  |  |  | 2026-11-01 16:45 |
+| ✅ | CHKB | check B: fresh clone + new venv + pinned requirements + one command = same file |  |  |  |  |  | 2026-11-01 16:51 |
 <!-- autoqueue:end -->
