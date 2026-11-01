@@ -96,6 +96,29 @@ def learned_logp(data_root, game, model_paths, video_ball=None, video_fill="aliv
     return table, temporal.predict_ensemble(members, table)
 
 
+def gate_team_evidence(logp, table, flight=0.2, loose=0.3, flight_speed=9.5, loose_m=1.35):
+    """Damp the home-vs-away evidence where it is least trustworthy (after a rival, Suleyman):
+    the log-odds of H against A are multiplied by `flight` where the seen ball moves faster than
+    `flight_speed` m/s (in the air or passed: a nearby player is not on it) and by `loose` where
+    nobody is within `loose_m` of it; P(alive) is unchanged. The decoder then keeps the current
+    owner through such frames unless the evidence after them disagrees."""
+    from .features import feature_names, frame_features
+    from .match import A, H
+    features = frame_features(table)[0]
+    col = {name: i for i, name in enumerate(feature_names())}
+    seen = features[:, col["ball_seen"]] > 0.5
+    factor = np.ones(len(logp))
+    factor[seen & (np.nan_to_num(features[:, col["d_min"]]) > loose_m)] = loose
+    factor[seen & (np.nan_to_num(features[:, col["ball_speed"]]) > flight_speed)] = flight
+    out = logp.copy()
+    p = np.exp(logp[:, :3])
+    alive = p[:, H] + p[:, A]
+    share = 1.0 / (1.0 + np.exp(-factor * (logp[:, H] - logp[:, A])))
+    out[:, H] = np.log(np.clip(alive * share, 1e-6, 1))
+    out[:, A] = np.log(np.clip(alive * (1 - share), 1e-6, 1))
+    return out
+
+
 def decode_learned(table, logp, settings, data_root, game, tag_prior=None):
     """(H/A/D codes per half with X outside, tag calibration report or None).
 
@@ -131,6 +154,8 @@ def predict(data_root, output, model_paths=None, decoder_path=DEFAULT_DECODER, g
     settings = load_decoder(decoder_path)
     table, logp = learned_logp(data_root, game, model_paths, video_ball, video_fill,
                                settings.get("tta_alpha", 0.0), settings.get("eata_steps", 0))
+    if settings.get("flight_gate") is not None:
+        logp = gate_team_evidence(logp, table, settings["flight_gate"], settings["loose_gate"])
     states, _ = decode_learned(table, logp, settings, data_root, game)
     labels = np.array(["H", "A", "D", "X"])[np.where(states > 2, 3, states)].astype("<U1")
     # Only the two halves are graded. X elsewhere is free, and says plainly that halftime was not

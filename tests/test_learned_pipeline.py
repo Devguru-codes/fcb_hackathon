@@ -267,6 +267,20 @@ class EnsembleTests(unittest.TestCase):
         after = temporal.predict(first, normaliser, table)[table.period > 0, H].mean()
         self.assertGreater(after, before)
 
+    def test_team_gate_damps_only_home_vs_away_where_the_ball_flies_or_is_loose(self):
+        from tempolens.predict import gate_team_evidence
+        table = SimulatorTests()._labelled(2000)
+        rng = np.random.default_rng(0)
+        p = rng.dirichlet([1, 1, 1], size=2000)
+        logp = np.column_stack([np.log(p), rng.normal(size=2000)])
+        out = gate_team_evidence(logp, table, flight=0.0, loose=0.0)
+        same = np.isclose(out[:, :3], logp[:, :3], atol=1e-9).all(axis=1)
+        damped = ~same
+        self.assertTrue(damped.any() and same.any())
+        np.testing.assert_allclose(out[damped, 0], out[damped, 1])          # factor 0: H = A
+        np.testing.assert_allclose(np.exp(out[:, :2]).sum(axis=1), p[:, :2].sum(axis=1), rtol=1e-6)
+        np.testing.assert_array_equal(out[:, 2:], logp[:, 2:])              # D and change kept
+
     def test_combine_averages_probabilities_and_change_logits(self):
         from tempolens.temporal import combine
         a = np.column_stack([np.log([[0.8, 0.1, 0.1]]), [[2.0]]])

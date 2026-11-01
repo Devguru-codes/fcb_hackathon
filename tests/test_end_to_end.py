@@ -112,7 +112,8 @@ class EndToEndTests(unittest.TestCase):
             # deterministic too.
             settings = json.loads(decoder.read_text())
             adapted = Path(folder) / "d_tta.json"
-            adapted.write_text(json.dumps(dict(settings, tta_alpha=1.0, eata_steps=5)))
+            adapted.write_text(json.dumps(dict(settings, tta_alpha=1.0, eata_steps=5, flight_gate=0.2,
+                                                   loose_gate=0.3)))
             first, second = Path(folder) / "tta1.csv", Path(folder) / "tta2.csv"
             predict.predict(folder, first, model, adapted)
             predict.predict(folder, second, model, adapted)
