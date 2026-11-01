@@ -3577,5 +3577,521 @@
     "result": null,
     "finished": "2026-11-01 20:18",
     "exit_code": 0
+  },
+  {
+    "id": "H3train0",
+    "title": "H3: train member 0 (minspell19)",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.train",
+      "--member",
+      "0",
+      "--draws",
+      "4",
+      "--min-spell",
+      "19",
+      "--out",
+      "models/exp/minspell19_m0.pt"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-11-01 23:28",
+    "result": null,
+    "finished": "2026-11-01 23:35",
+    "exit_code": 0
+  },
+  {
+    "id": "H3train1",
+    "title": "H3: train member 1 (minspell19)",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.train",
+      "--member",
+      "1",
+      "--draws",
+      "4",
+      "--min-spell",
+      "19",
+      "--out",
+      "models/exp/minspell19_m1.pt"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-11-01 23:35",
+    "result": null,
+    "finished": "2026-11-01 23:42",
+    "exit_code": 0
+  },
+  {
+    "id": "H3train2",
+    "title": "H3: train member 2 (minspell19)",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.train",
+      "--member",
+      "2",
+      "--draws",
+      "4",
+      "--min-spell",
+      "19",
+      "--out",
+      "models/exp/minspell19_m2.pt"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-11-01 23:42",
+    "result": null,
+    "finished": "2026-11-01 23:49",
+    "exit_code": 0
+  },
+  {
+    "id": "H3dec",
+    "title": "H3: decoder file",
+    "args": [],
+    "cmd": [
+      "-c",
+      "import json; d = json.load(open('models/decoder.json')); d['members'] = ['exp/minspell19_m%d.pt' % k for k in range(3)]; json.dump(d, open('models/exp/decoder_minspell19.json', 'w'), indent=2)"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-11-01 23:49",
+    "result": null,
+    "finished": "2026-11-01 23:49",
+    "exit_code": 0
+  },
+  {
+    "id": "H3pred",
+    "title": "H3: predict the real match",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.predict",
+      "--data-root",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/bundle",
+      "--output",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_minspell19.csv",
+      "--decoder",
+      "models/exp/decoder_minspell19.json"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-11-01 23:49",
+    "result": null,
+    "finished": "2026-11-01 23:56",
+    "exit_code": 0
+  },
+  {
+    "id": "H3val",
+    "title": "H3: validate",
+    "args": [],
+    "cmd": [
+      "evaluation/validate_submission.py",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_minspell19.csv"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-11-01 23:56",
+    "result": null,
+    "finished": "2026-11-01 23:56",
+    "exit_code": 0
+  },
+  {
+    "id": "H3pub",
+    "title": "H3: public window",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.realcheck",
+      "public",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_final.csv",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_minspell19.csv"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-11-01 23:56",
+    "result": null,
+    "finished": "2026-11-01 23:56",
+    "exit_code": 0
+  },
+  {
+    "id": "H3set",
+    "title": "H3: set-piece table",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.realcheck",
+      "setpiece",
+      "--data-root",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/bundle",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_minspell19.csv"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-11-01 23:56",
+    "result": null,
+    "finished": "2026-11-01 23:56",
+    "exit_code": 0
+  },
+  {
+    "id": "H3reel",
+    "title": "H3: review reel",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.review",
+      "--data-root",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/bundle",
+      "--a",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_final.csv",
+      "--b",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_minspell19.csv",
+      "--names",
+      "final",
+      "minspell19",
+      "--suffix",
+      "_final_minspell19"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-11-01 23:56",
+    "result": null,
+    "finished": "2026-11-02 00:02",
+    "exit_code": 0
+  },
+  {
+    "id": "H3top",
+    "title": "H3: top disagreements",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.realcheck",
+      "top",
+      "--data-root",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/bundle",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_final.csv",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_minspell19.csv",
+      "--names",
+      "final",
+      "minspell19",
+      "--suffix",
+      "_final_minspell19"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-11-02 00:02",
+    "result": null,
+    "finished": "2026-11-02 00:02",
+    "exit_code": 0
+  },
+  {
+    "id": "H1btrain0",
+    "title": "H1b: train member 0 (skillcorner)",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.train",
+      "--member",
+      "0",
+      "--draws",
+      "4",
+      "--extra-train",
+      "skillcorner",
+      "--out",
+      "models/exp/skillcorner_m0.pt"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-11-02 00:02",
+    "result": null,
+    "finished": "2026-11-02 00:16",
+    "exit_code": 0
+  },
+  {
+    "id": "H1btrain1",
+    "title": "H1b: train member 1 (skillcorner)",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.train",
+      "--member",
+      "1",
+      "--draws",
+      "4",
+      "--extra-train",
+      "skillcorner",
+      "--out",
+      "models/exp/skillcorner_m1.pt"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-11-02 00:16",
+    "result": null,
+    "finished": "2026-11-02 00:30",
+    "exit_code": 0
+  },
+  {
+    "id": "H1btrain2",
+    "title": "H1b: train member 2 (skillcorner)",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.train",
+      "--member",
+      "2",
+      "--draws",
+      "4",
+      "--extra-train",
+      "skillcorner",
+      "--out",
+      "models/exp/skillcorner_m2.pt"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-11-02 00:30",
+    "result": null,
+    "finished": "2026-11-02 00:43",
+    "exit_code": 0
+  },
+  {
+    "id": "H1bdec",
+    "title": "H1b: decoder file",
+    "args": [],
+    "cmd": [
+      "-c",
+      "import json; d = json.load(open('models/decoder.json')); d['members'] = ['exp/skillcorner_m%d.pt' % k for k in range(3)]; json.dump(d, open('models/exp/decoder_skillcorner.json', 'w'), indent=2)"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-11-02 00:43",
+    "result": null,
+    "finished": "2026-11-02 00:43",
+    "exit_code": 0
+  },
+  {
+    "id": "H1bpred",
+    "title": "H1b: predict the real match",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.predict",
+      "--data-root",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/bundle",
+      "--output",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_skillcorner.csv",
+      "--decoder",
+      "models/exp/decoder_skillcorner.json"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-11-02 00:43",
+    "result": null,
+    "finished": "2026-11-02 00:51",
+    "exit_code": 0
+  },
+  {
+    "id": "H1bval",
+    "title": "H1b: validate",
+    "args": [],
+    "cmd": [
+      "evaluation/validate_submission.py",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_skillcorner.csv"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-11-02 00:51",
+    "result": null,
+    "finished": "2026-11-02 00:51",
+    "exit_code": 0
+  },
+  {
+    "id": "H1bpub",
+    "title": "H1b: public window",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.realcheck",
+      "public",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_final.csv",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_skillcorner.csv"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-11-02 00:51",
+    "result": null,
+    "finished": "2026-11-02 00:51",
+    "exit_code": 0
+  },
+  {
+    "id": "H1bset",
+    "title": "H1b: set-piece table",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.realcheck",
+      "setpiece",
+      "--data-root",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/bundle",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_skillcorner.csv"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-11-02 00:51",
+    "result": null,
+    "finished": "2026-11-02 00:51",
+    "exit_code": 0
+  },
+  {
+    "id": "H1breel",
+    "title": "H1b: review reel",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.review",
+      "--data-root",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/bundle",
+      "--a",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_final.csv",
+      "--b",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_skillcorner.csv",
+      "--names",
+      "final",
+      "skillcorner",
+      "--suffix",
+      "_final_skillcorner"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-11-02 00:51",
+    "result": null,
+    "finished": "2026-11-02 01:06",
+    "exit_code": 0
+  },
+  {
+    "id": "H1btop",
+    "title": "H1b: top disagreements",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.realcheck",
+      "top",
+      "--data-root",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/bundle",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_final.csv",
+      "C:/Users/devgu/Downloads/fcb_hackathon/Real_dataset_downloaded_from_google_drive/submissions/tempolens_skillcorner.csv",
+      "--names",
+      "final",
+      "skillcorner",
+      "--suffix",
+      "_final_skillcorner"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "done",
+    "started": "2026-11-02 01:06",
+    "result": null,
+    "finished": "2026-11-02 01:06",
+    "exit_code": 0
   }
 ]

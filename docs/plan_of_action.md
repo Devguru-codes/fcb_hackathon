@@ -117,8 +117,8 @@ dynamic switch cost is what our change bonus already does.
 |---|---|---|---|---|---|
 | ✅ | Q10 | **Multi-seed variance check** — done: sd 0.0029 all / 0.0045 DFL (see rule 2); seed-1 replicates of each variant still queued | decisions rest on 0.001–0.005 differences; noise floor unknown | score members 0–2 separately from cached CV outputs; then paired per-match comparison of any variant over ≥3 seeds | minutes (cached), then GPU per seed |
 | ❌ | H1 | **More training data**: SkillCorner open data (20 A-League matches, broadcast tracking, labels from phases of play + owner flag). Training-only extra data, same CV folds: seed 0 −0.0006, seed 1 −0.0116 (mean −0.006; Metrica −0.023). Not adopted. Likely cause: SkillCorner teaches longer *controlled* possessions (median 5–7 s) while the DFL/Metrica test labels keep short ones — CV cannot tell which definition the private truth uses. PFF World Cup 2022 🚫: form not accessible | only 10 training matches | CV with vs without, 2 seeds | done |
-| ⏳ | H1b | SkillCorner-trained ensemble checked on the real match only (public window + dead-ball diagnostics), since CV labels may not share the truth's definition of control — sanity-level evidence only (17 possessions) | H1 tie/loss may be a label-definition artefact | queued 2026-11-01: `train --draws 4 --extra-train skillcorner`, 3 members, final decoder (TTA + EATA + gate); public + set pieces + reel vs final | ~3 h |
-| ⏳ | H3 | Training labels match "control": minimum possession 19 frames (public truth's shortest) instead of 10 | short possessions recalled 45% (27% of all possessions) | queued 2026-11-01: `train --draws 4 --min-spell 19`, 3 members, final decoder; public + set pieces + reel vs final (real match only: the CV labels are the definition in question) | hours |
+| ⏸ | H1b | SkillCorner-trained ensemble checked on the real match only (`train --extra-train skillcorner`, 3 members, final decoder) | H1 tie/loss may be a label-definition artefact | real match, vs final: **public spellF1 0.658, macroF1 0.911, 14 of 17 possessions, dead-ball recall 0.944** (precision 0.910); but **189 vs 291 possessions** in the match (mean 16.9 s): it merges across turnovers, as the touch head did. 153 disagreements of 1 s+ (462 s) | reel review pending (`reel_final_skillcorner.mp4`); risky: the oracle says we already find 15% too few possessions |
+| ⏸ | H3 | Training labels match "control": DFL/SkillCorner flicker threshold 19 frames (public truth's shortest) instead of 10 (`train --min-spell 19`, 3 members, final decoder) | short possessions recalled 45% (27% of all possessions) | real match, vs final 0.647 / 0.881 / 17 of 17: **public spellF1 0.680, macroF1 0.873, 13 of 17 possessions**, dead-ball recall 0.726, 283 vs 291 possessions; 24 disagreements of 1 s+ (52 s). spellF1 up on fewer possessions found (the CH pattern: a lucky count on 17), tie-break down | reel review pending (`reel_final_minspell19.mp4`) |
 | ❌ | H6 | Mirror augmentation (flip pitch y, as in TacticAI): seed 0 +0.0023, seed 1 −0.0039 (mean −0.0008) | data scarcity | CV, 2 seeds | done |
 | ✅ | H5 | Restart-spot features (features v4, branch `exp/restart-features`, kept): CV seed 0 −0.0031, seed 1 +0.0015 (mean −0.0008, neutral). Real match mixed: public spellF1 0.594 vs 0.573, macroF1 0.819 vs 0.790, 18 vs 20 possessions (17 true), dead-ball recall 0.534 vs 0.478 — but dead ball before goal-kick tags fell (0.37/0.59 vs 0.56/0.71), the very case targeted. Rule 3 says a CV tie cannot be decided by the public window; **adopted by the team's call** (gains on all four public numbers, 15-min switch, reversible) | real dead-ball recall 0.48 | CV 2 seeds + real-match checks | done |
 | ❌ | H7 | 5 members instead of 3: 0.7647 vs 0.7638 (+0.0009). Stochastic weight averaging not tried (same expected size) | small, safe | CV | done |
@@ -318,4 +318,24 @@ Written by `python -m tempolens.autoqueue` from `experiments/queue.json` (✅ he
 | ✅ | STtopA | self-training A: top-20 sheet vs final |  |  |  |  |  | 2026-11-01 20:13 |
 | ✅ | STreelB | self-training B: review reel vs final |  |  |  |  |  | 2026-11-01 20:18 |
 | ✅ | STtopB | self-training B: top-20 sheet vs final |  |  |  |  |  | 2026-11-01 20:18 |
+| ✅ | H3train0 | H3: train member 0 (minspell19) |  |  |  |  |  | 2026-11-01 23:35 |
+| ✅ | H3train1 | H3: train member 1 (minspell19) |  |  |  |  |  | 2026-11-01 23:42 |
+| ✅ | H3train2 | H3: train member 2 (minspell19) |  |  |  |  |  | 2026-11-01 23:49 |
+| ✅ | H3dec | H3: decoder file |  |  |  |  |  | 2026-11-01 23:49 |
+| ✅ | H3pred | H3: predict the real match |  |  |  |  |  | 2026-11-01 23:56 |
+| ✅ | H3val | H3: validate |  |  |  |  |  | 2026-11-01 23:56 |
+| ✅ | H3pub | H3: public window |  |  |  |  |  | 2026-11-01 23:56 |
+| ✅ | H3set | H3: set-piece table |  |  |  |  |  | 2026-11-01 23:56 |
+| ✅ | H3reel | H3: review reel |  |  |  |  |  | 2026-11-02 00:02 |
+| ✅ | H3top | H3: top disagreements |  |  |  |  |  | 2026-11-02 00:02 |
+| ✅ | H1btrain0 | H1b: train member 0 (skillcorner) |  |  |  |  |  | 2026-11-02 00:16 |
+| ✅ | H1btrain1 | H1b: train member 1 (skillcorner) |  |  |  |  |  | 2026-11-02 00:30 |
+| ✅ | H1btrain2 | H1b: train member 2 (skillcorner) |  |  |  |  |  | 2026-11-02 00:43 |
+| ✅ | H1bdec | H1b: decoder file |  |  |  |  |  | 2026-11-02 00:43 |
+| ✅ | H1bpred | H1b: predict the real match |  |  |  |  |  | 2026-11-02 00:51 |
+| ✅ | H1bval | H1b: validate |  |  |  |  |  | 2026-11-02 00:51 |
+| ✅ | H1bpub | H1b: public window |  |  |  |  |  | 2026-11-02 00:51 |
+| ✅ | H1bset | H1b: set-piece table |  |  |  |  |  | 2026-11-02 00:51 |
+| ✅ | H1breel | H1b: review reel |  |  |  |  |  | 2026-11-02 01:06 |
+| ✅ | H1btop | H1b: top disagreements |  |  |  |  |  | 2026-11-02 01:06 |
 <!-- autoqueue:end -->
