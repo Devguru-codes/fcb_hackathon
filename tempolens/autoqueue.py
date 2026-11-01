@@ -146,6 +146,8 @@ def run_job(job, jobs):
         time.sleep(IDLE_SECONDS)
     LOGS.mkdir(parents=True, exist_ok=True)
     log = LOGS / "{}.log".format(job["id"])
+    jobs = load()                       # jobs may have been added while we waited
+    job = next(j for j in jobs if j["id"] == job["id"])
     job.update(status="running", started=datetime.now().strftime("%Y-%m-%d %H:%M"))
     save(jobs)
     write_plan(jobs)

@@ -31,6 +31,26 @@ class AutoqueueTests(unittest.TestCase):
         self.assertTrue(autoqueue.verdict(tie, jobs).startswith("no gain"))
         self.assertEqual(autoqueue.verdict(base, jobs), "measured")
 
+    def test_jobs_added_while_waiting_survive_the_start_of_a_job(self):
+        import json
+        with tempfile.TemporaryDirectory() as folder:
+            queue, plan = Path(folder) / "queue.json", Path(folder) / "plan.md"
+            first = {"id": "J1", "title": "one", "args": [], "cmd": ["-c", "pass"],
+                     "status": "pending"}
+            queue.write_text(json.dumps([first]), encoding="utf-8")
+            plan.write_text("# Plan\n", encoding="utf-8")
+            with patch.object(autoqueue, "QUEUE", queue), patch.object(autoqueue, "PLAN", plan), \
+                    patch.object(autoqueue, "LOGS", Path(folder)), \
+                    patch.object(autoqueue, "free_gb", lambda: 1e9), \
+                    patch.object(autoqueue, "other_runs", lambda: []):
+                stale = autoqueue.load()                     # what the loop read before waiting
+                added = dict(first, id="J2", title="added while waiting")
+                queue.write_text(json.dumps([first, added]), encoding="utf-8")
+                autoqueue.run_job(stale[0], stale)
+                jobs = autoqueue.load()
+        self.assertEqual([j["id"] for j in jobs], ["J1", "J2"])
+        self.assertEqual([j["status"] for j in jobs], ["done", "pending"])
+
     def test_plan_table_is_replaced_between_the_markers_only(self):
         with tempfile.TemporaryDirectory() as folder:
             plan = Path(folder) / "plan.md"
