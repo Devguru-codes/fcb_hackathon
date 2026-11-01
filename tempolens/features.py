@@ -398,6 +398,10 @@ class TableSample:
         """No hidden truth for a real match: an all-NaN target (the head is simply unused)."""
         return np.full((self.n_frames, 2), np.nan, dtype=np.float32)
 
+    def touch_target(self, swap=False):
+        """No event data for an arbitrary table: all-NaN, so the touch loss ignores it."""
+        return np.full((self.n_frames, 2), np.nan, dtype=np.float32)
+
 
 def feature_names():
     """Column names of frame_features, without computing a real match."""

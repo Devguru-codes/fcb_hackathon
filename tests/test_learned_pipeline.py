@@ -274,6 +274,7 @@ class TemporalVariantTests(unittest.TestCase):
                    temporal.TemporalConfig(arch="lstm", hidden=16, smooth=0.15),
                    temporal.TemporalConfig(hidden=16, dead_weight=2.0),
                    temporal.TemporalConfig(hidden=16, chunk=1500),
+                   temporal.TemporalConfig(hidden=16, touch=0.5),
                    temporal.TemporalConfig(arch="transformer", hidden=16, mirror=True)]
         with tempfile.TemporaryDirectory() as folder:
             for config in configs:

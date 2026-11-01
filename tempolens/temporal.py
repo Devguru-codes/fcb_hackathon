@@ -23,6 +23,10 @@ Variants, chosen by TemporalConfig and saved inside each weights file:
 - focal: focal-loss exponent (Lin et al. 2017): down-weights frames the model already gets right;
 - mirror: reflect half the training sequences across the pitch's long axis (football is
   left-right symmetric; TacticAI builds the same symmetry in) -- more data for free;
+- touch: weight of an auxiliary head that predicts, per frame, whether a home / away player is
+  playing the ball (targets from the open matches' event data, snapped to the physical contact:
+  touches.py) -- it makes the network learn where control happens, the oracle's headroom; the
+  head is not used at inference;
 - dead_weight: cross-entropy weight of D frames -- the real match's stoppages are under-called
   (dead-ball recall 0.53), so make missing one cost more.
 """
@@ -58,6 +62,7 @@ class TemporalConfig:
     mirror: bool = False         # reflect half the training sequences across the long axis
     dead_weight: float = 1.0     # cross-entropy weight of D frames; 1 = unweighted
     chunk: int = CHUNK           # frames per training sequence (inference reads 3000)
+    touch: float = 0.0           # weight of the touch-head loss; 0 = no touch head
 
     def tag(self):
         """Cache/file tag; the default config keeps the historical name "temporal"."""
@@ -81,6 +86,8 @@ class TemporalConfig:
             parts.append("dw{:g}".format(self.dead_weight))
         if self.chunk != CHUNK:
             parts.append("c{}".format(self.chunk))
+        if self.touch:
+            parts.append("tch{:g}".format(self.touch))
         return "temporal" + ("_" + "_".join(parts) if parts else "")
 
 
@@ -284,7 +291,8 @@ def build_model(n_inputs, config=DEFAULT_CONFIG, n_token_fields=None):
                 width_out = hidden
             else:
                 raise ValueError("unknown arch {!r}".format(config.arch))
-            self.head = nn.Linear(width_out, 4)   # H, A, D logits + change logit
+            # H, A, D logits + change logit (+ home / away touch logits)
+            self.head = nn.Linear(width_out, 6 if config.touch else 4)
             if config.aux_ball:
                 self.ball_head = nn.Linear(width_out, 2)
 
@@ -348,6 +356,7 @@ def _sequences(samples, config=DEFAULT_CONFIG, normaliser=None):
             y = swap_labels(sample.labels) if swap else sample.labels
             tokens = sample.tokens(swap) if config.encoder == "players" else None
             ball = sample.ball_target(swap) if config.aux_ball else None
+            touch = sample.touch_target(swap) if config.touch else None
             for start, stop in sample.runs():
                 y_run = y[start:stop].astype(np.int64)
                 change = change_targets(y_run)
@@ -363,6 +372,8 @@ def _sequences(samples, config=DEFAULT_CONFIG, normaliser=None):
                     seq["tok"] = tokens[start:stop]
                 if ball is not None:
                     seq["ball"] = np.asarray(ball[start:stop], dtype=np.float32)
+                if touch is not None:
+                    seq["touch"] = np.asarray(touch[start:stop], dtype=np.float32)
                 out.append(seq)
     return out, normaliser
 
@@ -456,8 +467,14 @@ def train(samples, epochs=None, device=None, seed=SEED, verbose=True,
             if config.aux_ball:
                 target = batch_of("ball", batch)
                 known = torch.isfinite(target[..., 0])
-                diff = huber(out[..., 4:6], torch.nan_to_num(target)).sum(dim=-1)
+                first = 6 if config.touch else 4
+                diff = huber(out[..., first:first + 2], torch.nan_to_num(target)).sum(dim=-1)
                 loss = loss + config.aux_ball * (diff * known).sum() / known.sum().clamp(min=1)
+            if config.touch:
+                target = batch_of("touch", batch)
+                known = torch.isfinite(target)
+                touch_loss = bce(out[..., 4:6], torch.nan_to_num(target)) * known
+                loss = loss + config.touch * touch_loss.sum() / known.sum().clamp(min=1)
             optimiser.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)

@@ -155,6 +155,12 @@ class CachedSample:
             return player_tokens(table["t"], swap=side)
         return self._cached("tok{}".format(FEATURE_VERSION), swap, compute)
 
+    def touch_target(self, swap=False):
+        """(n, 2) home / away touch targets from the match's events, from this side's view."""
+        from .touches import touch_targets
+        out = touch_targets(self.name, self.n_frames)
+        return out[:, ::-1].copy() if swap else out
+
     def ball_target(self, swap=False):
         from .features import hidden_ball_target
         tables = {}
@@ -377,6 +383,8 @@ def main(argv=None):
                         help="reflect half the training sequences across the long axis")
     parser.add_argument("--dead-weight", type=float, default=1.0,
                         help="cross-entropy weight of dead-ball frames (1 = off)")
+    parser.add_argument("--touch", type=float, default=0.0,
+                        help="weight of the auxiliary touch-head loss (0 = off)")
     parser.add_argument("--chunk", type=int, default=None,
                         help="temporal training sequence length in frames (default 750 = 30 s)")
     parser.add_argument("--members", type=int, default=ENSEMBLE_MEMBERS,
@@ -401,7 +409,7 @@ def main(argv=None):
     config = TemporalConfig(arch=args.arch, encoder=args.encoder, aux_ball=args.aux_ball,
                             smooth=args.smooth, seg_balance=args.seg_balance,
                             focal=args.focal, mirror=args.mirror,
-                            dead_weight=args.dead_weight, **sizes)
+                            dead_weight=args.dead_weight, touch=args.touch, **sizes)
     from .opendata import EXTRA_LOADERS
     extra = sorted(EXTRA_LOADERS) if args.extra_train == "skillcorner" else ()
     run(args.matches, grid, args.model, args.protocol, args.refresh, args.member, config,
