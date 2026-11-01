@@ -268,6 +268,9 @@ def oof_logp(names, kind="gbm", protocol="sim", refresh=False, member=0,
         kind_tag = config.tag() + ("" if TRAIN_VERSION == 1 else "_t{}".format(TRAIN_VERSION))
         if draws:
             kind_tag += "_rnd{}v{}{}".format(draws, RANDOM_VERSION, "f" if faults else "")
+        if config.touch:                # the touch targets' recipe is part of what was trained
+            from .touches import TOUCH_VERSION
+            kind_tag += "_tv{}".format(TOUCH_VERSION)
     else:
         kind_tag = kind
     cache = open_data_dir() / "cache" / "oof"
