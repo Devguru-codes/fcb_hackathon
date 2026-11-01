@@ -25,3 +25,10 @@ RULES.md asks participants to ask before building on anything near a line. Three
    let the submission file be reproduced exactly; without them we would leave the component out.)
 
 Thank you!
+
+## Model weights trained on the tactical video
+
+A ball detector trained on crops of the tactical video (with labels projected from the ATD, no hand
+labelling) would need its weights in the repository for the submission to be regenerated. May
+weights trained on the licensed video be committed to the public repository? If not, is a
+submission whose pipeline trains such a detector during the run acceptable?
