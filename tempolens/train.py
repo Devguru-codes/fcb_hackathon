@@ -12,9 +12,9 @@ committed: the submission is regenerated from them by CPU inference, which is.
 import argparse
 from pathlib import Path
 
-from . import temporal
-from .experiments import training_samples
-from .opendata import LOADERS
+from . import opendata, temporal
+from .experiments import CachedSample, member_noise_seeds, training_samples
+from .opendata import EXTRA_LOADERS, LOADERS
 
 
 def main(argv=None):
@@ -32,10 +32,18 @@ def main(argv=None):
                         help="randomised-noise draws per match (0 = the two fixed-noise draws)")
     parser.add_argument("--faults", action="store_true",
                         help="with --draws: add tracker faults to the training draws")
+    parser.add_argument("--extra-train", choices=("skillcorner",),
+                        help="also train on the SkillCorner matches (one noise draw each)")
+    parser.add_argument("--min-spell", type=int, default=opendata.DFL_MIN_SPELL,
+                        help="flicker threshold for the DFL/SkillCorner owner flag, in frames")
     args = parser.parse_args(argv)
+    opendata.DFL_MIN_SPELL = args.min_spell
     out = args.out or ("models/tempolens_gru.pt" if args.member == 0
                        else "models/tempolens_gru_m{}.pt".format(args.member))
     samples = training_samples(args.matches, args.member, args.draws, args.faults)
+    if args.extra_train:     # as in the cross-validation: real broadcast noise, one draw each
+        samples += [CachedSample(n, member_noise_seeds(args.member)[0])
+                    for n in sorted(EXTRA_LOADERS)]
     config = temporal.TemporalConfig(hidden=args.hidden, epochs=args.epochs, chunk=args.chunk,
                                      touch=args.touch)
     model, normaliser = temporal.train(samples, seed=temporal.SEED + args.member, config=config)
