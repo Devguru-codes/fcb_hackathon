@@ -70,8 +70,8 @@ becomes public at submission).
 | ✅ | ORC | Oracle diagnostic on open-data CV (v7 ensemble): true dead/live with our team calls vs our dead/live with true team calls | where is the headroom? | ours 0.7682; **perfect dead/live 0.7830 (+0.015); perfect team calls 0.9635 (+0.195)**. We also predict 3,464 possessions where there are 4,069 (−15%): short possessions are missed. Opposite of ra189zor's finding for their system. Caveat: simulated data; on the real match dead ball still mattered (TTA/EATA) | headroom is in who-has-the-ball within live play and short possessions, not in dead ball |
 | ❌ | SNAP | Forward contact snapping (Suleyman): a H↔A change with the ball seen and the new team out of reach moves forward up to 40 frames to first contact (< 1.65 m), or the spell is deleted | false turnovers in flight | open-data CV 0.7632 vs 0.7682; real final: public 0.588 vs 0.647 | not adopted |
 | ✅ | GATE | In-flight / loose-ball attenuation (Suleyman): H-vs-A log-odds × 0.2 when the seen ball moves > 9.5 m/s, × 0.3 when nobody is within 1.35 m; P(alive) kept | false turnovers in flight | open-data CV **0.7437 vs 0.7682**; real final: public spellF1 0.647 unchanged, macroF1 0.881 vs 0.8725, 291 vs 301 possessions, 509 frames changed | **adopted**: human review 7 of 8 for the gate; `flight_gate` / `loose_gate` in `decoder.json`, reproduced byte for byte |
-| ⏳ | TCH | **Touch head** (learned touch/reception evidence): auxiliary per-frame home/away touch targets from the open matches' event data, DFL event times snapped to the physical contact (match offset removed, each event moved within ±1 s to the acting team's closest approach; 92% kept, median contact 0.2–0.46 m), trained beside possession (`--touch`) | oracle: perfect team calls → 0.964 vs 0.768; 15% of possessions missed | queued: CV 2 seeds at 0.5, 1 seed at 1.0 (vs the v7 recipe), then the real match with TTA + EATA, public window and a reel vs the final | running |
-| ⏳ | ST | **Self-training on the real match** (`temporal.self_train`): after TTA + EATA, fine-tune each member's last GRU layer and output layer on pseudo-labels — A: confident interiors of decoded spells ≥ 3 s; B: A plus physical anchors (ball seen, one team ≤ 1 m, the other ≥ 3 m, ≥ 12 frames, which can be short possessions the decoder missed). CPU float64, deterministic | the only thing that has worked is adapting to the real match | queued after TCH: public window, set pieces, reels vs the final | queued |
+| ❌ | TCH | **Touch head**: auxiliary per-frame home/away touch targets from the open matches' events, DFL times snapped to the physical contact (median 0.2–0.46 m), trained beside possession (`--touch`) | oracle: perfect team calls → 0.964 | CV vs the v7 recipe: weight 0.5 seed 0 +0.0053, seed 1 −0.0060 (noise); weight 1.0 seed 0 +0.0079. Real match (0.5, with TTA + EATA + gate): public 0.632 / 0.875 vs 0.647 / 0.881, 14 possessions vs 17 (merges), dead-ball recall 0.709 vs 0.756; 45 disagreements (109 s, `reel_final_touch.mp4`) | not adopted |
+| ❌ | ST | **Self-training on the real match** (`temporal.self_train`, last GRU layer + head, CPU float64): A — pseudo-labels on 75% of graded frames (confident interiors of spells ≥ 3 s); B — A plus 3,625 frames of physical anchors that disagree with the decoder | adapting to the real match is what worked | A: public 0.647 / 0.877 vs 0.647 / 0.881, 286 possessions, 7 disagreements (15 s); B: 0.629 / 0.853, 294 possessions, 19 disagreements (53 s). ~5 min per variant | not adopted (A neutral, B worse) |
 | ⬜ | WASB | **Strong video ball detector** (WASB-class, Tarashima et al. BMVC 2023) to fill the 41% of frames with no ball | our TrackNet-style detector: 57% within 15 px on the real video | prerequisites: (1) organisers confirm that weights trained on the licensed video may be committed, or another way to make the submission reproducible; (2) GPU inference over the gaps must be deterministic and fit the organisers' re-run; then: train on ATD-projected ball crops (`tempolens.vision`), gate fills on precision (≥ 95% within 1.5 m), check on the public window + a reel | blocked on (1) — added to organiser questions |
 | ⬜ | DEF | **Training labels in the competition's definition of possession** (Metrica corrected tracking: control, not touch) | open labels only approximate it (DFL owner flag, Metrica events) — the structural ceiling | only legitimate route: honest hand-labelled windows by eye (small amounts may *train or validate*, RULES.md), used to fine-tune the output layer or to calibrate the open labels (flicker folding, owner hand-over timing); prerequisite: the user labels 2–3 windows of 5 min by the control rule | blocked on hand labels |
 | ❌ | Bi-LSTM | 0.707; ensemble 0.729 | no gain |
@@ -299,22 +299,23 @@ Written by `python -m tempolens.autoqueue` from `experiments/queue.json` (✅ he
 | ✅ | CHKA | check A: submission with 1 torch thread equals the 4-thread file |  |  |  |  |  | 2026-11-01 16:45 |
 | ✅ | CHKB | check B: fresh clone + new venv + pinned requirements + one command = same file |  |  |  |  |  | 2026-11-01 16:51 |
 | ✅ | TC5s0 | touch head 0.5 on the v7 recipe, CV seed 0 (vs RN4s0) | 0.7629 | 0.7544 | 0.7828 | (6.0, 4.0, 8.0, 1.0) | candidate (+0.0053) | 2026-11-01 17:39 |
-| ⏳ | TC5s1 | touch head 0.5 on the v7 recipe, CV seed 1 (vs RN4s1) |  |  |  |  |  |  |
-| ⬜ | TC1s0 | touch head 1.0 on the v7 recipe, CV seed 0 (vs RN4s0) |  |  |  |  |  |  |
-| ⬜ | TCtrain0 | touch head 0.5: train member 0 (models/exp/) |  |  |  |  |  |  |
-| ⬜ | TCtrain1 | touch head 0.5: train member 1 (models/exp/) |  |  |  |  |  |  |
-| ⬜ | TCtrain2 | touch head 0.5: train member 2 (models/exp/) |  |  |  |  |  |  |
-| ⬜ | TCdec | touch head: decoder settings = submission's, members = touch models |  |  |  |  |  |  |
-| ⬜ | TCpred | touch head: full real-match prediction with TTA + EATA |  |  |  |  |  |  |
-| ⬜ | TCpub | touch head: public window + dead ball vs final |  |  |  |  |  |  |
-| ⬜ | TCset | touch head: set pieces |  |  |  |  |  |  |
-| ⬜ | TCreel | touch head: review reel vs final |  |  |  |  |  |  |
-| ⬜ | TCtop | touch head: top-20 review sheet vs final |  |  |  |  |  |  |
-| ⬜ | ST | self-training on the real match, variants A (confident spells) and B (+ physical anchors) |  |  |  |  |  |  |
-| ⬜ | STpub | self-training: public window + dead ball vs final |  |  |  |  |  |  |
-| ⬜ | STset | self-training: set pieces |  |  |  |  |  |  |
-| ⬜ | STreelA | self-training A: review reel vs final |  |  |  |  |  |  |
-| ⬜ | STtopA | self-training A: top-20 sheet vs final |  |  |  |  |  |  |
-| ⬜ | STreelB | self-training B: review reel vs final |  |  |  |  |  |  |
-| ⬜ | STtopB | self-training B: top-20 sheet vs final |  |  |  |  |  |  |
+| ✅ | TC5s1 | touch head 0.5 on the v7 recipe, CV seed 1 (vs RN4s1) | 0.7617 | 0.7535 | 0.7808 | (4.0, 4.0, 8.0, 0.5) | no gain (-0.0060) | 2026-11-01 18:18 |
+| ✅ | CHKB2 | fresh clone + new venv reproduces the gated submission byte for byte |  |  |  |  |  | 2026-11-01 18:28 |
+| ✅ | TC1s0 | touch head 1.0 on the v7 recipe, CV seed 0 (vs RN4s0) | 0.7655 | 0.7551 | 0.7898 | (2.0, 8.0, 8.0, 0.5) | candidate (+0.0079) | 2026-11-01 19:07 |
+| ✅ | TCtrain0 | touch head 0.5: train member 0 (models/exp/) |  |  |  |  |  | 2026-11-01 19:14 |
+| ✅ | TCtrain1 | touch head 0.5: train member 1 (models/exp/) |  |  |  |  |  | 2026-11-01 19:21 |
+| ✅ | TCtrain2 | touch head 0.5: train member 2 (models/exp/) |  |  |  |  |  | 2026-11-01 19:28 |
+| ✅ | TCdec | touch head: decoder settings = submission's, members = touch models |  |  |  |  |  | 2026-11-01 19:28 |
+| ✅ | TCpred | touch head: full real-match prediction with TTA + EATA |  |  |  |  |  | 2026-11-01 19:36 |
+| ✅ | TCpub | touch head: public window + dead ball vs final |  |  |  |  |  | 2026-11-01 19:36 |
+| ✅ | TCset | touch head: set pieces |  |  |  |  |  | 2026-11-01 19:36 |
+| ✅ | TCreel | touch head: review reel vs final |  |  |  |  |  | 2026-11-01 19:43 |
+| ✅ | TCtop | touch head: top-20 review sheet vs final |  |  |  |  |  | 2026-11-01 19:43 |
+| ✅ | ST | self-training on the real match, variants A (confident spells) and B (+ physical anchors) |  |  |  |  |  | 2026-11-01 20:08 |
+| ✅ | STpub | self-training: public window + dead ball vs final |  |  |  |  |  | 2026-11-01 20:08 |
+| ✅ | STset | self-training: set pieces |  |  |  |  |  | 2026-11-01 20:08 |
+| ✅ | STreelA | self-training A: review reel vs final |  |  |  |  |  | 2026-11-01 20:13 |
+| ✅ | STtopA | self-training A: top-20 sheet vs final |  |  |  |  |  | 2026-11-01 20:13 |
+| ✅ | STreelB | self-training B: review reel vs final |  |  |  |  |  | 2026-11-01 20:18 |
+| ✅ | STtopB | self-training B: top-20 sheet vs final |  |  |  |  |  | 2026-11-01 20:18 |
 <!-- autoqueue:end -->
