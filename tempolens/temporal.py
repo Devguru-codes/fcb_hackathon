@@ -196,7 +196,7 @@ def self_train(model, normaliser, sample, pseudo, epochs=2, lr=1e-4):
         if swap:
             y[pseudo == H], y[pseudo == A] = A, H
         for start, stop in sample.runs():
-            starts = list(range(start, max(start, stop - CHUNK) + 1, CHUNK))
+            starts = list(range(start, stop, CHUNK))
             for s in starts:
                 e = min(stop, s + CHUNK)
                 if (y[s:e] >= 0).any():

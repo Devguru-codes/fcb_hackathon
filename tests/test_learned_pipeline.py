@@ -263,6 +263,12 @@ class EnsembleTests(unittest.TestCase):
                                       second.head.weight.detach().numpy())
         np.testing.assert_array_equal(first.inp[0].weight.detach().numpy(),
                                       model.inp[0].weight.detach().numpy())   # frozen
+        # pseudo-labels only on the half's last 300 frames: they must still be trained on
+        tail = np.full(table.n_frames, -100, dtype=np.int64)
+        tail[2700:3000] = H                                             # the half is 100..2999
+        tuned = temporal.self_train(copy.deepcopy(model), normaliser, table, tail, lr=1e-2)
+        self.assertFalse(np.array_equal(tuned.head.weight.detach().numpy(),
+                                        model.head.weight.detach().numpy()))
         before = temporal.predict(model, normaliser, table)[table.period > 0, H].mean()
         after = temporal.predict(first, normaliser, table)[table.period > 0, H].mean()
         self.assertGreater(after, before)
