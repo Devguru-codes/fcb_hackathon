@@ -238,6 +238,35 @@ class EnsembleTests(unittest.TestCase):
                                       second.head.weight.detach().numpy())
         self.assertLess(entropy(first), entropy(model))
 
+    def test_pseudo_labels_keep_only_confident_interiors_of_long_runs(self):
+        from tempolens.temporal import pseudo_labels
+        states = np.array([H] * 200 + [A] * 40 + [D] * 160, dtype=np.int8)
+        logp = np.log(np.full((400, 4), 0.05))
+        logp[np.arange(400), states] = np.log(0.95)
+        logp[100:110, H] = np.log(0.5)                   # an unsure stretch inside the H run
+        out = pseudo_labels(logp, states, [(0, 400)], min_len=75, edge=25, confidence=0.9)
+        self.assertTrue((out[25:100] == H).all() and (out[100:110] == -100).all())
+        self.assertTrue((out[200:240] == -100).all())    # the 40-frame A run is too short
+        self.assertTrue((out[265:375] == D).all() and (out[:25] == -100).all())
+
+    def test_self_training_is_deterministic_and_moves_towards_the_pseudo_labels(self):
+        import copy
+        from tempolens import temporal
+        table = SimulatorTests()._labelled(3000)
+        model, normaliser = temporal.train([table], epochs=1, device="cpu", verbose=False,
+                                           config=temporal.TemporalConfig(hidden=16))
+        model = model.double()
+        pseudo = np.where(table.period > 0, H, -100).astype(np.int64)   # "home throughout"
+        first = temporal.self_train(copy.deepcopy(model), normaliser, table, pseudo, lr=1e-2)
+        second = temporal.self_train(copy.deepcopy(model), normaliser, table, pseudo, lr=1e-2)
+        np.testing.assert_array_equal(first.head.weight.detach().numpy(),
+                                      second.head.weight.detach().numpy())
+        np.testing.assert_array_equal(first.inp[0].weight.detach().numpy(),
+                                      model.inp[0].weight.detach().numpy())   # frozen
+        before = temporal.predict(model, normaliser, table)[table.period > 0, H].mean()
+        after = temporal.predict(first, normaliser, table)[table.period > 0, H].mean()
+        self.assertGreater(after, before)
+
     def test_combine_averages_probabilities_and_change_logits(self):
         from tempolens.temporal import combine
         a = np.column_stack([np.log([[0.8, 0.1, 0.1]]), [[2.0]]])
