@@ -25,5 +25,41 @@ class SnapToContactTests(unittest.TestCase):
         self.assertTrue(np.all(np.abs(frames - np.array(touches)) <= 3))
 
 
+class DflEventFrameTests(unittest.TestCase):
+    def test_event_times_map_to_table_frames_across_halves_and_time_zones(self):
+        import os
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        from tempolens.touches import dfl_touch_frames
+
+        def ball(section, first, n, start):
+            frames = "\n".join('<Frame N="{}" T="2023-05-27T{}:{:02d}.{:03d}+00:00" X="0" Y="0"/>'.format(
+                first + i, start, (i * 40) // 1000, (i * 40) % 1000) for i in range(n))
+            return '<FrameSet GameSection="{}" TeamId="BALL">\n{}\n</FrameSet>'.format(section, frames)
+
+        with tempfile.TemporaryDirectory() as folder:
+            dfl = Path(folder) / "dfl_idsse"
+            dfl.mkdir()
+            (Path(folder) / "metrica_sample_data").mkdir()   # marks an open-data folder
+            (dfl / "DFL_02_01_matchinformation_DFL-COM-0_DFL-MAT-TEST.xml").write_text(
+                '<General HomeTeamId="HOME" GuestTeamId="AWAY"/>', encoding="utf-8")
+            (dfl / "DFL_04_03_positions_raw_observed_DFL-COM-0_DFL-MAT-TEST.xml").write_text(
+                "<Positions>\n{}\n{}\n</Positions>".format(ball("firstHalf", 10000, 100, "13:30"),
+                                                          ball("secondHalf", 50000, 50, "14:30")),
+                encoding="utf-8")
+            events = ['<Event EventTime="2023-05-27T15:30:00.400+02:00"><Play Team="HOME"/></Event>',
+                      '<Event EventTime="2023-05-27T16:30:01.000+02:00"><Play Team="AWAY"/></Event>',
+                      '<Event EventTime="2023-05-27T17:00:00.000+02:00"><Play Team="HOME"/></Event>']
+            (dfl / "DFL_03_02_events_raw_DFL-COM-0_DFL-MAT-TEST.xml").write_text(
+                "<Events>{}</Events>".format("".join(events)), encoding="utf-8")
+            with patch.dict(os.environ, {"MTAH_OPEN_DATA_DIR": folder}):
+                frames, teams = dfl_touch_frames("TEST")
+        # 13:30:00.4 UTC is frame 10 of the first half; 14:30:01 UTC is frame 25 of the second,
+        # which starts at table index 100; the third event falls in no half and is dropped
+        self.assertEqual(frames.tolist(), [10, 125])
+        self.assertEqual(teams.tolist(), [H, A])
+
+
 if __name__ == "__main__":
     unittest.main()
