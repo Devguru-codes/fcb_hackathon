@@ -48,22 +48,16 @@ def _paths(model_paths):
     return [Path(path) for path in model_paths]
 
 
-def learned_logp(data_root, game, model_paths, video_ball=None, video_fill="alive",
-                 tta_alpha=0.0, eata_steps=0):
-    """(competition MatchTable, ensemble output (n, 4)). The slow part: run it once.
+def learned_logp(data_root, game, model_paths, tta_alpha=0.0, eata_steps=0):
+    """(competition MatchTable, ensemble output (n, 4), its TableSample). The slow part: run it
+    once; the sample holds the features, computed once.
 
     `tta_alpha` > 0: test-time adaptation -- each member's feature scaling is moved that far
     toward this match's own medians and spreads (temporal.adapt_normaliser), unlabelled.
     `eata_steps` > 0: then each member's output layer adapts to the match (temporal.adapt_head).
-
-    `video_ball`: optional ball_filled.npz from tempolens.vision.run. Its detections fill the
-    tracking's ball gaps -- everywhere ("all"), or ("alive") only where a first pass of the
-    ensemble on the raw tracking says the ball is in play, so the model's "ball missing during
-    a stoppage" cue is left intact. "alive" costs a second ensemble pass.
     """
-    from dataclasses import replace
     from . import temporal
-    from .match import D, competition_table
+    from .match import competition_table
 
     table = competition_table(game, data_root)
     paths = _paths(model_paths)
@@ -78,33 +72,18 @@ def learned_logp(data_root, game, model_paths, video_ball=None, video_fill="aliv
     if eata_steps:
         members = [(temporal.adapt_head(model, normaliser, sample, eata_steps), normaliser)
                    for model, normaliser in members]
-    if video_ball is None:
-        return table, temporal.predict_ensemble(members, sample)
-    filled = np.load(video_ball)
-    from_video = filled["source"] == 2
-    if len(from_video) != table.n_frames:
-        raise ValueError("video ball file has {} frames, the match {}".format(
-            len(from_video), table.n_frames))
-    if video_fill == "alive":
-        first = temporal.predict_ensemble(members, table)
-        from_video &= np.exp(first[:, D]) < 0.5
-    elif video_fill != "all":
-        raise ValueError("video_fill must be 'alive' or 'all', not {!r}".format(video_fill))
-    ball = table.ball.copy()
-    ball[from_video] = filled["ball"][from_video]
-    table = replace(table, ball=ball)
-    return table, temporal.predict_ensemble(members, table)
+    return table, temporal.predict_ensemble(members, sample), sample
 
 
-def gate_team_evidence(logp, table, flight=0.2, loose=0.3, flight_speed=9.5, loose_m=1.35):
+def gate_team_evidence(logp, features, flight=0.2, loose=0.3, flight_speed=9.5, loose_m=1.35):
     """Damp the home-vs-away evidence where it is least trustworthy (after a rival, Suleyman):
     the log-odds of H against A are multiplied by `flight` where the seen ball moves faster than
     `flight_speed` m/s (in the air or passed: a nearby player is not on it) and by `loose` where
     nobody is within `loose_m` of it; P(alive) is unchanged. The decoder then keeps the current
-    owner through such frames unless the evidence after them disagrees."""
-    from .features import feature_names, frame_features
+    owner through such frames unless the evidence after them disagrees. `features`: the match's
+    home-view feature matrix (TableSample.features(False))."""
+    from .features import feature_names
     from .match import A, H
-    features = frame_features(table)[0]
     col = {name: i for i, name in enumerate(feature_names())}
     seen = features[:, col["ball_seen"]] > 0.5
     factor = np.ones(len(logp))
@@ -144,18 +123,18 @@ def decode_learned(table, logp, settings, data_root, game, tag_prior=None):
     return decode_table(table, logp, transition, settings.get("change_weight", 0.0)), tag_report
 
 
-def predict(data_root, output, model_paths=None, decoder_path=DEFAULT_DECODER, game=GAME,
-            video_ball=None, video_fill="alive"):
+def predict(data_root, output, model_paths=None, decoder_path=DEFAULT_DECODER, game=GAME):
     """Run the pipeline and write a validated-shape CSV. Returns the label array.
 
     `model_paths` defaults to the members listed in the decoder JSON.
     """
     model_paths = model_paths or default_models(decoder_path)
     settings = load_decoder(decoder_path)
-    table, logp = learned_logp(data_root, game, model_paths, video_ball, video_fill,
-                               settings.get("tta_alpha", 0.0), settings.get("eata_steps", 0))
+    table, logp, sample = learned_logp(data_root, game, model_paths,
+                                       settings.get("tta_alpha", 0.0), settings.get("eata_steps", 0))
     if settings.get("flight_gate") is not None:
-        logp = gate_team_evidence(logp, table, settings["flight_gate"], settings["loose_gate"])
+        logp = gate_team_evidence(logp, sample.features(False), settings["flight_gate"],
+                                  settings["loose_gate"])
     states, _ = decode_learned(table, logp, settings, data_root, game)
     labels = np.array(["H", "A", "D", "X"])[np.where(states > 2, 3, states)].astype("<U1")
     # Only the two halves are graded. X elsewhere is free, and says plainly that halftime was not
@@ -182,14 +161,9 @@ def main(argv=None):
     parser.add_argument("--model", nargs="+",
                         help="temporal model weights, averaged (default: the decoder's members)")
     parser.add_argument("--decoder", default=str(DEFAULT_DECODER), help="decoder settings JSON")
-    parser.add_argument("--video-ball", help="ball_filled.npz from tempolens.vision.run "
-                                             "(default: tracking ball only)")
-    parser.add_argument("--video-fill", default="alive", choices=("alive", "all"),
-                        help="fill video detections only where play looks live, or everywhere")
     args = parser.parse_args(argv)
     try:
-        labels = predict(args.data_root, args.output, args.model, args.decoder,
-                         video_ball=args.video_ball, video_fill=args.video_fill)
+        labels = predict(args.data_root, args.output, args.model, args.decoder)
     except (IOError, ImportError, KeyError, ValueError) as error:
         parser.error(str(error))
     counts = {label: int(np.sum(labels == label)) for label in ("H", "A", "D", "X")}

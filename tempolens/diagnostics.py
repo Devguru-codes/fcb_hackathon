@@ -90,7 +90,7 @@ def run(data_root, model_paths=None, decoder_path=None):
     if model_paths:
         from .predict import decode_learned, learned_logp, load_decoder
         settings = load_decoder(decoder_path)
-        _, logp = learned_logp(data_root, GAME, model_paths)
+        _, logp, _ = learned_logp(data_root, GAME, model_paths)
         scores["learned"], _ = decode_learned(table, logp, settings, data_root, GAME, "off")
         scores["learned+tags"], tag_report = decode_learned(table, logp, settings, data_root,
                                                             GAME, "auto")

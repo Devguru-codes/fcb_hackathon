@@ -336,7 +336,8 @@ above) the held-out crops were 22% within 5 px, 57% within 15 px (about 1 m), me
 12.6 px; only the 5% most confident detections were reliable (95% within 15 px). At the fill
 threshold that covers a small share of the gaps, a full scan of the gap frames takes hours, and
 weights trained on the licensed video may not be publishable, which the submission's exact
-reproduction would need. It is therefore not used. A stronger detector (e.g. WASB, Tarashima et
+reproduction would need. It is therefore not used, and its code (`tempolens/vision/`) was removed
+from the repository; it remains in the history up to commit `b5fe60f`. A stronger detector (e.g. WASB, Tarashima et
 al., BMVC 2023) is the obvious upgrade.
 
 **Broadcast tracking as a second ball source.** The broadcast feed's tracking is not
