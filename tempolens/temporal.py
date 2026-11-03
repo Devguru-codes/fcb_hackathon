@@ -159,11 +159,19 @@ def adapt_head(model, normaliser, sample, steps, lr=1e-3, gate=0.4):
     flags = len(normaliser.flagged)
     # a frame outside the halves has every feature missing: all its missing-value flags are set
     keep = ~(x[:, -flags:] > 0.5).all(dim=1) if flags else torch.ones(len(x), dtype=torch.bool)
-    h = h[keep][::5]
+    for _ in entropy_steps(model.head, h[keep][::5], steps, lr, gate):
+        pass
+    return model.eval()
+
+
+def entropy_steps(head, h, steps, lr=1e-3, gate=0.4):
+    """The EATA update of `head` on head inputs `h`, one full-batch Adam step per iteration;
+    yields the step count after each, so a caller can read the head at several step counts."""
+    torch = _torch()
     e0 = gate * np.log(3)
-    optimiser = torch.optim.Adam(model.head.parameters(), lr=lr)
-    for _ in range(steps):
-        p = torch.softmax(model.head(h)[:, :3], dim=1)
+    optimiser = torch.optim.Adam(head.parameters(), lr=lr)
+    for step in range(steps):
+        p = torch.softmax(head(h)[:, :3], dim=1)
         entropy = -(p * torch.log(p.clamp_min(1e-12))).sum(dim=1)
         confident = entropy < e0
         if not confident.any():
@@ -173,7 +181,7 @@ def adapt_head(model, normaliser, sample, steps, lr=1e-3, gate=0.4):
         optimiser.zero_grad()
         loss.backward()
         optimiser.step()
-    return model.eval()
+        yield step + 1
 
 
 def self_train(model, normaliser, sample, pseudo, epochs=2, lr=1e-4):

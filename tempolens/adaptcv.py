@@ -1,0 +1,227 @@
+"""Choose the test-time adaptation on external data only (organisers' rules, 2026-11-03).
+
+    python -m tempolens.adaptcv            # train/reuse fold models, score the grid, print the choice
+
+The competition match differs from the training data (simulated noise on clean tracking). The
+adaptation settings -- `tta_alpha` (temporal.adapt_normaliser), `eata_steps` (temporal.adapt_head),
+the team-evidence gate (predict.gate_team_evidence) and the decoder costs -- are scored here on
+open matches under a domain shift, never on the provided match:
+
+- sim:   each open match held out (5 folds, v7 recipe: 3 members, 4 randomised draws), with the
+         fixed calibrated test noise -- the standard cross-validation;
+- shift: the same fold models on a different corruption: one randomised noise draw per match
+         plus tracker faults (identity swaps, duplicate and phantom tracks), never trained on;
+- sc:    the submitted members (trained on all 10 open matches) on the 20 SkillCorner matches as
+         they are: real broadcast tracking, never seen in training.
+
+Decision rule, fixed before the run: score = mean over the three conditions of the mean
+spellF1. Adaptation (alpha, steps or the gate) is adopted only if its best setting beats no
+adaptation at the same costs by at least NOISE and loses no condition by more than NOISE;
+otherwise the costs alone are chosen. Results are cached per match in models/exp/adaptcv/.
+
+EATA here adapts the head on the stitched per-frame head inputs (both team views, every 5th
+in-half frame) rather than on the overlapping inference windows predict.py collects; the update
+loop is the same (temporal.entropy_steps).
+"""
+
+import argparse
+import copy
+import json
+from pathlib import Path
+
+import numpy as np
+
+from . import temporal
+from .decoder import transition_matrix
+from .experiments import (SIM_TEST_SEED, CachedSample, decode_table, folds, score,
+                          training_samples)
+from .match import A, D, H
+from .opendata import EXTRA_LOADERS, LOADERS
+from .predict import DEFAULT_DECODER, gate_team_evidence, load_decoder
+
+ROOT = Path(__file__).resolve().parents[1]
+OUT = ROOT / "models" / "exp" / "adaptcv"
+ALPHAS = (0.0, 0.5, 1.0)
+STEPS = (0, 10, 30, 60)
+GATES = (False, True)
+COSTS = ((2.0, 2.0, 2.0, 0.5), (4.0, 8.0, 8.0, 1.0))
+SHIFT_SEED = 7000
+MEMBERS, DRAWS = 3, 4
+NOISE = 0.005
+
+
+def fold_members(held, rest):
+    """The v7-recipe members trained without `held`, cached on disk."""
+    members = []
+    for k in range(MEMBERS):
+        path = OUT / "models" / "{}_m{}.pt".format("-".join(held), k)
+        if not path.exists():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            model, normaliser = temporal.train(training_samples(rest, k, DRAWS),
+                                               seed=temporal.SEED + k)
+            temporal.save(model, normaliser, path)
+        members.append(temporal.load(path))
+    return members
+
+
+def head_inputs(model, normaliser, sample, swap):
+    """(n, width) per-frame inputs of the output layer, zeros outside the halves."""
+    torch = temporal._torch()
+    head, model.head = model.head, torch.nn.Identity()
+    try:
+        x = sample.features(swap)
+        out = None
+        for start, stop in sample.runs():
+            h = temporal._infer(model, normaliser(np.asarray(x[start:stop])))
+            if out is None:
+                out = np.zeros((sample.n_frames, h.shape[1]), dtype=np.float32)
+            out[start:stop] = h
+        return out
+    finally:
+        model.head = head
+
+
+def member_output(head, h0, h1, inside):
+    """temporal.predict's output from head inputs of both views."""
+    torch = temporal._torch()
+    result = np.zeros((len(h0), 4))
+    result[:, :3] = np.log(1.0 / 3)
+    with torch.no_grad():
+        for h, swap in ((h0, False), (h1, True)):
+            raw = head(torch.from_numpy(h[inside]).to(head.weight.dtype)).numpy()[:, :4]
+            p = np.exp(raw[:, :3] - raw[:, :3].max(axis=1, keepdims=True))
+            p /= p.sum(axis=1, keepdims=True)
+            if swap:
+                p = p[:, [A, H, D]]
+            if not swap:
+                result[inside, :3], result[inside, 3] = 0.5 * p, 0.5 * raw[:, 3]
+            else:
+                result[inside, :3] += 0.5 * p
+                result[inside, 3] += 0.5 * raw[:, 3]
+    result[inside, :3] = np.log(np.clip(result[inside, :3], 1e-6, 1.0))
+    return np.round(result, 4)
+
+
+def outputs(members, sample):
+    """{(alpha, steps): ensemble output} for the whole grid on one match."""
+    torch = temporal._torch()
+    inside = np.zeros(sample.n_frames, dtype=bool)
+    for start, stop in sample.runs():
+        inside[start:stop] = True
+    per = {(a, s): [] for a in ALPHAS for s in STEPS}
+    for model, normaliser in members:
+        model = copy.deepcopy(model).float()
+        for alpha in ALPHAS:
+            norm = temporal.adapt_normaliser(normaliser, sample, alpha) if alpha else normaliser
+            h0, h1 = (head_inputs(model, norm, sample, swap) for swap in (False, True))
+            x = np.asarray(sample.features(False))
+            keep = inside & ~np.isnan(x[:, norm.flagged]).all(axis=1) if len(norm.flagged) \
+                else inside
+            fit = torch.from_numpy(np.concatenate([h0[keep], h1[keep]])[::5])
+            per[(alpha, 0)].append(member_output(model.head, h0, h1, inside))
+            # one Adam run read at each step count equals a separate run of that many steps
+            head, snaps = copy.deepcopy(model.head), {}
+            for count in temporal.entropy_steps(head, fit, max(STEPS)):
+                if count in STEPS:
+                    snaps[count] = member_output(head, h0, h1, inside)
+            for target in STEPS[1:]:      # stopped early (no confident frame): the last head
+                per[(alpha, target)].append(snaps[target] if target in snaps
+                                            else member_output(head, h0, h1, inside))
+    return {key: temporal.combine(value) for key, value in per.items()}
+
+
+def score_match(members, sample):
+    rows = []
+    grid = outputs(members, sample)
+    features = np.asarray(sample.features(False))
+    for (alpha, steps), logp in grid.items():
+        for gate in GATES:
+            lp = gate_team_evidence(logp, features) if gate else logp
+            for costs in COSTS:
+                r = score(sample.labels, decode_table(sample, lp, transition_matrix(*costs[:3]),
+                                                      costs[3]))
+                rows.append({"alpha": alpha, "steps": steps, "gate": gate, "costs": costs,
+                             "spellF1": r["spellF1"], "macroF1": r["macroF1"]})
+    return rows
+
+
+def cached(condition, name, compute):
+    path = OUT / "{}_{}.json".format(condition, name)
+    if path.exists():
+        return json.loads(path.read_text(encoding="utf-8"))
+    rows = compute()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(rows), encoding="utf-8")
+    return rows
+
+
+def collect():
+    results = {"sim": {}, "shift": {}, "sc": {}}
+    names = sorted(LOADERS)
+    for held in folds(names):
+        members = fold_members(held, sorted(set(names) - set(held)))
+        for n in held:
+            results["sim"][n] = cached("sim", n, lambda: score_match(
+                members, CachedSample(n, SIM_TEST_SEED)))
+            seed = SHIFT_SEED + names.index(n)
+            results["shift"][n] = cached("shift", n, lambda: score_match(
+                members, CachedSample(n, seed, randomised=True, faults=True)))
+            print("scored {}".format(n), flush=True)
+    final = [temporal.load(ROOT / "models" / p) for p in load_decoder(DEFAULT_DECODER)["members"]]
+    for n in sorted(EXTRA_LOADERS):
+        results["sc"][n] = cached("sc", n, lambda: score_match(final, CachedSample(n)))
+        print("scored {}".format(n), flush=True)
+    return results
+
+
+def table(results):
+    """{setting: {condition: (mean spellF1, mean macroF1)}}."""
+    out = {}
+    for condition, matches in results.items():
+        acc = {}
+        for rows in matches.values():
+            for r in rows:
+                key = (r["alpha"], r["steps"], r["gate"], tuple(r["costs"]))
+                acc.setdefault(key, []).append((r["spellF1"], r["macroF1"]))
+        for key, values in acc.items():
+            out.setdefault(key, {})[condition] = tuple(np.mean(values, axis=0))
+    return out
+
+
+def choose(summary):
+    """The decision rule in the module docstring. Returns (setting, overall, reason)."""
+    overall = {k: np.mean([v[c][0] for c in v]) for k, v in summary.items()}
+    plain = {k: v for k, v in overall.items() if k[:3] == (0.0, 0, False)}
+    base = max(plain, key=plain.get)
+    best = max(overall, key=overall.get)
+    if best[:3] == (0.0, 0, False):
+        return base, overall, "no adaptation is best"
+    ref = (0.0, 0, False, best[3])
+    gain = overall[best] - overall[ref]
+    worst = min(summary[best][c][0] - summary[ref][c][0] for c in summary[best])
+    if gain >= NOISE and worst >= -NOISE:
+        return best, overall, "adaptation +{:.4f} over none at the same costs, worst condition {:+.4f}" \
+            .format(gain, worst)
+    return base, overall, "best adaptation +{:.4f} (worst condition {:+.4f}) is within noise: none" \
+        .format(gain, worst)
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.parse_args(argv)
+    summary = table(collect())
+    setting, overall, reason = choose(summary)
+    print("\nalpha steps gate costs                 overall   sim (spell/macro)   shift    sc")
+    for key in sorted(summary, key=lambda k: -overall[k])[:25]:
+        v = summary[key]
+        print("{:<5} {:<5} {:<4} {:<22} {:.4f}   {}".format(
+            key[0], key[1], "on" if key[2] else "off", str(key[3]), overall[key],
+            "  ".join("{:.4f}/{:.4f}".format(*v[c]) for c in ("sim", "shift", "sc"))))
+    plain = (0.0, 0, False, setting[3])
+    print("\nno adaptation at those costs: {:.4f}".format(overall[plain]))
+    print("chosen: tta_alpha {} eata_steps {} gate {} costs {} -- {}".format(
+        setting[0], setting[1], "on" if setting[2] else "off", setting[3], reason))
+
+
+if __name__ == "__main__":
+    main()

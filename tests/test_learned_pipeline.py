@@ -238,6 +238,19 @@ class EnsembleTests(unittest.TestCase):
                                       second.head.weight.detach().numpy())
         self.assertLess(entropy(first), entropy(model))
 
+    def test_adaptation_study_reproduces_predict_from_head_inputs(self):
+        from tempolens import adaptcv, temporal
+        from tempolens.features import TableSample
+        table = SimulatorTests()._labelled(3000)
+        model, normaliser = temporal.train([table], epochs=1, device="cpu", verbose=False,
+                                           config=temporal.TemporalConfig(hidden=16))
+        model = model.double()
+        sample = TableSample(table)
+        inside = table.period > 0
+        h0, h1 = (adaptcv.head_inputs(model, normaliser, sample, swap) for swap in (False, True))
+        np.testing.assert_allclose(adaptcv.member_output(model.head, h0, h1, inside),
+                                   temporal.predict(model, normaliser, sample), atol=1e-4)
+
     def test_pseudo_labels_keep_only_confident_interiors_of_long_runs(self):
         from tempolens.temporal import pseudo_labels
         states = np.array([H] * 200 + [A] * 40 + [D] * 160, dtype=np.int8)

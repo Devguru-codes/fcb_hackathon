@@ -1,18 +1,16 @@
 {
-  "_provenance": "v7+TTA+EATA+gate. flight_gate 0.2 / loose_gate 0.3 (adopted 2026-11-01): after the ensemble, the H-vs-A log-odds are damped where the seen ball flies (> 9.5 m/s) or is loose (nobody within 1.35 m) -- predict.gate_team_evidence, after Suleyman. Open-data CV said no (-0.025), the real match yes: public spellF1 0.647 unchanged, macroF1 0.881 vs 0.873, 291 vs 301 possessions; human review of all 8 disagreements 7 vs 1. v7+TTA+EATA. eata_steps 30 (adopted 2026-10-29): each member's output layer then adapts to the match, EATA-style (temporal.adapt_head); public 0.647 / 0.8725 vs 0.629 / 0.849, human review of all 24 disagreements 20 vs 4. v7+TTA, adopted earlier the same day. Members trained with domain randomisation (python -m tempolens.train --member k --draws 4: 4 noise draws per open match, each with its own simulator settings). Costs are v5's (switch 4, alive>dead 8, dead>alive 8, change bonus 1.0): the CV-tuned costs (2, 2, 2, 0.5) allow cheap switches and lowered the public window to 0.549. tta_alpha 1: test-time re-normalisation of every member's feature scaling on the match itself (temporal.adapt_normaliser). Evidence: ensemble CV 0.7682 vs v5 0.7591 at these costs; real match public spellF1 0.629 vs 0.594, macroF1 0.849 vs 0.819, dead-ball recall 0.647 vs 0.534; human review of all 88 disagreements with v5: 45 vs 33, the 20 longest 14 vs 4. Previous: v5 = tempolens_gru*.pt, tta_alpha 0.",
+  "_provenance": "Clean configuration (2026-11-03), after the organisers' rules clarification: every setting is chosen on external data only (open-data cross-validation), never on the provided match's ground truth or video. Members: tempolens_rnd4_m0..2.pt, trained on the 10 open matches with domain randomisation (python -m tempolens.train --member k --draws 4; CV ensemble 0.7716 vs 0.7636 without). Decoder costs (switch 2, alive>dead 2, dead>alive 2, change bonus 0.5) are the argmax of that CV (experiments --model ensemble --draws 4). Test-time adaptation, EATA and the team-evidence gate are off unless the open-data adaptation study (tempolens.adaptcv) supports them.",
   "members": [
     "tempolens_rnd4_m0.pt",
     "tempolens_rnd4_m1.pt",
     "tempolens_rnd4_m2.pt"
   ],
-  "switch": 4.0,
-  "alive_to_dead": 8.0,
-  "dead_to_alive": 8.0,
-  "change_weight": 1.0,
-  "tta_alpha": 1.0,
-  "eata_steps": 30,
-  "flight_gate": 0.2,
-  "loose_gate": 0.3,
+  "switch": 2.0,
+  "alive_to_dead": 2.0,
+  "dead_to_alive": 2.0,
+  "change_weight": 0.5,
+  "tta_alpha": 0.0,
+  "eata_steps": 0,
   "tag_prior": "off",
   "_tag_prior": "'auto' adds the self-calibrated Smart Tagging prior (tagprior.py). Off: on the real match the tags agree with a confident model 83% (attacking codes) and 94% (defensive codes) of the time, yet the prior lowered the public-window spellF1 (0.43 vs 0.59, single GRU)."
 }
