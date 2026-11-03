@@ -27,14 +27,15 @@ loop is the same (temporal.entropy_steps).
 import argparse
 import copy
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 import numpy as np
 
 from . import temporal
 from .decoder import transition_matrix
-from .experiments import (SIM_TEST_SEED, CachedSample, decode_table, folds, score,
-                          training_samples)
+from .experiments import SIM_TEST_SEED, CachedSample, decode_table, folds, score
 from .match import A, D, H
 from .opendata import EXTRA_LOADERS, LOADERS
 from .predict import DEFAULT_DECODER, gate_team_evidence, load_decoder
@@ -55,11 +56,11 @@ def fold_members(held, rest):
     members = []
     for k in range(MEMBERS):
         path = OUT / "models" / "{}_m{}.pt".format("-".join(held), k)
-        if not path.exists():
+        if not path.exists():      # its own process: training arrays never pile up here
             path.parent.mkdir(parents=True, exist_ok=True)
-            model, normaliser = temporal.train(training_samples(rest, k, DRAWS),
-                                               seed=temporal.SEED + k)
-            temporal.save(model, normaliser, path)
+            subprocess.run([sys.executable, "-m", "tempolens.train", "--member", str(k),
+                            "--draws", str(DRAWS), "--out", str(path), "--matches", *rest],
+                           check=True)
         members.append(temporal.load(path))
     return members
 
