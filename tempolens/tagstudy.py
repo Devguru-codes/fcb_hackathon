@@ -49,25 +49,34 @@ def synthetic_tags(labels, error, seed):
     return out
 
 
-def run(errors, costs=None):
+def run(errors, costs=None, draws=0, seeds=1):
+    """The decoder's costs and change bonus unless `costs` (switch, alive>dead, dead>alive,
+    change) is given; `draws`: the ensemble's training recipe (experiments --draws); `seeds`:
+    tag draws per match, averaged."""
     names = sorted(LOADERS)
     samples = {n: CachedSample(n, SIM_TEST_SEED) for n in names}
-    logps = oof_logp(names, "ensemble")
+    logps = oof_logp(names, "ensemble", draws=draws)
     settings = load_decoder()
-    transition = transition_matrix(*(costs or (settings["switch"], settings["alive_to_dead"],
-                                               settings["dead_to_alive"])))
-    base = {n: score(samples[n].labels, decode_table(samples[n], logps[n], transition))
+    costs = costs or (settings["switch"], settings["alive_to_dead"], settings["dead_to_alive"],
+                      settings.get("change_weight", 0.0))
+    transition, change = transition_matrix(*costs[:3]), costs[3]
+    base = {n: score(samples[n].labels, decode_table(samples[n], logps[n], transition, change))
             for n in names}
     print("no prior              all {:.4f}  dfl {:.4f}  metrica {:.4f}".format(
         *_summary(base, names)))
     for error in errors:
         rows, weights = {}, []
         for k, n in enumerate(names):
-            tags = synthetic_tags(samples[n].labels, error, seed=1000 * k + int(error * 100))
-            adjusted, report = self_calibrated(logps[n], tags, samples[n].period > 0)
-            rows[n] = score(samples[n].labels, decode_table(samples[n], adjusted, transition))
-            weights.append([report[g][0] for g in GROUPS])
-            reliability = [report[g][1] for g in GROUPS]
+            runs = []
+            for s in range(seeds):      # seed 0 is the original study's tag draw
+                tags = synthetic_tags(samples[n].labels, error,
+                                      seed=1000 * k + int(error * 100) + 100000 * s)
+                adjusted, report = self_calibrated(logps[n], tags, samples[n].period > 0)
+                runs.append(score(samples[n].labels,
+                                  decode_table(samples[n], adjusted, transition, change)))
+                weights.append([report[g][0] for g in GROUPS])
+                reliability = [report[g][1] for g in GROUPS]
+            rows[n] = {"spellF1": np.mean([r["spellF1"] for r in runs])}
         print("tag error {:.2f}        all {:.4f}  dfl {:.4f}  metrica {:.4f}   mean weights {}"
               "  (last match reliability {})".format(
                   error, *_summary(rows, names),
@@ -78,8 +87,10 @@ def run(errors, costs=None):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--errors", type=float, nargs="+", default=(0.0, 0.1, 0.2, 0.35, 0.5))
+    parser.add_argument("--draws", type=int, default=0, help="ensemble recipe (experiments)")
+    parser.add_argument("--seeds", type=int, default=1, help="synthetic tag draws per match")
     args = parser.parse_args(argv)
-    run(args.errors)
+    run(args.errors, draws=args.draws, seeds=args.seeds)
 
 
 if __name__ == "__main__":
