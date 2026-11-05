@@ -2,17 +2,13 @@
 
     python -m tempolens.realcheck public A.csv B.csv ...              # public window + dead ball
     python -m tempolens.realcheck setpiece --data-root data X.csv     # dead ball around set pieces
-    python -m tempolens.realcheck top --data-root data A.csv B.csv --names a b --suffix _a_b
 
 `public`: official metrics on the public five minutes, dead-ball recall and precision there, and
 full-match dead-ball share and possession count. `setpiece`: share of frames labelled dead in the
-seconds around each Smart Tagging SET PIECES tag, by restart type. `top`: the longest
-disagreements between two files as a review sheet with reel times, matching the reel that
-`tempolens.review` renders for the same pair (written under <data-root>/derived/review/).
+seconds around each Smart Tagging SET PIECES tag, by restart type.
 """
 
 import argparse
-import csv
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -70,50 +66,17 @@ def setpiece(data_root, path):
         print("  {:<26}".format("{} ({})".format(kind, len(starts))) + "".join(cells))
 
 
-def top(data_root, a_path, b_path, names, suffix, n=20):
-    from .review import FPS, NAMES, clock, disagreements, majority
-    a, b = codes(a_path), codes(b_path)
-    cores, spans = disagreements(a, b, 25, 125)
-
-    def reel_second(frame):
-        done = 0
-        for lo, hi in spans:
-            if lo <= frame < hi:
-                return (done + frame - lo) // FPS
-            done += hi - lo
-
-    longest = sorted(enumerate(cores, 1), key=lambda kc: -(kc[1][1] - kc[1][0]))[:n]
-    out = Path(data_root) / "derived" / "review" / "review_top{}{}.csv".format(n, suffix)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    with open(out, "w", newline="", encoding="utf-8") as handle:
-        w = csv.writer(handle)
-        w.writerow(["n (reel counter)", "reel_time (mm:ss)", "match_video_time", "first_frame",
-                    "last_frame", "seconds", names[0], names[1],
-                    "verdict ({} / {} / both wrong / unclear)".format(*names), "notes"])
-        for k, (s, e) in sorted(longest):
-            r = reel_second(s)
-            w.writerow([k, "{}:{:02d}".format(r // 60, r % 60), clock(s), s, e - 1,
-                        round((e - s) / FPS, 1), NAMES[majority(a[s:e])], NAMES[majority(b[s:e])],
-                        "", ""])
-    print("{} disagreements >= 1 s ({} s in all); sheet of the {} longest: {}".format(
-        len(cores), round(sum(e - s for s, e in cores) / FPS), len(longest), out.name))
-
-
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("mode", choices=("public", "setpiece", "top"))
+    parser.add_argument("mode", choices=("public", "setpiece"))
     parser.add_argument("files", nargs="+")
     parser.add_argument("--data-root")
-    parser.add_argument("--names", nargs=2, default=("A", "B"))
-    parser.add_argument("--suffix", default="")
     args = parser.parse_args(argv)
     if args.mode == "public":
         public(args.files)
-    elif args.mode == "setpiece":
+    else:
         for path in args.files:
             setpiece(args.data_root, path)
-    else:
-        top(args.data_root, args.files[0], args.files[1], args.names, args.suffix)
 
 
 if __name__ == "__main__":

@@ -8,5 +8,3 @@ torch==2.5.1
 numba==0.61.2
 # Reads Metrica's open sample game 3 (FIFA/EPTS); same pin as requirements-starter.txt.
 kloppy==3.18.0
-# The review reels (tempolens.review).
-opencv-python-headless==4.10.0.84

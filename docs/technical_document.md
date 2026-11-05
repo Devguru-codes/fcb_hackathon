@@ -255,7 +255,8 @@ them on external data in §7c. "Submitted" below means submitted at the time.*
 Three checks were used, none of which fed back into training: the public window (spellF1,
 macroF1, dead-ball recall); dead-ball share in the seconds around Smart Tagging's 59 set-piece
 tags; and a human review of every disagreement of 1 s or more between two full-match
-submissions, on a reel rendered from the tactical video (`python -m tempolens.review`).
+submissions, on a reel rendered from the tactical video (`tempolens/review.py`, removed after the
+clarification; it remains in the history up to commit `46ac546`).
 
 - **Pre-kickoff frames.** The second half is graded from frame 110,808 but kicks off at 113,742
   (FAQ). Every graded frame before that is dead ball, but the model labelled only 22% of them D.
