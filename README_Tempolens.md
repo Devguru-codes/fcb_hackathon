@@ -31,10 +31,10 @@ with a **simulator calibrated so the official baseline reproduces its published 
 | noise | `simulate.py` | stoppage-aligned and long log-normal ball gaps, player dropout (no position jitter: the real tracking is smooth) |
 | features | `features.py` | ~140 identity-free, team-symmetric features: control geometry, ball state, formation, memory across ball gaps, context windows |
 | model | `temporal.py` | bidirectional GRU: P(H/A/D) per frame plus a possession-change head, three members trained with domain randomisation (each noise draw its own simulator settings); LightGBM in `experiments.py` as a comparison |
-| adaptation | `temporal.py` | on the match itself, unlabelled: feature scaling re-fitted (`adapt_normaliser`), then each member's output layer adapted, EATA-style (`adapt_head`) |
-| decoding | `decoder.py` | Viterbi with switch/stoppage costs from cross-validated spellF1, a possession-change bonus, dead ball before the second-half kickoff (FAQ) |
-| tags | `tags.py` | Smart Tagging as an optional prior (off in the submission), with defensive codes pointing at the other team |
-| checks | `realcheck.py`, `review.py` | real-match checks that print aggregates only, and a review reel of where two submissions disagree, for human validation |
+| adaptation | `temporal.py`, `adaptcv.py` | optional test-time adaptation (feature re-scaling, EATA-style output layer); **off** in the submission: the open-data study (`python -m tempolens.adaptcv`) found +0.0043, under its +0.005 bar |
+| decoding | `decoder.py` | Viterbi with switch/stoppage costs from cross-validated spellF1 (2, 2, 2), a possession-change bonus (0.5), dead ball before the second-half kickoff (FAQ) |
+| tags | `tags.py`, `tagprior.py` | Smart Tagging as a prior on the side in possession, **on** in the submission, weighted without labels by how often the tags agree with confident frames; defensive codes point at the other team |
+| checks | `realcheck.py` | automatic real-match checks that print aggregates only (format, label shares) |
 
 ## Run
 
@@ -57,7 +57,9 @@ python -m tempolens.train --member 0 --draws 4 --out models/tempolens_rnd4_m0.pt
 `predict` uses the ensemble members listed in `models/decoder.json` (the costs there were tuned for
 exactly them); `--model` overrides it. Weights record the feature version they were trained on and
 refuse to load against another.
-The same file sets the test-time adaptation (`tta_alpha`, `eata_steps`). Everything runs on the
+The same file sets the tag prior and the test-time adaptation (`tag_prior`, `tta_alpha`, `eata_steps`).
+Every setting there is chosen on open data only, as the organisers' rules of 2026-11-03 require
+(technical document §7c). Everything runs on the
 CPU in float64 with a fixed order, so the same data gives the same file byte for byte; a full run
 takes about 8 minutes on a laptop.
 

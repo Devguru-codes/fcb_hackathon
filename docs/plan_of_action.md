@@ -55,9 +55,10 @@ This mail takes precedence over the documentation, earlier emails and individual
 
 | | |
 |---|---|
-| version | **clean** (2026-11-03): features v4, simulator v2, 3-GRU ensemble trained on the 10 open matches with domain randomisation (`train --draws 4`); decoder costs (2, 2, 2, 0.5), the open-data CV argmax; no test-time adaptation, EATA or gate until the open-data adaptation study (`python -m tempolens.adaptcv`) supports them |
-| evidence | open-data CV ensemble 0.7716 (DFL 0.7597, Metrica 0.7994) vs 0.7636 without domain randomisation |
-| file | `submissions/tempolens_clean.csv` (outside git), sha256 `704cfd62…`, validated; 303 possessions |
+| version | **final clean** (2026-11-05): features v4, simulator v2, 3-GRU ensemble trained on the 10 open matches with domain randomisation (`train --draws 4`); decoder costs (2, 2, 2, 0.5), the open-data CV argmax; Smart Tagging prior on (`auto`, TPcv); no test-time adaptation, EATA or gate (ADcv) |
+| evidence | open-data CV ensemble 0.7716 (DFL 0.7597, Metrica 0.7994) vs 0.7636 without domain randomisation; tag prior +0.011 to −0.0001 (TPcv); adaptation +0.0043, under its bar (ADcv). Not scored on the public window |
+| file | `submissions/tempolens_final_clean.csv` (outside git), sha256 `c89c7fee…`, validated; 288 possessions of mean 13.1 s |
+| superseded | `tempolens_clean.csv` (`704cfd62…`, same without the tag prior) |
 | withdrawn | v7+TTA+EATA+gate `tempolens_final.csv` (`9f7dab1a…`): settings chosen on the provided match (see the rules clarification above) |
 
 ## A. Pipeline milestones
@@ -67,7 +68,7 @@ This mail takes precedence over the documentation, earlier emails and individual
 | ✅ | Learned pipeline: open data + ATD simulator + identity-free features + bi-GRU + Viterbi | replaces the hand-tuned Codex decoder (removed) |
 | ✅ | ATD simulator calibrated to the official baseline's published full-match scores | reproduces their ranking order |
 | ✅ | 3-member ensemble (seeds × noise draws) | +0.011 DFL over one GRU (simulator v1) |
-| ✅ | Self-calibrated Smart Tagging prior, built and kept **off** | real tags 83%/94% reliable, but lowered public spellF1 (0.43 vs 0.59) |
+| ✅ | Self-calibrated Smart Tagging prior, **on** in the final configuration (TPcv) | never hurts on open data with synthetic tags (+0.011 perfect, −0.0001 random); it was first switched off on the public window, a choice the 2026-11-03 rules forbid |
 | ✅ | Diagnostics on the real data (aggregates only) | alignment exact; organisers' baseline reproduced on 100% of frames |
 | ✅ | Float64 inference + 4-decimal rounding | same file on other CPUs; on this machine 0 of 199,319 frames changed |
 | ✅ | Batched inference | submission rebuild 26 → 6.5 min, byte-identical |
@@ -149,6 +150,7 @@ dynamic switch cost is what our change bonus already does.
 | ❌ | CMB | Final's team calls + H1b's dead/live (A: H1b's team where final says D and H1b live; B: final's last team carried forward) | H1b's dead-ball recall 0.944 without its merged possessions | 6,973 frames changed (5,632 to D, 1,341 to live); public window, A and B identical: **spellF1 0.618**, macroF1 0.915, 16 of 17 possessions, dead-ball recall 0.944; 257 / 275 possessions in the match. The main metric falls below both parents: H1b's dead stretches cut final's possessions into pieces | not adopted (spellF1 is the ranking) |
 | ✅ | TPcv | **Smart Tagging prior on open data, current recipe** (`tagstudy --draws 4 --seeds 3`: v7 ensemble's held-out outputs, clean costs (2, 2, 2, 0.5), 3 synthetic tag draws per match; tag shape from the study's written design, not from the match) | it was switched off on the public window, a ground-truth decision the 2026-11-03 rules forbid | no prior 0.7716; tag error 0% **0.7825 (+0.011)**, 10% 0.7767 (+0.005), 20% 0.7748 (+0.003), 35% 0.7736 (+0.002), random 0.7715 (−0.0001): it never hurts and its weights fall to ~0.05 for random tags. Self-calibrated on the match without labels (agreement of the tags with confident frames of the ensemble) | **adopt** `tag_prior` "auto" in the final configuration |
 | ❌ | MIXcv | v5 + v7 members (6) on open-data CV, decoder costs searched (81 settings) for each | the earlier mix test was judged on the public window | v7 0.7716 (2, 2, 2, 0.5); mix 0.7725 (2, 8, 8, 0.0): **+0.0009**, DFL +0.004, Metrica −0.006; rule (fixed before the run) needed +0.006 | not adopted: v7 alone |
+| ❌ | ADcv | **Test-time adaptation on external data only** (`python -m tempolens.adaptcv`): `tta_alpha` {0, 0.5, 1} × `eata_steps` {0, 10, 30, 60} × gate {off, on} × costs {(2, 2, 2, 0.5), (4, 8, 8, 1.0)}; three conditions: sim (5 folds, fixed test noise), shift (same fold models, a randomised noise draw plus identity swaps, duplicates and phantoms), sc (submitted members on the 20 SkillCorner matches as they are: real broadcast tracking, never trained on) | TTA, EATA and the gate were adopted on the provided match, which the 2026-11-03 rules forbid | none (2, 2, 2, 0.5): sim 0.7716, shift 0.7679, sc 0.3848, mean **0.6415**. Best: `tta_alpha` 0.5, costs (4, 8, 8, 1.0) 0.6454, **+0.0043** over none at the same costs, worst condition +0.0022; `tta_alpha` 0.5 + EATA 10 0.6451. `tta_alpha` 1 −0.002 to −0.007 on every condition; the gate loses 0.008–0.011 on sim and shift; the withdrawn setting (1, 30, gate, 4/8/8/1) 0.7388 / 0.7370 on sim / shift. Rule fixed before the run: adopt only with ≥ +0.005 mean and no condition below −0.005 | not adopted: mild re-scaling helps a little everywhere (most on real tracking, sc +0.013) but stays under the bar; no adaptation |
 | ⏸ | H3 | Training labels match "control": DFL/SkillCorner flicker threshold 19 frames (public truth's shortest) instead of 10 (`train --min-spell 19`, 3 members, final decoder) | short possessions recalled 45% (27% of all possessions) | real match, vs final 0.647 / 0.881 / 17 of 17: **public spellF1 0.680, macroF1 0.873, 13 of 17 possessions**, dead-ball recall 0.726, 283 vs 291 possessions; 24 disagreements of 1 s+ (52 s). spellF1 up on fewer possessions found (the CH pattern: a lucky count on 17), tie-break down | reel review pending (`reel_final_minspell19.mp4`) |
 | ❌ | H6 | Mirror augmentation (flip pitch y, as in TacticAI): seed 0 +0.0023, seed 1 −0.0039 (mean −0.0008) | data scarcity | CV, 2 seeds | done |
 | ✅ | H5 | Restart-spot features (features v4, branch `exp/restart-features`, kept): CV seed 0 −0.0031, seed 1 +0.0015 (mean −0.0008, neutral). Real match mixed: public spellF1 0.594 vs 0.573, macroF1 0.819 vs 0.790, 18 vs 20 possessions (17 true), dead-ball recall 0.534 vs 0.478 — but dead ball before goal-kick tags fell (0.37/0.59 vs 0.56/0.71), the very case targeted. Rule 3 says a CV tie cannot be decided by the public window; **adopted by the team's call** (gains on all four public numbers, 15-min switch, reversible) | real dead-ball recall 0.48 | CV 2 seeds + real-match checks | done |
@@ -378,5 +380,5 @@ Written by `python -m tempolens.autoqueue` from `experiments/queue.json` (✅ he
 | ✅ | CMBtopB | CMB B: top disagreements |  |  |  |  |  | 2026-11-02 02:01 |
 | ✅ | CMBreelA | CMB A: review reel |  |  |  |  |  | 2026-11-02 02:16 |
 | ✅ | CMBreelB | CMB B: review reel |  |  |  |  |  | 2026-11-02 02:31 |
-| ⏳ | ADcv | adaptation study on open data (tempolens.adaptcv) |  |  |  |  |  | 2026-11-03 22:28 |
+| ✅ | ADcv | adaptation study on open data (tempolens.adaptcv) |  |  |  |  |  | 2026-11-05 06:08 |
 <!-- autoqueue:end -->
