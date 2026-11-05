@@ -51,7 +51,9 @@ python -m tempolens.diagnostics --data-root data
 # Research loop on open data (MTAH_OPEN_DATA_DIR -> folder with metrica_sample_data/, dfl_idsse/):
 python -m tempolens.experiments --model gbm
 python -m tempolens.experiments --model temporal
-python -m tempolens.train --member 0 --draws 4 --out models/tempolens_rnd4_m0.pt   # members 1, 2 likewise
+python -m tempolens.train --member 0 --draws 4 --out models/retrained_m0.pt   # members 1, 2 likewise
+python -m tempolens.predict --data-root data --output retrained.csv --model models/retrained_m0.pt models/retrained_m1.pt models/retrained_m2.pt
+# Never write retrained weights over models/tempolens_rnd4_m*.pt: GPU training is not bit-reproducible.
 ```
 
 `predict` uses the ensemble members listed in `models/decoder.json` (the costs there were tuned for
