@@ -365,6 +365,16 @@ def run(names, grid, kind="gbm", protocol="sim", refresh=False, member=0, config
     return results
 
 
+def drop_names(drop):
+    """CLI --drop values as a config tuple; 'restart' stands for features.RESTART_FEATURES."""
+    from .features import RESTART_FEATURES, feature_names
+    names = tuple(sorted(n for d in drop for n in (RESTART_FEATURES if d == "restart" else (d,))))
+    unknown = set(names) - set(feature_names())
+    if unknown:
+        raise SystemExit("unknown feature(s): {}".format(", ".join(sorted(unknown))))
+    return names
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--matches", nargs="+", default=sorted(LOADERS))
@@ -399,6 +409,9 @@ def main(argv=None):
                              "fixed-noise draws)")
     parser.add_argument("--faults", action="store_true",
                         help="with --draws: add tracker faults to the training draws")
+    parser.add_argument("--drop", nargs="+", default=(),
+                        help="feature names masked out of the network's input ('restart' = "
+                             "the v4 restart-spot features)")
     parser.add_argument("--protocol", default="sim", choices=("sim", "clean"))
     parser.add_argument("--refresh", action="store_true", help="retrain, ignoring the cache")
     args = parser.parse_args(argv)
@@ -412,7 +425,8 @@ def main(argv=None):
     config = TemporalConfig(arch=args.arch, encoder=args.encoder, aux_ball=args.aux_ball,
                             smooth=args.smooth, seg_balance=args.seg_balance,
                             focal=args.focal, mirror=args.mirror,
-                            dead_weight=args.dead_weight, touch=args.touch, **sizes)
+                            dead_weight=args.dead_weight, touch=args.touch,
+                            drop=drop_names(args.drop), **sizes)
     from .opendata import EXTRA_LOADERS
     extra = sorted(EXTRA_LOADERS) if args.extra_train == "skillcorner" else ()
     run(args.matches, grid, args.model, args.protocol, args.refresh, args.member, config,

@@ -17,6 +17,9 @@ import numpy as np
 from .match import A, H
 
 FEATURE_VERSION = 4       # bump whenever a feature changes, to invalidate on-disk caches
+# The restart-spot features added in v4 (TemporalConfig.drop can mask them, as in v3).
+RESTART_FEATURES = ("ball_speed_max_w25", "ball_in_goal_area", "ball_at_corner",
+                    "since_on_line", "until_on_line")
 MAX_SPEED = 12.0          # m/s; faster "players" are identity switches or teleports
 MAX_BALL_SPEED = 40.0     # m/s
 IMPUTE_GAP = 50           # frames; ball gaps up to this long are linearly interpolated

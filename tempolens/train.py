@@ -13,7 +13,7 @@ import argparse
 from pathlib import Path
 
 from . import opendata, temporal
-from .experiments import CachedSample, member_noise_seeds, training_samples
+from .experiments import CachedSample, drop_names, member_noise_seeds, training_samples
 from .opendata import EXTRA_LOADERS, LOADERS
 
 
@@ -36,6 +36,9 @@ def main(argv=None):
                         help="also train on the SkillCorner matches (one noise draw each)")
     parser.add_argument("--min-spell", type=int, default=opendata.DFL_MIN_SPELL,
                         help="flicker threshold for the DFL/SkillCorner owner flag, in frames")
+    parser.add_argument("--drop", nargs="+", default=(),
+                        help="feature names masked out of the input ('restart' = the v4 "
+                             "restart-spot features)")
     args = parser.parse_args(argv)
     opendata.DFL_MIN_SPELL = args.min_spell
     out = args.out or ("models/tempolens_gru.pt" if args.member == 0
@@ -45,7 +48,7 @@ def main(argv=None):
         samples += [CachedSample(n, member_noise_seeds(args.member)[0])
                     for n in sorted(EXTRA_LOADERS)]
     config = temporal.TemporalConfig(hidden=args.hidden, epochs=args.epochs, chunk=args.chunk,
-                                     touch=args.touch)
+                                     touch=args.touch, drop=drop_names(args.drop))
     model, normaliser = temporal.train(samples, seed=temporal.SEED + args.member, config=config)
     Path(out).parent.mkdir(parents=True, exist_ok=True)
     temporal.save(model, normaliser, out)

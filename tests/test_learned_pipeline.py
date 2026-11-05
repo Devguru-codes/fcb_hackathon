@@ -238,6 +238,22 @@ class EnsembleTests(unittest.TestCase):
                                       second.head.weight.detach().numpy())
         self.assertLess(entropy(first), entropy(model))
 
+    def test_dropped_features_reach_the_network_as_zeros(self):
+        from tempolens.experiments import drop_names
+        from tempolens.features import RESTART_FEATURES
+        from tempolens.temporal import Normaliser, TemporalConfig
+        x = np.random.default_rng(0).normal(size=(50, 4))
+        x[::3, 1] = np.nan                       # column 1 has a missing-value flag
+        norm = Normaliser(x, drop=[1, 3])
+        z = norm(x)
+        self.assertEqual(z.shape, (50, 5))       # width unchanged: 4 columns + 1 flag
+        self.assertTrue(np.all(z[:, [1, 3, 4]] == 0))
+        self.assertTrue(np.any(z[:, 0] != 0))
+        np.testing.assert_array_equal(Normaliser.from_state(norm.state())(x), z)
+        self.assertEqual(drop_names(["restart"]), tuple(sorted(RESTART_FEATURES)))
+        self.assertEqual(TemporalConfig().tag(), "temporal")   # old caches keep their names
+        self.assertNotEqual(TemporalConfig(drop=drop_names(["restart"])).tag(), "temporal")
+
     def test_adaptation_study_reproduces_predict_from_head_inputs(self):
         from tempolens import adaptcv, temporal
         from tempolens.features import TableSample

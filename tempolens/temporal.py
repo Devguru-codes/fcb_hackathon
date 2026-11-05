@@ -33,6 +33,8 @@ Variants, chosen by TemporalConfig and saved inside each weights file:
 
 from dataclasses import asdict, dataclass
 
+import hashlib
+
 import numpy as np
 
 from .features import FEATURE_VERSION, TableSample, swap_labels
@@ -63,6 +65,7 @@ class TemporalConfig:
     dead_weight: float = 1.0     # cross-entropy weight of D frames; 1 = unweighted
     chunk: int = CHUNK           # frames per training sequence (inference reads 3000)
     touch: float = 0.0           # weight of the touch-head loss; 0 = no touch head
+    drop: tuple = ()             # feature names fed to the network as zeros (masked out)
 
     def tag(self):
         """Cache/file tag; the default config keeps the historical name "temporal"."""
@@ -88,6 +91,8 @@ class TemporalConfig:
             parts.append("c{}".format(self.chunk))
         if self.touch:
             parts.append("tch{:g}".format(self.touch))
+        if self.drop:
+            parts.append("drop" + hashlib.md5(",".join(sorted(self.drop)).encode()).hexdigest()[:6])
         return "temporal" + ("_" + "_".join(parts) if parts else "")
 
 
@@ -102,7 +107,8 @@ def _torch():
 class Normaliser:
     """Robust per-feature scaling fitted on training frames; NaN -> 0 plus a missing flag."""
 
-    def __init__(self, x):
+    def __init__(self, x, drop=()):
+        self.drop = np.asarray(drop, dtype=np.int64)    # columns masked to 0, flags included
         self.median = np.nanmedian(x, axis=0)
         q75, q25 = np.nanpercentile(x, [75, 25], axis=0)
         self.scale = np.where(np.isfinite(q75 - q25) & (q75 - q25 > 1e-6), q75 - q25, 1.0)
@@ -112,16 +118,21 @@ class Normaliser:
     def __call__(self, x):
         z = np.clip((x - self.median) / self.scale, -10, 10)
         flags = np.isnan(x[:, self.flagged]).astype(np.float32)
+        if len(self.drop):
+            z[:, self.drop] = 0.0
+            flags[:, np.isin(self.flagged, self.drop)] = 0.0
         return np.concatenate([np.nan_to_num(z, nan=0.0), flags], axis=1).astype(np.float32)
 
     def state(self):
-        return {"median": self.median, "scale": self.scale, "flagged": self.flagged}
+        return {"median": self.median, "scale": self.scale, "flagged": self.flagged,
+                "drop": self.drop}
 
     @classmethod
     def from_state(cls, state):
         self = cls.__new__(cls)
         self.median, self.scale = state["median"], state["scale"]
         self.flagged = state["flagged"]
+        self.drop = np.asarray(state.get("drop", ()), dtype=np.int64)
         return self
 
 
@@ -422,7 +433,9 @@ def _sequences(samples, config=DEFAULT_CONFIG, normaliser=None):
     if normaliser is None:
         stacked = np.concatenate([np.asarray(s.features(False))[s.period > 0][::10]
                                   for s in samples])
-        normaliser = Normaliser(stacked)
+        from .features import feature_names
+        names = feature_names()
+        normaliser = Normaliser(stacked, [names.index(n) for n in config.drop])
     out = []
     flip = np.random.default_rng(12345)   # which sequences are mirrored: fixed, so runs repeat
     for sample in samples:

@@ -4348,5 +4348,23 @@
     "result": null,
     "finished": "2026-11-05 06:08",
     "exit_code": 0
+  },
+  {
+    "id": "FV3cv",
+    "title": "v7 recipe without the restart-spot features (v3 set), 3-member CV",
+    "args": [
+      "--model",
+      "ensemble",
+      "--draws",
+      "4",
+      "--drop",
+      "restart"
+    ],
+    "baseline": {
+      "all": 0.7716,
+      "dfl": 0.7597
+    },
+    "baseline_from": null,
+    "status": "pending"
   }
 ]
