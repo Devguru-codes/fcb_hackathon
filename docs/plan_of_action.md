@@ -58,6 +58,7 @@ This mail takes precedence over the documentation, earlier emails and individual
 | version | **final clean** (2026-11-05): features v4, simulator v2, 3-GRU ensemble trained on the 10 open matches with domain randomisation (`train --draws 4`); decoder costs (2, 2, 2, 0.5), the open-data CV argmax; Smart Tagging prior on (`auto`, TPcv); no test-time adaptation, EATA or gate (ADcv) |
 | evidence | open-data CV ensemble 0.7716 (DFL 0.7597, Metrica 0.7994) vs 0.7636 without domain randomisation; tag prior +0.011 to −0.0001 (TPcv); adaptation +0.0043, under its bar (ADcv). Not scored on the public window |
 | file | `submissions/tempolens_final_clean.csv` (outside git), sha256 `c89c7fee…`, validated; 288 possessions of mean 13.1 s |
+| reproduction | rebuilt byte for byte from clean checkouts of `df62475` and, after the repo audit (review tool, v5 weights and pre-data notes removed; diagnostics no longer reads a ground truth), of `f3efbaf`; all 49 tests pass, including the end-to-end test |
 | superseded | `tempolens_clean.csv` (`704cfd62…`, same without the tag prior) |
 | withdrawn | v7+TTA+EATA+gate `tempolens_final.csv` (`9f7dab1a…`): settings chosen on the provided match (see the rules clarification above) |
 
