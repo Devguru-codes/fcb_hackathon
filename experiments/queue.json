@@ -4365,6 +4365,15 @@
       "dfl": 0.7597
     },
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-11-05 20:18",
+    "result": {
+      "all": 0.7674,
+      "dfl": 0.7584,
+      "metrica": 0.7886,
+      "costs": "(1.5, 8.0, 8.0, 0.0)"
+    },
+    "finished": "2026-11-05 21:56",
+    "exit_code": 0
   }
 ]

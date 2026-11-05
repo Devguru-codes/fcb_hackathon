@@ -203,9 +203,11 @@ vs 0.478; full match ~324 possessions of mean 11.6 s).
 Features v4 add five restart-spot features — fastest ball within ±1 s, ball in the goal area,
 ball at a corner flag, frames since/until the ball was on or over a line. They were designed after
 looking at which real-match stoppages were missed (inspecting the data to understand possession);
-their weights are trained on open data only. In cross-validation v4 features scored 0.7591 against
-0.764 for v3 (DFL 0.7482 vs 0.754), within the noise floor; v4 was kept before the rules
-clarification on the public-window numbers above.
+their weights are trained on open data only. With the v5 recipe, cross-validation had v3 slightly
+ahead (0.764 vs 0.7591, within the noise floor) and v4 was kept on the public-window numbers
+above. That choice was re-decided on open data after the rules clarification, on the submitted
+recipe (§7c): v4 0.7716 against 0.7674 with the five features masked out, ahead for all three
+members. v4 stays.
 
 Earlier experiments ran under the first simulator (with jitter), so their absolute values are
 lower; they decided relative choices only: baseline 0.262 DFL, LightGBM 0.566, GRU 0.719, 3-GRU
@@ -337,6 +339,7 @@ same recipe retrained with three seeds varies by sd 0.003, so a single-seed gain
 | setting | open-data evidence | decision |
 |---|---|---|
 | ensemble | v7 (domain randomisation) 0.7716 vs v5 0.7636; v5 + v7 mixed (6 members, costs searched for each) 0.7725 (+0.0009, rule: +0.006) | v7 |
+| feature set | v4 0.7716 vs v4 without the five restart-spot features (= v3) 0.7674, each at its own best costs; v4 ahead for each of the 3 members (+0.0016 to +0.0044) | v4 |
 | decoder costs | argmax over 81 settings of the v7 cross-validation: switch 2, alive→dead 2, dead→alive 2, change bonus 0.5 | adopted |
 | Smart Tagging prior | §6a: +0.011 with perfect synthetic tags, −0.0001 with random ones | on (`auto`) |
 | test-time adaptation, EATA, gate | study below: best +0.0043, rule: +0.005 | off |
