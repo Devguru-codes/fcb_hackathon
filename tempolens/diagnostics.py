@@ -2,9 +2,9 @@
 
     python -m tempolens.diagnostics --data-root data
 
-Everything printed is a count, a fraction or a score on the public five minutes -- no frame-level
-values -- so the output can be shared (e.g. pasted to a hosted assistant) without disclosing the
-licensed data. Do not extend it to print per-frame values.
+Everything printed is a count or a fraction -- no frame-level values. Do not extend it to print
+per-frame values. Nothing here reads a ground truth: under the organisers' rules (2026-11-03) no
+setting is chosen with one, so the pipeline is not scored here.
 
 Checks, each with the value it should have:
 1. the tracking has one record per tactical video frame (199,319);
@@ -13,13 +13,11 @@ Checks, each with the value it should have:
 3. ball and player visibility match the published statistics (40.7% of graded frames without a
    ball, in ~150 long gaps; ~20.5 players tracked), i.e. the simulator's calibration holds;
 4. every Smart Tagging team name resolves to a side;
-5. public-window scores of the learned model, with bootstrap intervals (a sanity check, not a
-   model selection signal).
+5. the Smart Tagging prior's self-calibrated reliability (agreement with the confident model).
 """
 
 import argparse
 import json
-import os
 import sys
 import xml.etree.ElementTree as ET
 from collections import Counter
@@ -35,7 +33,7 @@ import possession_metrics as pm  # noqa: E402
 from games import GAME, require  # noqa: E402
 from .experiments import baseline_codes  # noqa: E402
 from .features import attack_sign  # noqa: E402
-from .match import X, competition_table  # noqa: E402
+from .match import competition_table  # noqa: E402
 from .tags import resolve_side  # noqa: E402
 
 
@@ -84,34 +82,19 @@ def run(data_root, model_paths=None, decoder_path=None):
                                                        table.meta["away"])}
                            for name, count in names.items()}
 
-    # 5. public-window scores
-    truth = pm.label_codes(pm.read_label_csv(ROOT / "evaluation/gt/BAR-ATH_possession_gt_public.csv"))
-    scores = {"baseline_smooth50": baseline_codes(table, window=50)}
+    # 5. Smart Tagging reliability, measured against the confident model (no labels)
     if model_paths:
-        from .predict import decode_learned, learned_logp, load_decoder
+        from .predict import learned_logp, load_decoder
+        from .tagprior import read_instances, self_calibrated
+        from games import GAMES
         settings = load_decoder(decoder_path)
         _, logp, _ = learned_logp(data_root, GAME, model_paths)
-        scores["learned"], _ = decode_learned(table, logp, settings, data_root, GAME, "off")
-        scores["learned+tags"], tag_report = decode_learned(table, logp, settings, data_root,
-                                                            GAME, "auto")
-        # 6. Smart Tagging reliability, measured against the confident model (no labels)
+        instances = read_instances(path, table.meta["home"], table.meta["away"], GAMES[GAME]["fps"])
+        _, tag_report = self_calibrated(logp, instances, graded)
         report["tag_prior"] = {
             group: {"weight": round(w, 3), "reliability": round(r, 3), "confident_frames": n}
             for group, (w, r, n) in tag_report.items()}
         report["tag_prior_setting"] = settings.get("tag_prior", "off")
-    report["public_window"] = {}
-    for name, codes in scores.items():
-        codes = np.where(codes == X, X, codes).astype(np.int8)
-        result = pm.evaluate(truth, codes, bootstrap_n=1000)
-        report["public_window"][name] = {
-            "spellF1": round(result["spell_f1_mean"], 4),
-            "spellF1_90pct": [round(result["spell_bootstrap_low"], 4),
-                              round(result["spell_bootstrap_high"], 4)],
-            "macroF1": round(result["macro_f1"], 4),
-            "n_pred_spells": result["n_pred_spells"], "n_gt_spells": result["n_gt_spells"],
-        }
-    report["public_window_note"] = ("17 possessions: use for sanity only. baseline_smooth50 "
-                                    "should read spellF1 0.3256, macroF1 0.6207 (README).")
     return report
 
 

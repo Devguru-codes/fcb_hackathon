@@ -124,8 +124,7 @@ class EndToEndTests(unittest.TestCase):
             self.assertEqual(report["visibility"]["track_slots"], N_SLOTS)
             sides = {name: entry["side"] for name, entry in report["tag_teams"].items()}
             self.assertEqual(sides, {"Barcelona": 0, "Atletic Club": 1, "N/A": None})
-            self.assertIn("learned", report["public_window"])
-            self.assertIn("learned+tags", report["public_window"])
+            self.assertNotIn("public_window", report)      # no ground truth is read
             self.assertEqual(set(report["tag_prior"]), {"attack", "defence"})
 
 
