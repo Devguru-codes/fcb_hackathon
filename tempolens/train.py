@@ -3,8 +3,9 @@
     python -m tempolens.train                 # member 0 -> models/retrained_m0.pt
     python -m tempolens.train --member 1      # member 1 -> models/retrained_m1.pt
 
-Same recipe as the cross-validation in tempolens.experiments (two noise draws per match, both
-team perspectives), on all matches. Training uses only open data (no competition asset), so the
+The default is the submitted recipe (models/tempolens_rnd4_m0..2.pt): 4 randomised noise draws
+per match (domain randomisation), both team perspectives, all 10 open matches; `--draws 0` gives
+the older two fixed-noise draws. Training uses only open data (no competition asset), so the
 weights may be committed. GPU training is not bit-reproducible, which is why the weights are
 committed: the submission is regenerated from them by CPU inference, which is.
 """
@@ -29,8 +30,9 @@ def main(argv=None):
     parser.add_argument("--touch", type=float, default=0.0, help="touch-head loss weight")
     parser.add_argument("--chunk", type=int, default=temporal.CHUNK,
                         help="training sequence length in frames")
-    parser.add_argument("--draws", type=int, default=0,
-                        help="randomised-noise draws per match (0 = the two fixed-noise draws)")
+    parser.add_argument("--draws", type=int, default=4,
+                        help="randomised-noise draws per match (default 4, the submitted recipe; "
+                             "0 = the two fixed-noise draws)")
     parser.add_argument("--faults", action="store_true",
                         help="with --draws: add tracker faults to the training draws")
     parser.add_argument("--extra-train", choices=("skillcorner",),
