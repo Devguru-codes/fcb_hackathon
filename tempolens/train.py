@@ -1,7 +1,7 @@
 """Train the final temporal model on every open match under simulated ATD noise.
 
-    python -m tempolens.train                 # member 0 -> models/tempolens_gru.pt
-    python -m tempolens.train --member 1      # member 1 -> models/tempolens_gru_m1.pt
+    python -m tempolens.train                 # member 0 -> models/retrained_m0.pt
+    python -m tempolens.train --member 1      # member 1 -> models/retrained_m1.pt
 
 Same recipe as the cross-validation in tempolens.experiments (two noise draws per match, both
 team perspectives), on all matches. Training uses only open data (no competition asset), so the
@@ -21,7 +21,8 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--member", type=int, default=0,
                         help="ensemble member: sets the network seed and the noise draws")
-    parser.add_argument("--out", help="default models/tempolens_gru[_m<member>].pt")
+    parser.add_argument("--out", help="default models/retrained_m<member>.pt (never the "
+                                      "committed submission weights)")
     parser.add_argument("--matches", nargs="+", default=sorted(LOADERS))
     parser.add_argument("--epochs", type=int, default=temporal.EPOCHS)
     parser.add_argument("--hidden", type=int, default=temporal.HIDDEN)
@@ -41,8 +42,7 @@ def main(argv=None):
                              "restart-spot features)")
     args = parser.parse_args(argv)
     opendata.DFL_MIN_SPELL = args.min_spell
-    out = args.out or ("models/tempolens_gru.pt" if args.member == 0
-                       else "models/tempolens_gru_m{}.pt".format(args.member))
+    out = args.out or "models/retrained_m{}.pt".format(args.member)
     samples = training_samples(args.matches, args.member, args.draws, args.faults)
     if args.extra_train:     # as in the cross-validation: real broadcast noise, one draw each
         samples += [CachedSample(n, member_noise_seeds(args.member)[0])

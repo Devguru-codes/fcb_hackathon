@@ -370,14 +370,15 @@ class TemporalVariantTests(unittest.TestCase):
                 self.assertTrue(np.all(np.isfinite(out)), config.tag())
                 np.testing.assert_allclose(np.exp(out[:, :3]).sum(axis=1), 1.0, atol=1e-2)
 
-    def test_committed_model_still_loads_as_default_gru(self):
-        from pathlib import Path
+    def test_submitted_members_load_as_default_gru(self):
         from tempolens import temporal
-        path = Path(__file__).resolve().parents[1] / "models" / "tempolens_gru.pt"
-        if not path.exists():
-            self.skipTest("no committed model")
-        model, _ = temporal.load(path)
-        self.assertEqual(model.config, temporal.DEFAULT_CONFIG)
+        from tempolens.predict import default_models
+        paths = default_models()
+        self.assertEqual(len(paths), 3)
+        for path in paths:      # committed, current feature version, no feature masked
+            model, normaliser = temporal.load(path)
+            self.assertEqual(model.config, temporal.DEFAULT_CONFIG)
+            self.assertEqual(len(normaliser.drop), 0)
 
 
 class DecodeTests(unittest.TestCase):
