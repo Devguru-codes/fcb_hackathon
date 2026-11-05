@@ -4375,5 +4375,59 @@
     },
     "finished": "2026-11-05 21:56",
     "exit_code": 0
+  },
+  {
+    "id": "ENS5",
+    "title": "v7 recipe, 5-member ensemble",
+    "args": [
+      "--model",
+      "ensemble",
+      "--draws",
+      "4",
+      "--members",
+      "5"
+    ],
+    "baseline": {
+      "all": 0.7716,
+      "dfl": 0.7597
+    },
+    "baseline_from": null,
+    "status": "pending"
+  },
+  {
+    "id": "H128",
+    "title": "v7 recipe, GRU 128 units, 3-member CV",
+    "args": [
+      "--model",
+      "ensemble",
+      "--draws",
+      "4",
+      "--hidden",
+      "128"
+    ],
+    "baseline": {
+      "all": 0.7716,
+      "dfl": 0.7597
+    },
+    "baseline_from": null,
+    "status": "pending"
+  },
+  {
+    "id": "EP12",
+    "title": "v7 recipe, 12 epochs, 3-member CV",
+    "args": [
+      "--model",
+      "ensemble",
+      "--draws",
+      "4",
+      "--epochs",
+      "12"
+    ],
+    "baseline": {
+      "all": 0.7716,
+      "dfl": 0.7597
+    },
+    "baseline_from": null,
+    "status": "pending"
   }
 ]
