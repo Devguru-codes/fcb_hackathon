@@ -4392,7 +4392,16 @@
       "dfl": 0.7597
     },
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-11-06 02:09",
+    "result": {
+      "all": 0.776,
+      "dfl": 0.765,
+      "metrica": 0.8017,
+      "costs": "(2.0, 8.0, 8.0, 0.5)"
+    },
+    "finished": "2026-11-06 03:14",
+    "exit_code": 0
   },
   {
     "id": "H128",
@@ -4410,7 +4419,16 @@
       "dfl": 0.7597
     },
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-11-06 03:14",
+    "result": {
+      "all": 0.7704,
+      "dfl": 0.7616,
+      "metrica": 0.7911,
+      "costs": "(1.5, 8.0, 8.0, 0.0)"
+    },
+    "finished": "2026-11-06 04:40",
+    "exit_code": 0
   },
   {
     "id": "EP12",
@@ -4428,6 +4446,15 @@
       "dfl": 0.7597
     },
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-11-06 04:40",
+    "result": {
+      "all": 0.7723,
+      "dfl": 0.763,
+      "metrica": 0.7942,
+      "costs": "(2.0, 2.0, 8.0, 0.5)"
+    },
+    "finished": "2026-11-06 06:18",
+    "exit_code": 0
   }
 ]
