@@ -245,7 +245,8 @@ def training_samples(names, member, draws=0, faults=False):
 
 
 def oof_logp(names, kind="gbm", protocol="sim", refresh=False, member=0,
-             members=ENSEMBLE_MEMBERS, config=None, extra_train=(), draws=0, faults=False):
+             members=ENSEMBLE_MEMBERS, config=None, extra_train=(), draws=0, faults=False,
+             min_spell=None, sc_visible=False):
     """Held-out log-probabilities for every match, each from a model that never saw it.
 
     kind "temporal" trains the network described by `config` (default: the base GRU).
@@ -256,11 +257,15 @@ def oof_logp(names, kind="gbm", protocol="sim", refresh=False, member=0,
     held-out matches and their scores stay comparable with runs without them.
     `draws` > 0: train on that many randomised-noise draws per match (training_samples); the
     held-out matches keep the fixed test noise, so scores stay comparable.
+    `min_spell`: the DFL/SkillCorner flicker threshold of the *training* labels only (held-out
+    labels keep opendata.DFL_MIN_SPELL). `sc_visible`: extra matches enter the loss only on frames
+    where their ball is detected.
     """
     if kind == "ensemble":
         from .temporal import combine
         outputs = [oof_logp(names, "temporal", protocol, refresh, k, config=config,
-                            extra_train=extra_train, draws=draws, faults=faults)
+                            extra_train=extra_train, draws=draws, faults=faults,
+                            min_spell=min_spell, sc_visible=sc_visible)
                    for k in (range(members) if isinstance(members, int) else members)]
         return {n: combine([out[n] for out in outputs]) for n in names}
     if kind == "temporal":
@@ -272,6 +277,10 @@ def oof_logp(names, kind="gbm", protocol="sim", refresh=False, member=0,
         if config.touch:                # the touch targets' recipe is part of what was trained
             from .touches import TOUCH_VERSION
             kind_tag += "_tv{}".format(TOUCH_VERSION)
+        if min_spell is not None:
+            kind_tag += "_ms{}".format(min_spell)
+        if sc_visible:
+            kind_tag += "_scvis"
     else:
         kind_tag = kind
     cache = open_data_dir() / "cache" / "oof"
@@ -296,9 +305,21 @@ def oof_logp(names, kind="gbm", protocol="sim", refresh=False, member=0,
         # extra matches carry real broadcast-tracking noise already: one noise draw each keeps
         # memory in bounds (~3.8 GB of training arrays with 20 SkillCorner matches)
         rest = set(names) - set(held)
-        train = ((training_samples(rest, member, draws, faults) if protocol == "sim"
-                  else [CachedSample(n) for n in sorted(rest)])
-                 + [CachedSample(n, train_seeds[0]) for n in sorted(extra_train)])
+        from . import opendata
+        default_spell = opendata.DFL_MIN_SPELL
+        if min_spell is not None:      # labels are read when a CachedSample is made
+            opendata.DFL_MIN_SPELL = min_spell
+        try:
+            train = ((training_samples(rest, member, draws, faults) if protocol == "sim"
+                      else [CachedSample(n) for n in sorted(rest)]))
+            extra = [CachedSample(n, train_seeds[0]) for n in sorted(extra_train)]
+        finally:
+            opendata.DFL_MIN_SPELL = default_spell
+        if sc_visible:
+            for sample in extra:
+                seen = np.isfinite(load_open_match(sample.name).ball[:, 0])
+                sample.labels = np.where(seen, sample.labels, X).astype(sample.labels.dtype)
+        train += extra
         if kind == "gbm":
             model = train_gbm(train)
             predict = lambda sample: predict_logp(model, sample)
@@ -324,10 +345,12 @@ def _summary(rows, names):
 
 
 def run(names, grid, kind="gbm", protocol="sim", refresh=False, member=0, config=None,
-        members=ENSEMBLE_MEMBERS, extra_train=(), draws=0, faults=False):
+        members=ENSEMBLE_MEMBERS, extra_train=(), draws=0, faults=False, min_spell=None,
+        sc_visible=False):
     test_seed = SIM_TEST_SEED if protocol == "sim" else None
     logps = oof_logp(names, kind, protocol, refresh, member, members, config=config,
-                     extra_train=extra_train, draws=draws, faults=faults)
+                     extra_train=extra_train, draws=draws, faults=faults,
+                     min_spell=min_spell, sc_visible=sc_visible)
     samples = {n: CachedSample(n, test_seed) for n in names}
 
     print("\n{:<14} {:>8} {:>8} {:>6} {:>6}".format("baseline50", "spellF1", "macroF1", "pred",
@@ -416,6 +439,11 @@ def main(argv=None):
                         help="feature names masked out of the network's input ('restart' = "
                              "the v4 restart-spot features)")
     parser.add_argument("--protocol", default="sim", choices=("sim", "clean"))
+    parser.add_argument("--min-spell", type=int, default=None,
+                        help="flicker threshold of the DFL/SkillCorner training labels, in frames "
+                             "(held-out labels unchanged)")
+    parser.add_argument("--sc-visible", action="store_true",
+                        help="--extra-train frames enter the loss only where the ball is detected")
     parser.add_argument("--refresh", action="store_true", help="retrain, ignoring the cache")
     args = parser.parse_args(argv)
     # A switch dearer than alive>dead + dead>alive is never taken directly (the decoder routes
@@ -433,7 +461,8 @@ def main(argv=None):
     from .opendata import EXTRA_LOADERS
     extra = sorted(EXTRA_LOADERS) if args.extra_train == "skillcorner" else ()
     run(args.matches, grid, args.model, args.protocol, args.refresh, args.member, config,
-        args.member_set or args.members, extra, args.draws, args.faults)
+        args.member_set or args.members, extra, args.draws, args.faults, args.min_spell,
+        args.sc_visible)
 
 
 if __name__ == "__main__":

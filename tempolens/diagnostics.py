@@ -13,7 +13,11 @@ Checks, each with the value it should have:
 3. ball and player visibility match the published statistics (40.7% of graded frames without a
    ball, in ~150 long gaps; ~20.5 players tracked), i.e. the simulator's calibration holds;
 4. every Smart Tagging team name resolves to a side;
-5. the Smart Tagging prior's self-calibrated reliability (agreement with the confident model).
+5. the Smart Tagging prior's self-calibrated reliability (agreement with the confident model);
+6. keeper-zone slots (plan row E0): per team, the share of graded frames on which one of its
+   slots has stood for 5 s or more in the other team's keeper zone (within 20 m of that goal
+   line, central 40 m), with the slots and minutes involved -- a sign of keeper slots filed
+   under the wrong team.
 """
 
 import argparse
@@ -40,6 +44,33 @@ from .tags import resolve_side  # noqa: E402
 def _gaps(missing):
     edges = np.diff(np.concatenate(([0], missing.astype(np.int8), [0])))
     return np.flatnonzero(edges == -1) - np.flatnonzero(edges == 1)
+
+
+def keeper_zone(table, depth=20.0, half_width=20.0, min_seconds=5.0):
+    """Check 6, aggregates only: {team: share of graded frames, slots, minutes}."""
+    graded = table.period > 0
+    length, width = table.pitch
+    # the goal a team defends sits at -sign * length / 2 (home) or +sign * length / 2 (away)
+    sign = attack_sign(table)
+    x = table.players[..., 0] - length / 2.0
+    near_y = np.abs(table.players[..., 1] - width / 2.0) <= half_width
+    out = {}
+    for team, name in ((0, "home"), (1, "away")):
+        other_goal = sign * length / 2.0 * (1.0 if team == 0 else -1.0)
+        slots = np.flatnonzero(table.slot_team == team)
+        flagged, involved = np.zeros(table.n_frames, dtype=bool), 0
+        for k in slots:
+            inside = graded & near_y[:, k] & (np.abs(x[:, k] - other_goal) <= depth)
+            edges = np.diff(np.concatenate(([0], inside.astype(np.int8), [0])))
+            starts, stops = np.flatnonzero(edges == 1), np.flatnonzero(edges == -1)
+            long = (stops - starts) >= min_seconds * table.fps
+            for a, b in zip(starts[long], stops[long]):
+                flagged[a:b] = True
+            involved += int(long.any())
+        out[name] = {"share_of_graded": round(float(flagged[graded].mean()), 4),
+                     "slots": involved, "slots_of_team": int(len(slots)),
+                     "minutes": round(float(flagged.sum()) / table.fps / 60.0, 1)}
+    return out
 
 
 def run(data_root, model_paths=None, decoder_path=None):
@@ -72,6 +103,7 @@ def run(data_root, model_paths=None, decoder_path=None):
         "expected": "ball_missing 0.407, ~150 gaps of median ~268, ~20.5 players, 46 slots",
     }
     report["attack_sign_by_half"] = [float(attack_sign(table)[a]) for a, _ in table.runs()]
+    report["keeper_zone"] = keeper_zone(table)
 
     # 4. Smart Tagging team names
     path = require(["smart_tagging"], GAME, data_root)[0]

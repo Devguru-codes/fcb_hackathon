@@ -288,6 +288,34 @@ class EnsembleTests(unittest.TestCase):
             summary[(1, 0.5, 0, False, c)]
         self.assertIsNone(decide(summary)[1])
 
+    def test_dead_ball_temperature_keeps_the_team_ratio(self):
+        from tempolens.cvrescore import soften_dead
+        p = np.array([[0.6, 0.2, 0.2], [0.05, 0.05, 0.9]])
+        logp = np.c_[np.log(p), [0.3, -1.0]]
+        np.testing.assert_allclose(soften_dead(logp, 1.0), logp, atol=1e-12)
+        out = soften_dead(logp, 2.0)
+        q = np.exp(out[:, :3])
+        np.testing.assert_allclose(q.sum(axis=1), 1.0)
+        np.testing.assert_allclose(q[:, H] / q[:, A], p[:, H] / p[:, A])
+        self.assertTrue(q[0, D] > 0.2 and q[1, D] < 0.9)      # pulled towards 0.5
+        np.testing.assert_array_equal(out[:, 3], logp[:, 3])
+
+    def test_keeper_zone_counts_long_stays_in_the_other_goal_area(self):
+        from tempolens.diagnostics import keeper_zone
+        from tempolens.match import MatchTable
+        n = 1000
+        players = np.zeros((n, 4, 2), dtype=np.float32)
+        players[:, :, 1] = 34.0
+        players[:, :, 0] = [10.0, 60.0, 95.0, 40.0]   # home keeper, home, away keeper, away
+        players[:200, 1, 0] = 100.0                   # 8 s in the away goal area: counted
+        players[500:550, 1, 0] = 100.0                # 2 s: too short
+        table = MatchTable("t", np.zeros((n, 2), dtype=np.float32), players,
+                           np.array([H, H, A, A], dtype=np.int8), np.ones(n, dtype=np.int8))
+        out = keeper_zone(table)
+        self.assertEqual(out["home"], {"share_of_graded": 0.2, "slots": 1, "slots_of_team": 2,
+                                       "minutes": 0.1})
+        self.assertEqual(out["away"]["share_of_graded"], 0.0)
+
     def test_pseudo_labels_keep_only_confident_interiors_of_long_runs(self):
         from tempolens.temporal import pseudo_labels
         states = np.array([H] * 200 + [A] * 40 + [D] * 160, dtype=np.int8)
