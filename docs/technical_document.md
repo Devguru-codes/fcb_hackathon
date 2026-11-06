@@ -341,7 +341,7 @@ same recipe retrained with three seeds varies by sd 0.003, so a single-seed gain
 
 | setting | open-data evidence | decision |
 |---|---|---|
-| ensemble | v7 (domain randomisation) 0.7716 vs v5 0.7636; v5 + v7 mixed (6 members, costs searched for each) 0.7725 (+0.0009, rule: +0.006); v7 with 5 members 0.7760 (+0.0044, rule: +0.004); 128 units 0.7704, 12 epochs 0.7723 | v7, 5 members |
+| ensemble | v7 (domain randomisation) 0.7716 vs v5 0.7636; v5 + v7 mixed (6 members, costs searched for each) 0.7725 (+0.0009, rule: +0.006); v7 with 5 members 0.7760 (+0.0044, rule: +0.004), 7 members 0.7766, 9 members 0.7756; 128 units 0.7704, 12 epochs 0.7723. The 5-member gain is uncertain: three other 5-member sets from the same members score 0.7744 / 0.7719 / 0.7717 (mean of all four 0.7735, ~+0.002 over 3 members) | v7, 5 members |
 | feature set | v4 0.7716 vs v4 without the five restart-spot features (= v3) 0.7674, each at its own best costs; v4 ahead for each of the 3 members (+0.0016 to +0.0044) | v4 |
 | decoder costs | argmax over 189 settings of the 5-member cross-validation: switch 2, alive→dead 8, dead→alive 8, change bonus 0.5 (the next four settings within 0.0006) | adopted |
 | Smart Tagging prior | §6a: +0.0081 with perfect synthetic tags, −0.0006 with random ones | on (`auto`) |
