@@ -58,7 +58,7 @@ This mail takes precedence over the documentation, earlier emails and individual
 | version | **final ENS5** (2026-11-06): features v4, simulator v2, 5-GRU ensemble trained on the 10 open matches with domain randomisation (`train --draws 4`); decoder costs (2, 8, 8, 0.5), the open-data CV argmax; Smart Tagging prior on (`auto`, TPcv5); no test-time adaptation, EATA or gate (ADcv5) |
 | evidence | open-data CV ensemble 0.7760 (DFL 0.7650, Metrica 0.8017) vs 3 members 0.7716 and 0.7636 without domain randomisation; tag prior +0.0081 to −0.0006 (TPcv5); adaptation +0.0028, under its bar (ADcv5). Not scored on the public window |
 | file | `submissions/tempolens_final_ens5.csv` (outside git), sha256 `553eb29c…`, validated; 278 possessions of mean 13.5 s |
-| reproduction | pending: clean checkout of the ENS5 commit |
+| reproduction | rebuilt byte for byte (`553eb29c…`) from a clean checkout of `52b9fad` in 174 s; 48 tests pass there, plus the end-to-end test (`MTAH_E2E=1`) |
 | superseded | 3-member `tempolens_final_clean.csv` (`c89c7fee…`, reproduced from `df62475` and `f3efbaf`); `tempolens_clean.csv` (`704cfd62…`, same without the tag prior) |
 | withdrawn | v7+TTA+EATA+gate `tempolens_final.csv` (`9f7dab1a…`): settings chosen on the provided match (see the rules clarification above) |
 

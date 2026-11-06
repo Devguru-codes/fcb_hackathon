@@ -452,7 +452,7 @@ The ensemble members are listed in `models/decoder.json`, with the decoder costs
 its feature version and refuses to load against another. Inference runs on the CPU in float64 in
 a fixed order and outputs are rounded to 4 decimals; the end-to-end test checks that a run with
 the tag prior reproduces byte for byte. The submission was regenerated identically from a clean
-checkout of the submitted commit. A full run takes about 15 minutes on a laptop CPU. Retraining from open data:
+checkout of the submitted commit. A full run took 3 minutes on a laptop CPU (clean checkout, 5 members). Retraining from open data:
 `python -m tempolens.train --member k --draws 4 --out models/retrained_m<k>.pt` for k = 0–4, then
 `predict --model models/retrained_m0.pt ... models/retrained_m4.pt`. GPU
 training is not bit-reproducible, which is why the weights used for the submission are committed;
