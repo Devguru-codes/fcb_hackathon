@@ -30,9 +30,9 @@ with a **simulator calibrated so the official baseline reproduces its published 
 | data | `match.py`, `opendata.py` | one per-frame table (metres, anonymous slots) for the ATD and every open match; open labels from DFL's ball status/owner flag or Metrica events |
 | noise | `simulate.py` | stoppage-aligned and long log-normal ball gaps, player dropout (no position jitter: the real tracking is smooth) |
 | features | `features.py` | ~140 identity-free, team-symmetric features: control geometry, ball state, formation, memory across ball gaps, context windows |
-| model | `temporal.py` | bidirectional GRU: P(H/A/D) per frame plus a possession-change head, three members trained with domain randomisation (each noise draw its own simulator settings); LightGBM in `experiments.py` as a comparison |
-| adaptation | `temporal.py`, `adaptcv.py` | optional test-time adaptation (feature re-scaling, EATA-style output layer); **off** in the submission: the open-data study (`python -m tempolens.adaptcv`) found +0.0043, under its +0.005 bar |
-| decoding | `decoder.py` | Viterbi with switch/stoppage costs from cross-validated spellF1 (2, 2, 2), a possession-change bonus (0.5), dead ball before the second-half kickoff (FAQ) |
+| model | `temporal.py` | bidirectional GRU: P(H/A/D) per frame plus a possession-change head, five members trained with domain randomisation (each noise draw its own simulator settings); LightGBM in `experiments.py` as a comparison |
+| adaptation | `temporal.py`, `adaptcv.py` | optional test-time adaptation (feature re-scaling, EATA-style output layer); **off** in the submission: the open-data study (`python -m tempolens.adaptcv`) found +0.0028, under its +0.005 bar |
+| decoding | `decoder.py` | Viterbi with switch/stoppage costs from cross-validated spellF1 (2, 8, 8), a possession-change bonus (0.5), dead ball before the second-half kickoff (FAQ) |
 | tags | `tags.py`, `tagprior.py` | Smart Tagging as a prior on the side in possession, **on** in the submission, weighted without labels by how often the tags agree with confident frames; defensive codes point at the other team |
 | checks | `realcheck.py` | automatic real-match checks that print aggregates only (format, label shares) |
 
@@ -51,8 +51,8 @@ python -m tempolens.diagnostics --data-root data
 # Research loop on open data (MTAH_OPEN_DATA_DIR -> folder with metrica_sample_data/, dfl_idsse/):
 python -m tempolens.experiments --model gbm
 python -m tempolens.experiments --model temporal
-python -m tempolens.train --member 0 --draws 4 --out models/retrained_m0.pt   # members 1, 2 likewise
-python -m tempolens.predict --data-root data --output retrained.csv --model models/retrained_m0.pt models/retrained_m1.pt models/retrained_m2.pt
+python -m tempolens.train --member 0 --draws 4 --out models/retrained_m0.pt   # members 1-4 likewise
+python -m tempolens.predict --data-root data --output retrained.csv --model models/retrained_m0.pt models/retrained_m1.pt models/retrained_m2.pt models/retrained_m3.pt models/retrained_m4.pt
 # Never write retrained weights over models/tempolens_rnd4_m*.pt: GPU training is not bit-reproducible.
 ```
 
@@ -63,7 +63,7 @@ The same file sets the tag prior and the test-time adaptation (`tag_prior`, `tta
 Every setting there is chosen on open data only, as the organisers' rules of 2026-11-03 require
 (technical document §7c). Everything runs on the
 CPU in float64 with a fixed order, so the same data gives the same file byte for byte; a full run
-takes about 8 minutes on a laptop.
+takes about 15 minutes on a laptop.
 
 ## Open data
 

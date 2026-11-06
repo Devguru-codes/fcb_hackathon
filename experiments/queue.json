@@ -4499,8 +4499,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "running",
-    "started": "2026-11-06 06:38"
+    "status": "done",
+    "started": "2026-11-06 06:38",
+    "result": null,
+    "finished": "2026-11-06 17:03",
+    "exit_code": 0
   },
   {
     "id": "ENS7",
@@ -4518,7 +4521,8 @@
       "dfl": 0.765
     },
     "baseline_from": null,
-    "status": "pending"
+    "status": "running",
+    "started": "2026-11-06 17:03"
   },
   {
     "id": "SUB5b",
