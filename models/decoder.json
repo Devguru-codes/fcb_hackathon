@@ -14,5 +14,5 @@
   "tta_alpha": 0.0,
   "eata_steps": 0,
   "tag_prior": "auto",
-  "_tag_prior": "'auto' adds the self-calibrated Smart Tagging prior (tagprior.py), on open-data evidence: with synthetic tags on the cross-validated ensemble and these costs (python -m tempolens.tagstudy --draws 4 --seeds 3) spellF1 0.7716 without the prior, 0.7825 / 0.7767 / 0.7748 / 0.7736 / 0.7715 at 0 / 10 / 20 / 35 / 50% tag team error: it never hurts."
+  "_tag_prior": "'auto' adds the self-calibrated Smart Tagging prior (tagprior.py), on open-data evidence: with synthetic tags on the cross-validated 5-member ensemble and these costs (python -m tempolens.tagstudy --draws 4 --seeds 3 --members 5) spellF1 0.7760 without the prior, 0.7841 / 0.7790 / 0.7781 / 0.7770 / 0.7754 at 0 / 10 / 20 / 35 / 50% tag team error: it helps with good tags and costs 0.0006 with random ones."
 }

@@ -4477,7 +4477,11 @@
     },
     "baseline": null,
     "baseline_from": null,
-    "status": "pending"
+    "status": "done",
+    "started": "2026-11-06 06:38",
+    "result": null,
+    "finished": "2026-11-06 06:38",
+    "exit_code": 0
   },
   {
     "id": "ADcv5",
@@ -4494,6 +4498,109 @@
       "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
     },
     "baseline": null,
+    "baseline_from": null,
+    "status": "running",
+    "started": "2026-11-06 06:38"
+  },
+  {
+    "id": "ENS7",
+    "title": "v7 recipe, 7-member ensemble",
+    "args": [
+      "--model",
+      "ensemble",
+      "--draws",
+      "4",
+      "--members",
+      "7"
+    ],
+    "baseline": {
+      "all": 0.776,
+      "dfl": 0.765
+    },
+    "baseline_from": null,
+    "status": "pending"
+  },
+  {
+    "id": "SUB5b",
+    "title": "5-member set {0,1,2,5,6}",
+    "args": [
+      "--model",
+      "ensemble",
+      "--draws",
+      "4",
+      "--member-set",
+      "0",
+      "1",
+      "2",
+      "5",
+      "6"
+    ],
+    "baseline": {
+      "all": 0.7716,
+      "dfl": 0.7597
+    },
+    "baseline_from": null,
+    "status": "pending"
+  },
+  {
+    "id": "ENS9",
+    "title": "v7 recipe, 9-member ensemble",
+    "args": [
+      "--model",
+      "ensemble",
+      "--draws",
+      "4",
+      "--members",
+      "9"
+    ],
+    "baseline": {
+      "all": 0.776,
+      "dfl": 0.765
+    },
+    "baseline_from": null,
+    "status": "pending"
+  },
+  {
+    "id": "SUB5c",
+    "title": "5-member set {0,1,2,7,8}",
+    "args": [
+      "--model",
+      "ensemble",
+      "--draws",
+      "4",
+      "--member-set",
+      "0",
+      "1",
+      "2",
+      "7",
+      "8"
+    ],
+    "baseline": {
+      "all": 0.7716,
+      "dfl": 0.7597
+    },
+    "baseline_from": null,
+    "status": "pending"
+  },
+  {
+    "id": "SUB5d",
+    "title": "5-member set {4,5,6,7,8}",
+    "args": [
+      "--model",
+      "ensemble",
+      "--draws",
+      "4",
+      "--member-set",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8"
+    ],
+    "baseline": {
+      "all": 0.7716,
+      "dfl": 0.7597
+    },
     "baseline_from": null,
     "status": "pending"
   }

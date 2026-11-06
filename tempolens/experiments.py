@@ -249,8 +249,9 @@ def oof_logp(names, kind="gbm", protocol="sim", refresh=False, member=0,
     """Held-out log-probabilities for every match, each from a model that never saw it.
 
     kind "temporal" trains the network described by `config` (default: the base GRU).
-    kind "ensemble" averages the held-out outputs of temporal members 0..members-1, each of
-    which is trained (or read from cache) like kind "temporal" with that member index.
+    kind "ensemble" averages the held-out outputs of temporal members 0..members-1 (or the
+    member indices in `members` when it is a list), each of which is trained (or read from
+    cache) like kind "temporal" with that member index.
     `extra_train`: matches added to every fold's training set and never held out, so the
     held-out matches and their scores stay comparable with runs without them.
     `draws` > 0: train on that many randomised-noise draws per match (training_samples); the
@@ -260,7 +261,7 @@ def oof_logp(names, kind="gbm", protocol="sim", refresh=False, member=0,
         from .temporal import combine
         outputs = [oof_logp(names, "temporal", protocol, refresh, k, config=config,
                             extra_train=extra_train, draws=draws, faults=faults)
-                   for k in range(members)]
+                   for k in (range(members) if isinstance(members, int) else members)]
         return {n: combine([out[n] for out in outputs]) for n in names}
     if kind == "temporal":
         from .temporal import DEFAULT_CONFIG
@@ -400,6 +401,8 @@ def main(argv=None):
                         help="weight of the auxiliary touch-head loss (0 = off)")
     parser.add_argument("--chunk", type=int, default=None,
                         help="temporal training sequence length in frames (default 750 = 30 s)")
+    parser.add_argument("--member-set", type=int, nargs="+",
+                        help="ensemble of exactly these member indices (overrides --members)")
     parser.add_argument("--members", type=int, default=ENSEMBLE_MEMBERS,
                         help="ensemble only: number of members averaged")
     parser.add_argument("--extra-train", choices=("skillcorner",),
@@ -430,7 +433,7 @@ def main(argv=None):
     from .opendata import EXTRA_LOADERS
     extra = sorted(EXTRA_LOADERS) if args.extra_train == "skillcorner" else ()
     run(args.matches, grid, args.model, args.protocol, args.refresh, args.member, config,
-        args.members, extra, args.draws, args.faults)
+        args.member_set or args.members, extra, args.draws, args.faults)
 
 
 if __name__ == "__main__":
