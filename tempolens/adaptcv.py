@@ -1,13 +1,14 @@
 """Choose the test-time adaptation on external data only (organisers' rules, 2026-11-03).
 
     python -m tempolens.adaptcv            # train/reuse fold models, score the grid, print the choice
+    python -m tempolens.adaptcv --members 5   # the same with a 5-member ensemble (ENS5)
 
 The competition match differs from the training data (simulated noise on clean tracking). The
 adaptation settings -- `tta_alpha` (temporal.adapt_normaliser), `eata_steps` (temporal.adapt_head),
 the team-evidence gate (predict.gate_team_evidence) and the decoder costs -- are scored here on
 open matches under a domain shift, never on the provided match:
 
-- sim:   each open match held out (5 folds, v7 recipe: 3 members, 4 randomised draws), with the
+- sim:   each open match held out (5 folds, v7 recipe: 3 or --members members, 4 randomised draws), with the
          fixed calibrated test noise -- the standard cross-validation;
 - shift: the same fold models on a different corruption: one randomised noise draw per match
          plus tracker faults (identity swaps, duplicate and phantom tracks), never trained on;
@@ -17,7 +18,8 @@ open matches under a domain shift, never on the provided match:
 Decision rule, fixed before the run: score = mean over the three conditions of the mean
 spellF1. Adaptation (alpha, steps or the gate) is adopted only if its best setting beats no
 adaptation at the same costs by at least NOISE and loses no condition by more than NOISE;
-otherwise the costs alone are chosen. Results are cached per match in models/exp/adaptcv/.
+otherwise the costs alone are chosen. Results are cached per match in models/exp/adaptcv/
+(m<members>/ for other ensemble sizes); fold models are shared.
 
 EATA here adapts the head on the stitched per-frame head inputs (both team views, every 5th
 in-half frame) rather than on the overlapping inference windows predict.py collects; the update
@@ -45,16 +47,16 @@ OUT = ROOT / "models" / "exp" / "adaptcv"
 ALPHAS = (0.0, 0.5, 1.0)
 STEPS = (0, 10, 30, 60)
 GATES = (False, True)
-COSTS = ((2.0, 2.0, 2.0, 0.5), (4.0, 8.0, 8.0, 1.0))
+COSTS = ((2.0, 2.0, 2.0, 0.5), (2.0, 8.0, 8.0, 0.5), (4.0, 8.0, 8.0, 1.0))
 SHIFT_SEED = 7000
 MEMBERS, DRAWS = 3, 4
 NOISE = 0.005
 
 
-def fold_members(held, rest):
+def fold_members(held, rest, count=MEMBERS):
     """The v7-recipe members trained without `held`, cached on disk."""
     members = []
-    for k in range(MEMBERS):
+    for k in range(count):
         path = OUT / "models" / "{}_m{}.pt".format("-".join(held), k)
         if not path.exists():      # its own process: training arrays never pile up here
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -146,8 +148,8 @@ def score_match(members, sample):
     return rows
 
 
-def cached(condition, name, compute):
-    path = OUT / "{}_{}.json".format(condition, name)
+def cached(folder, condition, name, compute):
+    path = folder / "{}_{}.json".format(condition, name)
     if path.exists():
         return json.loads(path.read_text(encoding="utf-8"))
     rows = compute()
@@ -156,21 +158,23 @@ def cached(condition, name, compute):
     return rows
 
 
-def collect():
+def collect(count=MEMBERS):
+    folder = OUT if count == MEMBERS else OUT / "m{}".format(count)
+    final = [temporal.load(ROOT / "models" / p) for p in load_decoder(DEFAULT_DECODER)["members"]]
+    assert len(final) == count, "decoder.json lists {} members, not {}".format(len(final), count)
     results = {"sim": {}, "shift": {}, "sc": {}}
     names = sorted(LOADERS)
     for held in folds(names):
-        members = fold_members(held, sorted(set(names) - set(held)))
+        members = fold_members(held, sorted(set(names) - set(held)), count)
         for n in held:
-            results["sim"][n] = cached("sim", n, lambda: score_match(
+            results["sim"][n] = cached(folder, "sim", n, lambda: score_match(
                 members, CachedSample(n, SIM_TEST_SEED)))
             seed = SHIFT_SEED + names.index(n)
-            results["shift"][n] = cached("shift", n, lambda: score_match(
+            results["shift"][n] = cached(folder, "shift", n, lambda: score_match(
                 members, CachedSample(n, seed, randomised=True, faults=True)))
             print("scored {}".format(n), flush=True)
-    final = [temporal.load(ROOT / "models" / p) for p in load_decoder(DEFAULT_DECODER)["members"]]
     for n in sorted(EXTRA_LOADERS):
-        results["sc"][n] = cached("sc", n, lambda: score_match(final, CachedSample(n)))
+        results["sc"][n] = cached(folder, "sc", n, lambda: score_match(final, CachedSample(n)))
         print("scored {}".format(n), flush=True)
     return results
 
@@ -209,8 +213,9 @@ def choose(summary):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.parse_args(argv)
-    summary = table(collect())
+    parser.add_argument("--members", type=int, default=MEMBERS, help="ensemble size")
+    args = parser.parse_args(argv)
+    summary = table(collect(args.members))
     setting, overall, reason = choose(summary)
     print("\nalpha steps gate costs                 overall   sim (spell/macro)   shift    sc")
     for key in sorted(summary, key=lambda k: -overall[k])[:25]:

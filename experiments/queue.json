@@ -4456,5 +4456,45 @@
     },
     "finished": "2026-11-06 06:18",
     "exit_code": 0
+  },
+  {
+    "id": "TPcv5",
+    "title": "tag study, 5-member ensemble, costs (2, 8, 8, 0.5)",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.tagstudy",
+      "--draws",
+      "4",
+      "--seeds",
+      "3",
+      "--members",
+      "5"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "pending"
+  },
+  {
+    "id": "ADcv5",
+    "title": "adaptation study, 5-member ensemble (tempolens.adaptcv --members 5)",
+    "args": [],
+    "cmd": [
+      "-m",
+      "tempolens.adaptcv",
+      "--members",
+      "5"
+    ],
+    "cwd": "C:/Users/devgu/Downloads/fcb_hackathon/.claude/worktrees/more-than-hack-2027-a8761a",
+    "env": {
+      "MTAH_OPEN_DATA_DIR": "C:/Users/devgu/Downloads/fcb_hackathon/external_data"
+    },
+    "baseline": null,
+    "baseline_from": null,
+    "status": "pending"
   }
 ]

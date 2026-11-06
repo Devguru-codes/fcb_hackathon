@@ -374,7 +374,7 @@ class TemporalVariantTests(unittest.TestCase):
         from tempolens import temporal
         from tempolens.predict import default_models
         paths = default_models()
-        self.assertEqual(len(paths), 3)
+        self.assertEqual(len(paths), 5)
         for path in paths:      # committed, current feature version, no feature masked
             model, normaliser = temporal.load(path)
             self.assertEqual(model.config, temporal.DEFAULT_CONFIG)

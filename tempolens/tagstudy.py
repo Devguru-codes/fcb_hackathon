@@ -16,8 +16,8 @@ import argparse
 import numpy as np
 
 from .decoder import transition_matrix
-from .experiments import (CachedSample, SIM_TEST_SEED, _summary, decode_table, oof_logp, pm,
-                          score)
+from .experiments import (CachedSample, ENSEMBLE_MEMBERS, SIM_TEST_SEED, _summary,
+                          decode_table, oof_logp, pm, score)
 from .match import A, H
 from .opendata import LOADERS
 from .predict import load_decoder
@@ -49,13 +49,13 @@ def synthetic_tags(labels, error, seed):
     return out
 
 
-def run(errors, costs=None, draws=0, seeds=1):
+def run(errors, costs=None, draws=0, seeds=1, members=ENSEMBLE_MEMBERS):
     """The decoder's costs and change bonus unless `costs` (switch, alive>dead, dead>alive,
     change) is given; `draws`: the ensemble's training recipe (experiments --draws); `seeds`:
-    tag draws per match, averaged."""
+    tag draws per match, averaged; `members`: ensemble size."""
     names = sorted(LOADERS)
     samples = {n: CachedSample(n, SIM_TEST_SEED) for n in names}
-    logps = oof_logp(names, "ensemble", draws=draws)
+    logps = oof_logp(names, "ensemble", draws=draws, members=members)
     settings = load_decoder()
     costs = costs or (settings["switch"], settings["alive_to_dead"], settings["dead_to_alive"],
                       settings.get("change_weight", 0.0))
@@ -89,8 +89,9 @@ def main(argv=None):
     parser.add_argument("--errors", type=float, nargs="+", default=(0.0, 0.1, 0.2, 0.35, 0.5))
     parser.add_argument("--draws", type=int, default=0, help="ensemble recipe (experiments)")
     parser.add_argument("--seeds", type=int, default=1, help="synthetic tag draws per match")
+    parser.add_argument("--members", type=int, default=ENSEMBLE_MEMBERS, help="ensemble size")
     args = parser.parse_args(argv)
-    run(args.errors, draws=args.draws, seeds=args.seeds)
+    run(args.errors, draws=args.draws, seeds=args.seeds, members=args.members)
 
 
 if __name__ == "__main__":

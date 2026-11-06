@@ -1,13 +1,15 @@
 {
-  "_provenance": "Final configuration (2026-11-05), under the organisers' rules clarification of 2026-11-03: every setting is chosen on external data only (open-data cross-validation), never on the provided match's ground truth or video. Members: tempolens_rnd4_m0..2.pt, trained on the 10 open matches with domain randomisation (python -m tempolens.train --member k --draws 4; CV ensemble 0.7716 vs 0.7636 without). Decoder costs (switch 2, alive>dead 2, dead>alive 2, change bonus 0.5) are the argmax of that CV (experiments --model ensemble --draws 4). Test-time adaptation, EATA and the team-evidence gate are off: in the open-data adaptation study (python -m tempolens.adaptcv; simulated, shifted and 20 real SkillCorner matches) the best adaptation gained +0.0043, under the +0.005 bar fixed before the run.",
+  "_provenance": "Final configuration (2026-11-06), under the organisers' rules clarification of 2026-11-03: every setting is chosen on external data only (open-data cross-validation), never on the provided match's ground truth or video. Members: tempolens_rnd4_m0..4.pt, trained on the 10 open matches with domain randomisation (python -m tempolens.train --member k --draws 4). CV ensemble: 5 members 0.7760 (ENS5, adopted by a rule fixed before the run: >= +0.004 over 3 members' 0.7716), 0.7636 without domain randomisation. Decoder costs (switch 2, alive>dead 8, dead>alive 8, change bonus 0.5) are the argmax of that CV (experiments --model ensemble --draws 4 --members 5). Test-time adaptation, EATA and the team-evidence gate: see ADcv5 in docs/plan_of_action.md (python -m tempolens.adaptcv --members 5).",
   "members": [
     "tempolens_rnd4_m0.pt",
     "tempolens_rnd4_m1.pt",
-    "tempolens_rnd4_m2.pt"
+    "tempolens_rnd4_m2.pt",
+    "tempolens_rnd4_m3.pt",
+    "tempolens_rnd4_m4.pt"
   ],
   "switch": 2.0,
-  "alive_to_dead": 2.0,
-  "dead_to_alive": 2.0,
+  "alive_to_dead": 8.0,
+  "dead_to_alive": 8.0,
   "change_weight": 0.5,
   "tta_alpha": 0.0,
   "eata_steps": 0,
