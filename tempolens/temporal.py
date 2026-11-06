@@ -493,9 +493,10 @@ def _chunk_index(sequences, chunk=CHUNK, stride=STRIDE):
 
 
 def train(samples, epochs=None, device=None, seed=SEED, verbose=True,
-          config=DEFAULT_CONFIG):
+          config=DEFAULT_CONFIG, on_epoch=None):
     """Fit a network on labelled samples (or MatchTables). Returns (CPU model, normaliser).
-    `epochs` overrides config.epochs."""
+    `epochs` overrides config.epochs; `on_epoch(epoch, model, normaliser)` is called after each
+    epoch (the model still training, on its device)."""
     epochs = config.epochs if epochs is None else epochs
     torch = _torch()
     torch.manual_seed(seed)
@@ -571,6 +572,8 @@ def train(samples, epochs=None, device=None, seed=SEED, verbose=True,
             total += float(loss) * len(batch)
         if verbose:
             print("  epoch {:>2}  loss {:.4f}".format(epoch + 1, total / len(index)), flush=True)
+        if on_epoch:
+            on_epoch(epoch + 1, model, normaliser)
     return model.cpu().eval(), normaliser
 
 
