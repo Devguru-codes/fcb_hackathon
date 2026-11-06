@@ -105,8 +105,8 @@ def member_output(head, h0, h1, inside):
     return np.round(result, 4)
 
 
-def outputs(members, sample):
-    """{(alpha, steps): ensemble output} for the whole grid on one match."""
+def member_grid(members, sample):
+    """{(alpha, steps): [one output per member]} for the whole grid on one match."""
     torch = temporal._torch()
     inside = np.zeros(sample.n_frames, dtype=bool)
     for start, stop in sample.runs():
@@ -130,7 +130,12 @@ def outputs(members, sample):
             for target in STEPS[1:]:      # stopped early (no confident frame): the last head
                 per[(alpha, target)].append(snaps[target] if target in snaps
                                             else member_output(head, h0, h1, inside))
-    return {key: temporal.combine(value) for key, value in per.items()}
+    return per
+
+
+def outputs(members, sample):
+    """{(alpha, steps): ensemble output} for the whole grid on one match."""
+    return {key: temporal.combine(value) for key, value in member_grid(members, sample).items()}
 
 
 def score_match(members, sample):
@@ -158,8 +163,8 @@ def cached(folder, condition, name, compute):
     return rows
 
 
-def collect(count=MEMBERS):
-    folder = OUT if count == MEMBERS else OUT / "m{}".format(count)
+def collect(count=MEMBERS, folder=None, scorer=score_match):
+    folder = folder or (OUT if count == MEMBERS else OUT / "m{}".format(count))
     final = [temporal.load(ROOT / "models" / p) for p in load_decoder(DEFAULT_DECODER)["members"]]
     assert len(final) == count, "decoder.json lists {} members, not {}".format(len(final), count)
     results = {"sim": {}, "shift": {}, "sc": {}}
@@ -167,14 +172,14 @@ def collect(count=MEMBERS):
     for held in folds(names):
         members = fold_members(held, sorted(set(names) - set(held)), count)
         for n in held:
-            results["sim"][n] = cached(folder, "sim", n, lambda: score_match(
+            results["sim"][n] = cached(folder, "sim", n, lambda: scorer(
                 members, CachedSample(n, SIM_TEST_SEED)))
             seed = SHIFT_SEED + names.index(n)
-            results["shift"][n] = cached(folder, "shift", n, lambda: score_match(
+            results["shift"][n] = cached(folder, "shift", n, lambda: scorer(
                 members, CachedSample(n, seed, randomised=True, faults=True)))
             print("scored {}".format(n), flush=True)
     for n in sorted(EXTRA_LOADERS):
-        results["sc"][n] = cached(folder, "sc", n, lambda: score_match(final, CachedSample(n)))
+        results["sc"][n] = cached(folder, "sc", n, lambda: scorer(final, CachedSample(n)))
         print("scored {}".format(n), flush=True)
     return results
 

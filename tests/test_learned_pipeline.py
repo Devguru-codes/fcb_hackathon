@@ -267,6 +267,27 @@ class EnsembleTests(unittest.TestCase):
         np.testing.assert_allclose(adaptcv.member_output(model.head, h0, h1, inside),
                                    temporal.predict(model, normaliser, sample), atol=1e-4)
 
+    def test_seed_rule_needs_the_ensemble_and_every_seed_to_gain(self):
+        from tempolens.adaptseeds import decide
+        c = (2.0, 8.0, 8.0, 0.5)
+        base = {"sim": 0.7, "shift": 0.7, "sc": 0.4}
+        bump = {   # setting -> spellF1 added on every condition, per seed (-1 = ensemble)
+            (0.0, 0, False, c): (0, 0, 0),
+            (0.5, 0, False, c): (0.002, 0.001, 0.003),     # small, but all gain: accepted
+            (1.0, 0, False, c): (0.010, 0.020, -0.001),    # seed 1 loses: rejected
+            (0.5, 10, True, c): (0.001, 0.001, 0.0),       # a tie is not a gain: rejected
+        }
+        summary = {(s,) + k: {cond: v + d[i] for cond, v in base.items()}
+                   for k, d in bump.items() for i, s in enumerate((-1, 0, 1))}
+        rows, chosen = decide(summary)
+        self.assertEqual(len(rows), 3)
+        self.assertEqual([r["accepted"] for r in rows], [False, True, False])
+        self.assertEqual((chosen["alpha"], chosen["steps"], chosen["gate"]), (0.5, 0, False))
+        self.assertAlmostEqual(chosen["gain"]["-1"], 0.002)
+        del summary[(-1, 0.5, 0, False, c)], summary[(0, 0.5, 0, False, c)], \
+            summary[(1, 0.5, 0, False, c)]
+        self.assertIsNone(decide(summary)[1])
+
     def test_pseudo_labels_keep_only_confident_interiors_of_long_runs(self):
         from tempolens.temporal import pseudo_labels
         states = np.array([H] * 200 + [A] * 40 + [D] * 160, dtype=np.int8)
