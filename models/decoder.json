@@ -1,5 +1,5 @@
 {
-  "_provenance": "Final configuration (2026-11-06), under the organisers' rules clarification of 2026-11-03: every setting is chosen on external data only (open-data cross-validation), never on the provided match's ground truth or video. Members: tempolens_rnd4_m0..4.pt, trained on the 10 open matches with domain randomisation (python -m tempolens.train --member k --draws 4). CV ensemble: 5 members 0.7760 (ENS5, adopted by a rule fixed before the run: >= +0.004 over 3 members' 0.7716), 0.7636 without domain randomisation. Decoder costs (switch 2, alive>dead 8, dead>alive 8, change bonus 0.5) are the argmax of that CV (experiments --model ensemble --draws 4 --members 5). Test-time adaptation, EATA and the team-evidence gate are off: in the open-data adaptation study (python -m tempolens.adaptcv --members 5; simulated, shifted and 20 real SkillCorner matches) the best adaptation gained +0.0028, under the +0.005 bar fixed before the run.",
+  "_provenance": "Final configuration (2026-11-07), under the organisers' rules clarification of 2026-11-03: every setting is chosen on external data only (open-data cross-validation and open-data adaptation studies), never on the provided match's ground truth or video. Members: tempolens_rnd4_m0..4.pt, trained on the 10 open matches with domain randomisation (python -m tempolens.train --member k --draws 4). CV ensemble: 5 members 0.7760 (ENS5, adopted by a rule fixed before the run: >= +0.004 over 3 members' 0.7716). Test-time adaptation tta_alpha 0.5 with decoder costs (switch 4, alive>dead 8, dead>alive 8, change bonus 1.0), EATA and the team-evidence gate off: chosen by the ADseeds rule (python -m tempolens.adaptseeds --members 5; simulated, shifted and 20 real SkillCorner matches), fixed before the run: a setting must beat no adaptation at the same costs for the 5-member ensemble and for each of the 5 members alone; the highest ensemble mean among those wins. Result: mean of the three conditions 0.6476 vs 0.6448 without adaptation (+0.0028; every member +0.0001 to +0.0060). The team dropped the earlier +0.005 bar on 2026-11-07, after a one-off public-window sanity check that decided nothing. Without adaptation the CV argmax costs are (2, 8, 8, 0.5).",
   "members": [
     "tempolens_rnd4_m0.pt",
     "tempolens_rnd4_m1.pt",
@@ -7,11 +7,11 @@
     "tempolens_rnd4_m3.pt",
     "tempolens_rnd4_m4.pt"
   ],
-  "switch": 2.0,
+  "switch": 4.0,
   "alive_to_dead": 8.0,
   "dead_to_alive": 8.0,
-  "change_weight": 0.5,
-  "tta_alpha": 0.0,
+  "change_weight": 1.0,
+  "tta_alpha": 0.5,
   "eata_steps": 0,
   "tag_prior": "auto",
   "_tag_prior": "'auto' adds the self-calibrated Smart Tagging prior (tagprior.py), on open-data evidence: with synthetic tags on the cross-validated 5-member ensemble and these costs (python -m tempolens.tagstudy --draws 4 --seeds 3 --members 5) spellF1 0.7760 without the prior, 0.7841 / 0.7790 / 0.7781 / 0.7770 / 0.7754 at 0 / 10 / 20 / 35 / 50% tag team error: it helps with good tags and costs 0.0006 with random ones."
