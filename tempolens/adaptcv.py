@@ -109,23 +109,22 @@ def member_grid(members, sample, double=False):
     return per
 
 
-def outputs(members, sample):
-    """{(alpha, steps): ensemble output} for the whole grid on one match."""
-    return {key: temporal.combine(value) for key, value in member_grid(members, sample).items()}
-
-
-def score_match(members, sample):
+def score_match(members, sample, per_member=False, costs=COSTS):
+    """Score rows for the whole grid on one match; with `per_member`, each member alone too, every
+    row then carrying a `seed` (the ensemble is seed -1)."""
     rows = []
-    grid = outputs(members, sample)
     features = np.asarray(sample.features(False))
-    for (alpha, steps), logp in grid.items():
-        for gate in GATES:
-            lp = gate_team_evidence(logp, features) if gate else logp
-            for costs in COSTS:
-                r = score(sample.labels, decode_table(sample, lp, transition_matrix(*costs[:3]),
-                                                      costs[3]))
-                rows.append({"alpha": alpha, "steps": steps, "gate": gate, "costs": costs,
-                             "spellF1": r["spellF1"], "macroF1": r["macroF1"]})
+    for (alpha, steps), outs in member_grid(members, sample).items():
+        variants = [(-1, temporal.combine(outs))] + (list(enumerate(outs)) if per_member else [])
+        for seed, logp in variants:
+            for gate in GATES:
+                lp = gate_team_evidence(logp, features) if gate else logp
+                for c in costs:
+                    r = score(sample.labels, decode_table(sample, lp, transition_matrix(*c[:3]),
+                                                          c[3]))
+                    row = {"alpha": alpha, "steps": steps, "gate": gate, "costs": c,
+                           "spellF1": r["spellF1"], "macroF1": r["macroF1"]}
+                    rows.append(dict(row, seed=seed) if per_member else row)
     return rows
 
 

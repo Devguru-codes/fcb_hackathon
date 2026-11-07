@@ -17,10 +17,7 @@ import json
 
 import numpy as np
 
-from . import adaptcv, temporal
-from .decoder import transition_matrix
-from .experiments import decode_table, score
-from .predict import gate_team_evidence
+from . import adaptcv
 
 COSTS = ((2.0, 8.0, 8.0, 0.5), (4.0, 8.0, 8.0, 1.0))
 CONDITIONS = ("sim", "shift", "sc")
@@ -28,19 +25,7 @@ ENSEMBLE = -1
 
 
 def score_match(members, sample):
-    rows = []
-    features = np.asarray(sample.features(False))
-    for (alpha, steps), outs in adaptcv.member_grid(members, sample).items():
-        for seed in [ENSEMBLE] + list(range(len(outs))):
-            logp = temporal.combine(outs) if seed == ENSEMBLE else outs[seed]
-            for gate in adaptcv.GATES:
-                lp = gate_team_evidence(logp, features) if gate else logp
-                for costs in COSTS:
-                    r = score(sample.labels, decode_table(sample, lp, transition_matrix(*costs[:3]),
-                                                          costs[3]))
-                    rows.append({"seed": seed, "alpha": alpha, "steps": steps, "gate": gate,
-                                 "costs": costs, "spellF1": r["spellF1"]})
-    return rows
+    return adaptcv.score_match(members, sample, per_member=True, costs=COSTS)
 
 
 def table(results):

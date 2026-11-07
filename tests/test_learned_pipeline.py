@@ -282,6 +282,20 @@ class EnsembleTests(unittest.TestCase):
             np.testing.assert_allclose(grid[(0.0, 10)][0],
                                        temporal.predict(adapted, normaliser, sample), atol=2e-4)
 
+    def test_per_member_scoring_keeps_the_ensemble_rows(self):
+        from tempolens import adaptcv, temporal
+        from tempolens.features import TableSample
+        table = SimulatorTests()._labelled(3000)
+        model, normaliser = temporal.train([table], epochs=1, device="cpu", verbose=False,
+                                           config=temporal.TemporalConfig(hidden=16))
+        sample, costs = TableSample(table), ((2.0, 8.0, 8.0, 0.5),)
+        members = [(model, normaliser), (model, normaliser)]
+        plain = adaptcv.score_match(members, sample, costs=costs)
+        rows = adaptcv.score_match(members, sample, per_member=True, costs=costs)
+        self.assertEqual([{k: v for k, v in r.items() if k != "seed"}
+                          for r in rows if r["seed"] == -1], plain)
+        self.assertEqual(sorted({r["seed"] for r in rows}), [-1, 0, 1])
+
     def test_seed_rule_needs_the_ensemble_and_every_seed_to_gain(self):
         from tempolens.adaptseeds import decide
         c = (2.0, 8.0, 8.0, 0.5)
