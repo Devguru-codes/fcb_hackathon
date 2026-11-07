@@ -50,6 +50,8 @@ LR = 2e-3
 CHANGE_DILATE = 2    # a change counts as "here" within +/-2 frames
 CHANGE_WEIGHT = 0.5  # weight of the change loss beside the possession loss
 
+HEDGE_FRAMES = 50    # B5's controlled labels: possessions under 2 s folded (E2a's controlled-2 s)
+
 
 @dataclass(frozen=True)
 class TemporalConfig:
@@ -68,6 +70,7 @@ class TemporalConfig:
     drop: tuple = ()             # feature names fed to the network as zeros (masked out)
     teamcue: bool = False        # append features.team_cue_features (versioned pack)
     swa: int = 0                 # average the weights of the last `swa` epochs (B3); 0 = off
+    hedge: float = 0.0           # weight of a second H/A/D head on 2 s-controlled labels (B5)
 
     def tag(self):
         """Cache/file tag; the default config keeps the historical name "temporal"."""
@@ -100,6 +103,8 @@ class TemporalConfig:
             parts.append("tc{}".format(TEAMCUE_VERSION))
         if self.swa:
             parts.append("swa{}".format(self.swa))
+        if self.hedge:
+            parts.append("hd{:g}".format(self.hedge))
         return "temporal" + ("_" + "_".join(parts) if parts else "")
 
 
@@ -342,6 +347,8 @@ def build_model(n_inputs, config=DEFAULT_CONFIG, n_token_fields=None):
             self.head = nn.Linear(width_out, 6 if config.touch else 4)
             if config.aux_ball:
                 self.ball_head = nn.Linear(width_out, 2)
+            if config.hedge:     # last 3 outputs; never decoded (predict reads the first 4)
+                self.hedge_head = nn.Linear(width_out, 3)
 
         def forward(self, x, tokens=None):
             if config.encoder == "players":
@@ -356,6 +363,8 @@ def build_model(n_inputs, config=DEFAULT_CONFIG, n_token_fields=None):
             out = self.head(h)
             if config.aux_ball:
                 out = torch.cat([out, self.ball_head(h)], dim=-1)
+            if config.hedge:
+                out = torch.cat([out, self.hedge_head(h)], dim=-1)
             return out
 
     net = Net()
@@ -420,6 +429,12 @@ def _sequences(samples, config=DEFAULT_CONFIG, normaliser=None):
             tokens = sample.tokens(swap) if config.encoder == "players" else None
             ball = sample.ball_target(swap) if config.aux_ball else None
             touch = sample.touch_target(swap) if config.touch else None
+            if config.hedge:     # 2 s-controlled labels, DFL / SkillCorner only (as E2b)
+                from .opendata import remove_flicker
+                y2 = sample.labels
+                if not str(getattr(sample, "name", "")).startswith("metrica"):
+                    y2 = remove_flicker(y2, sample.runs(), HEDGE_FRAMES)
+                y2 = swap_labels(y2) if swap else y2
             for start, stop in sample.runs():
                 y_run = y[start:stop].astype(np.int64)
                 change = change_targets(y_run)
@@ -437,6 +452,10 @@ def _sequences(samples, config=DEFAULT_CONFIG, normaliser=None):
                     seq["ball"] = np.asarray(ball[start:stop], dtype=np.float32)
                 if touch is not None:
                     seq["touch"] = np.asarray(touch[start:stop], dtype=np.float32)
+                if config.hedge:
+                    y2_run = y2[start:stop].astype(np.int64)
+                    y2_run[y2_run == X] = -100
+                    seq["y2"] = y2_run
                 out.append(seq)
     return out, normaliser
 
@@ -540,6 +559,9 @@ def train(samples, epochs=None, device=None, seed=SEED, verbose=True,
                 known = torch.isfinite(target)
                 touch_loss = bce(out[..., 4:6], torch.nan_to_num(target)) * known
                 loss = loss + config.touch * touch_loss.sum() / known.sum().clamp(min=1)
+            if config.hedge:
+                loss = loss + config.hedge * ce(out[..., -3:].reshape(-1, 3),
+                                                batch_of("y2", batch).reshape(-1))
             optimiser.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)

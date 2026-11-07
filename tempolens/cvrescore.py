@@ -86,6 +86,8 @@ def main(argv=None):
     parser.add_argument("study", choices=("temperature", "conventions"))
     parser.add_argument("--min-spell", type=int, default=None,
                         help="also score the members trained with this label threshold (E2b)")
+    parser.add_argument("--hedge", type=float, default=None,
+                        help="also score the members trained with a hedge head of this weight (B5)")
     parser.add_argument("--workers", type=int, default=6)
     args = parser.parse_args(argv)
     with Pool(args.workers) as pool:
@@ -114,7 +116,23 @@ def main(argv=None):
                 models["v7 m{}".format(k)] = oof_logp(NAMES, "temporal", member=k, draws=4)
                 models["{} m{}".format(tag, k)] = oof_logp(NAMES, "temporal", member=k, draws=4,
                                                            min_spell=args.min_spell)
+        if args.hedge is not None:
+            from .temporal import TemporalConfig
+            config = TemporalConfig(hedge=args.hedge)
+            models["hedge 3 members"] = oof_logp(NAMES, "ensemble", members=3, draws=4,
+                                                 config=config)
+            for k in range(3):
+                models["hedge m{}".format(k)] = oof_logp(NAMES, "temporal", member=k, draws=4,
+                                                         config=config)
         out = {label: report(label, scores(logps, pool)) for label, logps in models.items()}
+        if args.hedge is not None:
+            gain = out["hedge 3 members"][1] - out["v7 3 members"][1]
+            v7 = (0.7576, 0.7677, 0.7633)
+            ahead = sum(out["hedge m{}".format(k)][1] > v7[k] for k in range(3))
+            ok = gain >= 0.006 and ahead >= 2 and out["hedge 3 members"][0] >= 0.7601
+            print("B5: provider {:+.4f} over v7 (0.7716), {} of 3 members ahead, four-convention "
+                  "mean {:.4f} (v7 0.7601) -> {}".format(gain, ahead, out["hedge 3 members"][0],
+                                                         "passes" if ok else "fails"))
         if args.min_spell is not None:
             tag = "ms{}".format(args.min_spell)
             gain = out["{} 3 members".format(tag)][0] - out["v7 3 members"][0]

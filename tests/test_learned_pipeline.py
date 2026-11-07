@@ -569,6 +569,27 @@ class WeightAveragingTests(unittest.TestCase):
         self.assertEqual(config.tag(), "temporal_h16_swa2")
 
 
+class HedgeHeadTests(unittest.TestCase):
+    def test_hedge_head_trains_on_controlled_labels_and_is_not_decoded(self):
+        from tempolens import temporal
+        from tempolens.features import TableSample
+        from tempolens.opendata import remove_flicker
+        table = SimulatorTests()._labelled(3000)
+        config = temporal.TemporalConfig(hidden=16, hedge=0.5)
+        self.assertEqual(config.tag(), "temporal_h16_hd0.5")
+        seqs, _ = temporal._sequences([table], config)
+        sample = TableSample(table)
+        y2 = remove_flicker(sample.labels, sample.runs(), temporal.HEDGE_FRAMES)
+        start, stop = sample.runs()[0]
+        expect = y2[start:stop].astype(np.int64)
+        expect[expect == X] = -100
+        np.testing.assert_array_equal(seqs[0]["y2"], expect)
+        model, normaliser = temporal.train([table], epochs=1, device="cpu", verbose=False,
+                                           config=config)
+        self.assertEqual(model.head.out_features, 4)
+        self.assertEqual(temporal.predict(model, normaliser, sample).shape[1], 4)
+
+
 class ReviewStudyTests(unittest.TestCase):
     def test_split_bonus_with_equal_weights_is_the_plain_decoder(self):
         from tempolens.decoder import transition_matrix
