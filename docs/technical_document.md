@@ -423,7 +423,9 @@ SkillCorner +0.0122. The submission adapts the output layer on exactly the study
 team views' per-frame head inputs, every 5th in-half frame; `temporal.eata_inputs`, with a test
 that the two paths give the same head). The study runs in float32 and the submission in float64;
 on two held-out open matches the spellF1 of TTA 0.5 + EATA 10 is identical in both precisions. The rule's own
-pick, TTA alone, is kept as a validated, reproduced file (`554fcb55…`).
+pick, TTA alone, is kept as a validated, reproduced file (`554fcb55…`). On 2026-11-07 the team reviewed an independent
+review's recommendation to switch to that pick and kept TTA + EATA, for its larger real-tracking gain
+and its larger smallest per-member gain, accepting the disclosed post-hoc tie-break.
 
 ## 6b. Video ball detector (built, tested on the real video, not used)
 
