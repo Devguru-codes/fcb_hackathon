@@ -149,28 +149,49 @@ def adapt_normaliser(normaliser, sample, alpha=1.0):
     return out
 
 
-def adapt_head(model, normaliser, sample, steps, lr=1e-3, gate=0.4):
-    """Test-time adaptation of the output layer (EATA, Niu et al. 2022): the backbone's head
-    inputs over the whole target match (both team views, frames outside the halves dropped,
-    every 5th frame) are captured once, then the head takes `steps` full-batch Adam steps that
-    lower the H/A/D entropy of frames already confident (entropy < gate * ln 3), each weighted
-    exp(E0 - E). Unlabelled; CPU float64 in a fixed order, so deterministic. Modifies `model`."""
+def head_inputs(model, normaliser, sample, swap):
+    """(n, width) per-frame inputs of the output layer from one team view, in the model's
+    precision; zeros outside the halves."""
     torch = _torch()
-    sample = _as_sample(sample)
-    heads, inputs = [], []
-    hooks = [model.head.register_forward_hook(lambda m, i, o: heads.append(i[0].detach())),
-             model.inp.register_forward_hook(lambda m, i, o: inputs.append(i[0].detach()))]
+    head, model.head = model.head, torch.nn.Identity()
     try:
-        predict(model, normaliser, sample)
+        x = sample.features(swap)
+        out = None
+        for start, stop in sample.runs():
+            h = _infer(model, normaliser(np.asarray(x[start:stop])))
+            if out is None:
+                out = np.zeros((sample.n_frames, h.shape[1]), dtype=h.dtype)
+            out[start:stop] = h
+        return out
     finally:
-        for hook in hooks:
-            hook.remove()
-    h = torch.cat([c.reshape(-1, c.shape[-1]) for c in heads])
-    x = torch.cat([c.reshape(-1, c.shape[-1]) for c in inputs])
-    flags = len(normaliser.flagged)
-    # a frame outside the halves has every feature missing: all its missing-value flags are set
-    keep = ~(x[:, -flags:] > 0.5).all(dim=1) if flags else torch.ones(len(x), dtype=torch.bool)
-    for _ in entropy_steps(model.head, h[keep][::5], steps, lr, gate):
+        model.head = head
+
+
+def eata_inputs(model, normaliser, sample):
+    """(h0, h1, inside, fit): both views' per-frame head inputs, the in-half mask, and EATA's fit
+    set -- in-half frames whose missing-value flags are not all set (view 0 then view 1), every
+    5th frame, in the head's precision."""
+    torch = _torch()
+    inside = np.zeros(sample.n_frames, dtype=bool)
+    for start, stop in sample.runs():
+        inside[start:stop] = True
+    h0, h1 = (head_inputs(model, normaliser, sample, swap) for swap in (False, True))
+    keep = inside
+    if len(normaliser.flagged):
+        x = np.asarray(sample.features(False))
+        keep = inside & ~np.isnan(x[:, normaliser.flagged]).all(axis=1)
+    fit = torch.from_numpy(np.concatenate([h0[keep], h1[keep]])[::5]).to(model.head.weight.dtype)
+    return h0, h1, inside, fit
+
+
+def adapt_head(model, normaliser, sample, steps, lr=1e-3, gate=0.4):
+    """Test-time adaptation of the output layer (EATA, Niu et al. 2022): the head takes `steps`
+    full-batch Adam steps on `eata_inputs`' fit set that lower the H/A/D entropy of frames already
+    confident (entropy < gate * ln 3), each weighted exp(E0 - E). Unlabelled; CPU, in the model's
+    precision and a fixed order, so deterministic. Modifies `model`."""
+    sample = _as_sample(sample)
+    fit = eata_inputs(model, normaliser, sample)[3]
+    for _ in entropy_steps(model.head, fit, steps, lr, gate):
         pass
     return model.eval()
 

@@ -21,9 +21,8 @@ adaptation at the same costs by at least NOISE and loses no condition by more th
 otherwise the costs alone are chosen. Results are cached per match in models/exp/adaptcv/
 (m<members>/ for other ensemble sizes); fold models are shared.
 
-EATA here adapts the head on the stitched per-frame head inputs (both team views, every 5th
-in-half frame) rather than on the overlapping inference windows predict.py collects; the update
-loop is the same (temporal.entropy_steps).
+EATA adapts the head on temporal.eata_inputs, the same fit set predict.py uses (both team views,
+every 5th in-half frame); the study runs in float32, predict.py in float64.
 """
 
 import argparse
@@ -67,23 +66,6 @@ def fold_members(held, rest, count=MEMBERS):
     return members
 
 
-def head_inputs(model, normaliser, sample, swap):
-    """(n, width) per-frame inputs of the output layer, zeros outside the halves."""
-    torch = temporal._torch()
-    head, model.head = model.head, torch.nn.Identity()
-    try:
-        x = sample.features(swap)
-        out = None
-        for start, stop in sample.runs():
-            h = temporal._infer(model, normaliser(np.asarray(x[start:stop])))
-            if out is None:
-                out = np.zeros((sample.n_frames, h.shape[1]), dtype=np.float32)
-            out[start:stop] = h
-        return out
-    finally:
-        model.head = head
-
-
 def member_output(head, h0, h1, inside):
     """temporal.predict's output from head inputs of both views."""
     torch = temporal._torch()
@@ -105,22 +87,16 @@ def member_output(head, h0, h1, inside):
     return np.round(result, 4)
 
 
-def member_grid(members, sample):
-    """{(alpha, steps): [one output per member]} for the whole grid on one match."""
-    torch = temporal._torch()
-    inside = np.zeros(sample.n_frames, dtype=bool)
-    for start, stop in sample.runs():
-        inside[start:stop] = True
+def member_grid(members, sample, double=False):
+    """{(alpha, steps): [one output per member]} for the whole grid on one match (float32, or
+    float64 like predict.py with `double`)."""
     per = {(a, s): [] for a in ALPHAS for s in STEPS}
     for model, normaliser in members:
-        model = copy.deepcopy(model).float()
+        model = copy.deepcopy(model)
+        model = model.double() if double else model.float()
         for alpha in ALPHAS:
             norm = temporal.adapt_normaliser(normaliser, sample, alpha) if alpha else normaliser
-            h0, h1 = (head_inputs(model, norm, sample, swap) for swap in (False, True))
-            x = np.asarray(sample.features(False))
-            keep = inside & ~np.isnan(x[:, norm.flagged]).all(axis=1) if len(norm.flagged) \
-                else inside
-            fit = torch.from_numpy(np.concatenate([h0[keep], h1[keep]])[::5])
+            h0, h1, inside, fit = temporal.eata_inputs(model, norm, sample)
             per[(alpha, 0)].append(member_output(model.head, h0, h1, inside))
             # one Adam run read at each step count equals a separate run of that many steps
             head, snaps = copy.deepcopy(model.head), {}
