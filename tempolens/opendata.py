@@ -486,7 +486,8 @@ def pff_game(game_id, folder=None, fps=25):
         if r.get("period") in (1, 2):
             period[f] = r["period"]
         b = r.get("ballsSmoothed") or {}
-        if b.get("x") is not None and b.get("y") is not None:
+        # a smoothed ball that the broadcast does not show is a guess: missing, as for SkillCorner
+        if b.get("x") is not None and b.get("y") is not None                 and b.get("visibility", "VISIBLE") == "VISIBLE":
             ball[f] = (float(b["x"]) + length / 2, float(b["y"]) + width / 2)
         for key, team in (("homePlayersSmoothed", H), ("awayPlayersSmoothed", A)):
             for p in r.get(key) or []:

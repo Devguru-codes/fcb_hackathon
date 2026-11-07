@@ -647,7 +647,9 @@ class PffLoaderTests(unittest.TestCase):
             rows = []
             for f in range(int(30 * fps)):
                 row = {"frameNum": f, "period": 1 if f >= 4 * fps else None,
-                       "ballsSmoothed": None if f % 10 == 0 else {"x": 1.0, "y": -2.0, "z": 0},
+                       "ballsSmoothed": None if f % 10 == 0 else {
+                           "x": 1.0, "y": -2.0, "z": 0,
+                           "visibility": "ESTIMATED" if f % 10 == 5 else "VISIBLE"},
                        "homePlayersSmoothed": [{"jerseyNum": 7, "x": 0.0, "y": 0.0}],
                        "awayPlayersSmoothed": [{"jerseyNum": 4, "x": 10.0, "y": 5.0},
                                                {"jerseyNum": 99, "x": 1.0, "y": 1.0}]}
@@ -661,6 +663,7 @@ class PffLoaderTests(unittest.TestCase):
         np.testing.assert_allclose(table.players[200, 1], [62.5, 39.0])
         self.assertTrue(np.isnan(table.ball[0]).all())
         np.testing.assert_allclose(table.ball[101], [53.5, 32.0])
+        self.assertTrue(np.isnan(table.ball[int(round(35 / 1.2))]).all())   # frame 35: estimated
         self.assertTrue((table.labels[:100] == X).all())      # before the period: ungraded
         self.assertEqual(table.labels[25 * 5], H)              # 5 s: home kicked off at 4 s
         self.assertEqual(table.labels[25 * 9], A)
