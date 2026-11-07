@@ -1,6 +1,6 @@
 """PFF FC World Cup 2022 as an external test condition (plan of action row PFF; aggregates only).
 
-    python -m tempolens.pffstudy gate    # the organisers' four baselines on pff-16 (run first)
+    python -m tempolens.pffstudy gate    # the organisers' baselines at 6 folds on pff-16 (first)
     python -m tempolens.pffstudy test    # the pre-registered comparisons on pff-16
 
 Only pff-16 (test_ids: every 4th game id) is ever scored; the other 48 are reserved. Each match is
@@ -30,8 +30,8 @@ ROWS = (("submitted: TTA 0.5 + EATA 10", (0.5, 10), (4.0, 8.0, 8.0, 1.0)),
         ("no adaptation", (0.0, 0), (4.0, 8.0, 8.0, 1.0)),
         ("no adaptation, CV argmax", (0.0, 0), (2.0, 8.0, 8.0, 0.5)))
 CONVENTIONS = (10, 50)
-NOISE = 0.006
-GATE_WINDOWS = {"raw": 0, "smooth25": 25, "smooth50": 50, "smooth125": 125}
+NOISE = 0.006                # the veto for adoptions
+REVERSAL, AGREE = 0.010, 11  # a reversal of the adaptation choice (amendment 2)
 
 
 def _cache():
@@ -77,12 +77,15 @@ def report(results, skipped):
                         for c in CONVENTIONS}
         print("{:<30} {:<22} 10 frames {:.4f}   50 frames {:.4f}".format(
             label, str(costs), means[label][10], means[label][50]), flush=True)
-    sub = means[ROWS[0][0]][10]
-    rivals = {k: v[10] - sub for k, v in means.items() if k in (ROWS[1][0], ROWS[2][0])}
-    worst = max(rivals, key=rivals.get)
-    print("PFF use rule (c): {} is {:+.4f} against the submission at 10 frames -> {}".format(
-        worst, rivals[worst], "REVERSAL beyond the noise floor: goes to the user"
-        if rivals[worst] > NOISE else "no reversal; the submission stands"), flush=True)
+    sub = ROWS[0][0]
+    for rival in (ROWS[1][0], ROWS[2][0]):     # amendment 2 (iii): > 0.010 and >= 11 of 16
+        diffs = np.array([r[rival]["10"] - r[sub]["10"] for r in results.values()])
+        agree = int((diffs > 0).sum()) if diffs.mean() > 0 else int((diffs < 0).sum())
+        reversal = diffs.mean() > REVERSAL and agree >= AGREE
+        print("PFF use rule (c): {} {:+.4f} against the submission at 10 frames, {} of {} "
+              "matches agree in sign -> {}".format(
+                  rival, diffs.mean(), agree, len(diffs),
+                  "REVERSAL: goes to the user" if reversal else "no reversal"), flush=True)
 
 
 def test_ids(ids):
@@ -92,32 +95,65 @@ def test_ids(ids):
     return [ids[i] for i in range(0, len(ids), 4)]
 
 
-def _gate_match(game_id):
+def _diag_match(game_id):
+    """(len(FRAMES), 4 windows, 2) spellF1 / macroF1 of the organisers' baselines on one match."""
     from .experiments import baseline_codes
+    from .labelcal import FRAMES, WINDOWS, labels_at
     sample = CachedSample("pff_{}".format(game_id))
     table = sample.table()
-    return [[score(sample.labels, baseline_codes(table, w))[k] for w in GATE_WINDOWS.values()]
-            for k in ("spellF1", "macroF1")]
+    preds = [baseline_codes(table, w) for _, w in WINDOWS]
+    out = np.zeros((len(FRAMES), len(WINDOWS), 2))
+    for i, f in enumerate(FRAMES):
+        y = labels_at(sample, f)
+        for j, pred in enumerate(preds):
+            r = score(y, pred)
+            out[i, j] = r["spellF1"], r["macroF1"]
+    return out, sample
 
 
 def gate(ids):
-    from .labelcal import MACRO_ORDER, SPELL_ORDER, in_order
-    rows = {}
+    """Amendment 2 (ii): LC1's six-value baseline-order diagnostic on pff-16; the gate is its
+    10- and 50-frame rows, read as a diagnostic."""
+    from .labelcal import FRAMES, MACRO_ORDER, SPELL_ORDER, WINDOWS, in_order, verdict
+    from .experiments import pm
+    per, lengths = [], []
     for game_id in ids:
-        rows[game_id] = _gate_match(game_id)
-        print("gate: pff_{} done ({:%H:%M})".format(game_id, datetime.now()), flush=True)
-    mean = np.mean(list(rows.values()), axis=0)
-    names = list(GATE_WINDOWS)
-    spell, macro = dict(zip(names, mean[0])), dict(zip(names, mean[1]))
-    print(chr(10) + "pff-16 baselines ({} matches, 10 frames):".format(len(rows)))
-    for n in names:
-        print("{:<10} spellF1 {:.4f}   macroF1 {:.4f}".format(n, spell[n], macro[n]))
-    print("published spellF1 0.0486 / 0.1996 / 0.2433 / 0.2242, macroF1 0.6532 / 0.6752 / "
-          "0.6724 / 0.6356 (raw / 25 / 50 / 125)")
-    print("macroF1 order (reported only): {}".format(
-        "reproduced" if in_order(macro, MACRO_ORDER) else "not reproduced"))
-    print("PFF gate: {}".format("PASS (spellF1 order reproduced)" if in_order(spell, SPELL_ORDER)
-                                else "FAIL (spellF1 order not reproduced)"), flush=True)
+        out, sample = _diag_match(game_id)
+        per.append(out)
+        lengths += [b - a for a, b, _ in pm.possession_spells(sample.labels, sample.runs())]
+        print("diag: pff_{} done ({:%H:%M})".format(game_id, datetime.now()), flush=True)
+    mean = np.mean(per, axis=0)
+    names = [n for n, _ in WINDOWS]
+    print(chr(10) + "pff-16, organisers' baselines ({} matches); spellF1 raw / 25 / 50 / 125 | "
+          "macroF1 raw / 25 / 50 / 125 | orders spell / macro".format(len(per)))
+    passing = []
+    for i, f in enumerate(FRAMES):
+        spell, macro = dict(zip(names, mean[i, :, 0])), dict(zip(names, mean[i, :, 1]))
+        ok = in_order(spell, SPELL_ORDER), in_order(macro, MACRO_ORDER)
+        if all(ok):
+            passing.append(i)
+        print("{:<4} {} | {} | {} / {}".format(
+            f, " ".join("{:.4f}".format(spell[n]) for n in names),
+            " ".join("{:.4f}".format(macro[n]) for n in names),
+            *("yes" if o else "no" for o in ok)), flush=True)
+    spell_ok = {f: in_order(dict(zip(names, mean[i, :, 0])), SPELL_ORDER)
+                for i, f in enumerate(FRAMES)}
+    print("gate (spellF1 order): 10 frames {}, 50 frames {}".format(
+        *("PASS" if spell_ok[f] else "FAIL" for f in (10, 50))))
+    if spell_ok[10]:
+        q = np.percentile(np.asarray(lengths) / 25.0, [10, 25, 50, 75, 90])
+        print("pass at 10: pff-16 possession lengths (s, at 10 frames) p10/25/50/75/90 " +
+              " / ".join("{:.1f}".format(v) for v in q) + ", mean {:.1f}".format(
+                  np.mean(lengths) / 25.0))
+    print("LC1 rule on pff-16 (both orders): " + verdict(passing)[1])
+    replicated = passing == [FRAMES.index(50)] or (
+        FRAMES.index(50) in passing and verdict(passing)[0] is not None)
+    print("replicated (50 passes on both datasets, no non-adjacent value on PFF; DFL passed at 50 "
+          "only): {}".format("yes" if replicated else "no"))
+    reading = ("passes at 50 only: PFF replicates LC1" if spell_ok[50] and not spell_ok[10] else
+               "passes at 10: PFF's labels are longer than DFL's" if spell_ok[10] else
+               "passes at neither: ball visibility dominates; PFF stays a test condition")
+    print("reading: " + reading, flush=True)
 
 
 def main(argv=None):
