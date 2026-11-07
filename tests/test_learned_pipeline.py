@@ -624,6 +624,14 @@ class PffLoaderTests(unittest.TestCase):
         np.testing.assert_array_equal(labels, [D, D, H, H, A, A, D, D, H, H, D, A, A])
         self.assertEqual(untagged, 0)
 
+    def test_test_subset_is_every_fourth_id(self):
+        from tempolens.pffstudy import test_ids
+        ids = [str(i) for i in range(10502, 10518)] + [str(i) for i in range(3812, 3860)]
+        sub = test_ids(ids)
+        self.assertEqual(len(sub), 16)
+        self.assertEqual(sub[:3], ["3812", "3816", "3820"])
+        self.assertEqual(sub[-4:], ["10502", "10506", "10510", "10514"])
+
     def test_loader_on_a_tiny_match(self):
         import bz2
         import json
