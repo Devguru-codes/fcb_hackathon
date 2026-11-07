@@ -86,6 +86,8 @@ def main(argv=None):
     parser.add_argument("study", choices=("temperature", "conventions"))
     parser.add_argument("--min-spell", type=int, default=None,
                         help="also score the members trained with this label threshold (E2b)")
+    parser.add_argument("--swa", type=int, default=None,
+                        help="also score the 5-member SWA ensemble of this many epochs (B3c)")
     parser.add_argument("--hedge", type=float, default=None,
                         help="also score the members trained with a hedge head of this weight (B5)")
     parser.add_argument("--workers", type=int, default=6)
@@ -116,6 +118,10 @@ def main(argv=None):
                 models["v7 m{}".format(k)] = oof_logp(NAMES, "temporal", member=k, draws=4)
                 models["{} m{}".format(tag, k)] = oof_logp(NAMES, "temporal", member=k, draws=4,
                                                            min_spell=args.min_spell)
+        if args.swa is not None:
+            from .temporal import TemporalConfig
+            models["swa 5 members"] = oof_logp(NAMES, "ensemble", members=5, draws=4,
+                                               config=TemporalConfig(swa=args.swa))
         if args.hedge is not None:
             from .temporal import TemporalConfig
             config = TemporalConfig(hedge=args.hedge)
