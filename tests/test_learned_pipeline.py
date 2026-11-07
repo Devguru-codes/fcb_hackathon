@@ -590,6 +590,23 @@ class HedgeHeadTests(unittest.TestCase):
         self.assertEqual(temporal.predict(model, normaliser, sample).shape[1], 4)
 
 
+class LabelCalibrationTests(unittest.TestCase):
+    def test_order_check_and_verdict(self):
+        from tempolens.labelcal import (MACRO_ORDER, SPELL_ORDER, in_order, verdict)
+        published_spell = {"raw": 0.0486, "smooth25": 0.1996, "smooth50": 0.2433,
+                           "smooth125": 0.2242}
+        published_macro = {"raw": 0.6532, "smooth25": 0.6752, "smooth50": 0.6724,
+                           "smooth125": 0.6356}
+        self.assertTrue(in_order(published_spell, SPELL_ORDER))
+        self.assertTrue(in_order(published_macro, MACRO_ORDER))
+        self.assertFalse(in_order(dict(published_spell, smooth125=0.19), SPELL_ORDER))
+        self.assertFalse(in_order(dict(published_spell, smooth125=0.2433), SPELL_ORDER))
+        self.assertEqual(verdict([])[0], None)
+        self.assertEqual(verdict([1, 3])[0], None)          # 25 and 50: not adjacent
+        self.assertEqual(verdict([2, 3, 4])[0], 37)         # adjacent: the smallest
+        self.assertEqual(verdict([3])[0], 50)
+
+
 class ReviewStudyTests(unittest.TestCase):
     def test_split_bonus_with_equal_weights_is_the_plain_decoder(self):
         from tempolens.decoder import transition_matrix
