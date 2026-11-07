@@ -17,7 +17,10 @@ Checks, each with the value it should have:
 6. keeper-zone slots (plan row E0): per team, the share of graded frames on which one of its
    slots has stood for 5 s or more in the other team's keeper zone (within 20 m of that goal
    line, central 40 m), with the slots and minutes involved -- a sign of keeper slots filed
-   under the wrong team.
+   under the wrong team;
+7. keeper-specific windows (plan row E1): per team X, the share of graded frames in 60 s windows in
+   which a slot of X spends >= 80% of the window in team Y's keeper zone while Y has no slot
+   there for half of it (match.keeper_windows).
 """
 
 import argparse
@@ -73,6 +76,23 @@ def keeper_zone(table, depth=20.0, half_width=20.0, min_seconds=5.0):
     return out
 
 
+def keeper_window_share(table, **settings):
+    """Check 7, aggregates only: {team X: share of graded frames, windows, slots}."""
+    from .match import KEEPER_REPAIR, keeper_windows
+    windows = keeper_windows(table, **{**KEEPER_REPAIR, **settings})
+    graded = table.period > 0
+    out = {}
+    for team, name in ((0, "home"), (1, "away")):
+        flagged = np.zeros(table.n_frames, dtype=bool)
+        mine = [(s, e, k) for s, e, k, goal in windows if table.slot_team[k] == team]
+        for s, e, _ in mine:
+            flagged[s:e] = True
+        out[name] = {"share_of_graded": round(float(flagged[graded].mean()), 4),
+                     "windows": len({(s, e) for s, e, _ in mine}),
+                     "slots": len({k for _, _, k in mine})}
+    return out
+
+
 def run(data_root, model_paths=None, decoder_path=None):
     report = {"note": "aggregate numbers only; safe to share"}
     table = competition_table(GAME, data_root)
@@ -104,6 +124,7 @@ def run(data_root, model_paths=None, decoder_path=None):
     }
     report["attack_sign_by_half"] = [float(attack_sign(table)[a]) for a, _ in table.runs()]
     report["keeper_zone"] = keeper_zone(table)
+    report["keeper_windows"] = keeper_window_share(table)
 
     # 4. Smart Tagging team names
     path = require(["smart_tagging"], GAME, data_root)[0]

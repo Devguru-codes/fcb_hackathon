@@ -114,6 +114,8 @@ class TrackerFaults:
     duplicate_frames: int = 75
     phantom_rate: float = 0.0003    # per frame: a non-player track near the ball, given a team
     phantom_frames: int = 125
+    keeper_swaps: int = 0           # per match: the two keepers' tracks exchange slots (E1)
+    keeper_frames: tuple = (1500, 7500)   # each for 1-5 min
 
 
 def add_tracker_faults(table, faults=TrackerFaults(), seed=0):
@@ -172,6 +174,19 @@ def add_tracker_faults(table, faults=TrackerFaults(), seed=0):
                            for i in range(len(anchor))])
         track[t:stop] = smooth + offset
         extra.append((track, int(rng.integers(0, 2))))
+
+    # Keeper swaps: each keeper's track is filed under the other team's keeper slot, for minutes
+    # (drawn last, so the faults above keep their draws).
+    if faults.keeper_swaps:
+        from .match import keeper_zones
+        occ = keeper_zones(table).mean(axis=0)
+        keepers = [int(np.flatnonzero(table.slot_team == t)[np.argmax(occ[table.slot_team == t, t])])
+                   for t in (0, 1)]
+        inside = np.flatnonzero(table.period > 0)
+        for _ in range(faults.keeper_swaps):
+            t = int(rng.choice(inside))
+            stop = min(n, t + int(rng.integers(*faults.keeper_frames)))
+            players[t:stop, keepers] = players[t:stop, keepers[::-1]]
 
     if extra:
         players = np.concatenate([players, np.stack([e[0] for e in extra], axis=1)], axis=1)

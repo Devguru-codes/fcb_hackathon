@@ -296,6 +296,36 @@ class EnsembleTests(unittest.TestCase):
                           for r in rows if r["seed"] == -1], plain)
         self.assertEqual(sorted({r["seed"] for r in rows}), [-1, 0, 1])
 
+    def _keeper_table(self, n=30000):
+        from tempolens.match import MatchTable
+        players = np.zeros((n, 4, 2), dtype=np.float32)
+        players[:, :, 1] = 34.0
+        players[:, :, 0] = [2.0, 40.0, 103.0, 65.0]   # home keeper, home, away keeper, away
+        return MatchTable("k", np.zeros((n, 2), dtype=np.float32), players,
+                          np.array([H, H, A, A], dtype=np.int8), np.ones(n, dtype=np.int8))
+
+    def test_keeper_swap_fault_is_found_and_repaired(self):
+        from tempolens.diagnostics import keeper_window_share
+        from tempolens.match import keeper_windows, repair_keepers
+        from tempolens.simulate import TrackerFaults, add_tracker_faults
+        clean = self._keeper_table()
+        self.assertEqual(keeper_windows(clean), [])
+        np.testing.assert_array_equal(repair_keepers(clean).players, clean.players)
+        faulted = add_tracker_faults(clean, TrackerFaults(
+            swap_rate=0, duplicate_rate=0, phantom_rate=0, keeper_swaps=1,
+            keeper_frames=(3000, 3001)), seed=1)
+        swapped = (faulted.players != clean.players).any(axis=(1, 2))
+        self.assertEqual(swapped.sum(), 3000)
+        self.assertTrue((faulted.players[swapped][:, [0, 2]] ==
+                         clean.players[swapped][:, [2, 0]]).all())
+        repaired = repair_keepers(faulted)
+        restored = swapped & (repaired.players == clean.players).all(axis=(1, 2))
+        self.assertGreaterEqual(restored.sum(), 1500)          # every full window inside
+        self.assertFalse(((repaired.players != clean.players).any(axis=(1, 2)) & ~swapped).any())
+        share = keeper_window_share(faulted)
+        self.assertEqual(share["home"]["slots"], 1)
+        self.assertGreater(share["home"]["share_of_graded"], 0.0)
+
     def test_seed_rule_needs_the_ensemble_and_every_seed_to_gain(self):
         from tempolens.adaptseeds import decide
         c = (2.0, 8.0, 8.0, 0.5)

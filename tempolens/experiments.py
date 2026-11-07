@@ -23,7 +23,7 @@ from .decoder import transition_matrix, viterbi_matrix
 from .features import FEATURE_VERSION, feature_names, frame_features, swap_labels
 from .match import A, D, H, X
 from .opendata import LOADERS, load_open_match, open_data_dir
-from .simulate import AtdNoise, add_tracker_faults, random_noise, simulate_atd
+from .simulate import AtdNoise, TrackerFaults, add_tracker_faults, random_noise, simulate_atd
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "evaluation"))
@@ -44,6 +44,7 @@ N_FOLDS = 5
 SIM_VERSION = 2   # 2: Metrica's dead-time ball filled (opendata.fill_dead_ball)
 TRAIN_VERSION = 1
 RANDOM_VERSION = 1   # simulate.random_noise's ranges
+KEEPER_SWAPS = 2      # keeper-swap stretches per faulted test match (E1)
 NOISE_TAG = hashlib.md5((repr(AtdNoise()) + ("" if SIM_VERSION == 1 else str(SIM_VERSION)))
                         .encode()).hexdigest()[:8]
 
@@ -106,10 +107,13 @@ def _replace_retry(src, dst, attempts=20):
 class CachedSample:
     """An open match, optionally corrupted by one noise draw, with features cached on disk.
     `randomised`: the draw also picks its own noise setting (simulate.random_noise);
-    `faults`: and adds tracker faults (identity swaps, duplicate and phantom tracks)."""
+    `faults`: and adds tracker faults (identity swaps, duplicate and phantom tracks);
+    `keeper`: the two keepers' tracks swap slots KEEPER_SWAPS times (1-5 min each, plan row E1);
+    `repair`: then match.repair_keepers with these keyword settings."""
 
-    def __init__(self, name, seed=None, randomised=False, faults=False):
+    def __init__(self, name, seed=None, randomised=False, faults=False, keeper=False, repair=None):
         self.name, self.seed, self.randomised, self.faults = name, seed, randomised, faults
+        self.keeper, self.repair = keeper, repair
         clean = load_open_match(name)
         self.labels, self.period, self.n_frames = clean.labels, clean.period, clean.n_frames
         self._runs = clean.runs()
@@ -123,12 +127,23 @@ class CachedSample:
             return clean
         noise = random_noise(self.seed) if self.randomised else AtdNoise()
         table = simulate_atd(clean, noise, seed=self.seed)
-        return add_tracker_faults(table, seed=self.seed) if self.faults else table
+        table = add_tracker_faults(table, seed=self.seed) if self.faults else table
+        if self.keeper:
+            table = add_tracker_faults(table, TrackerFaults(
+                swap_rate=0, duplicate_rate=0, phantom_rate=0, keeper_swaps=KEEPER_SWAPS),
+                seed=self.seed)
+        if self.repair:
+            from .match import repair_keepers
+            table = repair_keepers(table, **self.repair)
+        return table
 
     def _path(self, swap, kind="f{}".format(FEATURE_VERSION)):
         tag = ("clean" if self.seed is None else "{}{}v{}_{}".format(
                "rnf" if self.faults else "rnd", NOISE_TAG, RANDOM_VERSION, self.seed)
                if self.randomised else "sim{}_{}".format(NOISE_TAG, self.seed))
+        tag += "_kf{}".format(KEEPER_SWAPS) if self.keeper else ""
+        if self.repair:
+            tag += "_kr{window_s:g}-{occupancy:g}-{present:g}".format(**self.repair)
         return (open_data_dir() / "cache" / "features" /
                 "{}_{}_{}_{}.npy".format(self.name, tag, kind, int(swap)))
 

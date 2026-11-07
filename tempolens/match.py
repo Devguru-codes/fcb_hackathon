@@ -141,3 +141,66 @@ def competition_table(game=None, data_dir=None):
     meta_path, raw_path = require(["atd_meta", "atd_raw"], game, data_dir)
     return read_atd(meta_path, raw_path, source_frames("tactical", game), GAMES[game]["pitch"],
                     name=game, period_blocks=half_video_blocks(game))
+
+
+# -- goalkeeper slots (plan row E1) ------------------------------------------------------------
+
+KEEPER_DEPTH_M, KEEPER_HALF_WIDTH_M = 20.0, 20.0   # within 20 m of the goal line, central 40 m
+KEEPER_REPAIR = dict(window_s=60.0, occupancy=0.8, present=0.5)
+
+
+def keeper_zones(table):
+    """(n, slots, 2) bool: each slot inside the keeper zone of team 0's (home) / team 1's goal."""
+    from .features import attack_sign
+    length, width = table.pitch
+    x = table.players[..., 0] - length / 2.0
+    near_y = np.abs(table.players[..., 1] - width / 2.0) <= KEEPER_HALF_WIDTH_M
+    home_goal = (-attack_sign(table) * length / 2.0)[:, None]   # home attacks +x when sign > 0
+    return np.stack([near_y & (np.abs(x - home_goal) <= KEEPER_DEPTH_M),
+                     near_y & (np.abs(x + home_goal) <= KEEPER_DEPTH_M)], axis=-1)
+
+
+def keeper_windows(table, window_s=60.0, occupancy=0.8, present=0.5, zones=None):
+    """[(start, stop, slot, goal_team)]: windows (consecutive, inside each half) in which a slot of
+    the other team spends >= `occupancy` of the frames in goal_team's keeper zone while no slot of
+    goal_team is there for >= `present` of them -- a keeper filed under the wrong team."""
+    zones = keeper_zones(table) if zones is None else zones
+    size, out = int(window_s * table.fps), []
+    for a, b in table.runs():
+        for s in range(a, b, size):
+            e = min(b, s + size)
+            occ = zones[s:e].mean(axis=0)
+            for goal in (0, 1):
+                own = table.slot_team == goal
+                if (occ[own, goal] >= present).any():
+                    continue
+                out += [(s, e, int(k), goal) for k in np.flatnonzero(~own & (occ[:, goal] >= occupancy))]
+    return out
+
+
+def repair_keepers(table, window_s=60.0, occupancy=0.8, present=0.5):
+    """A copy in which each `keeper_windows` track is given to the goal's team on the frames of its
+    window where it stands in that goal's zone: it swaps with that team's slot sitting in the
+    other goal's zone (a swapped keeper pair), else moves to a slot of that team with no data in
+    the window, else is dropped there."""
+    from dataclasses import replace
+    zones = keeper_zones(table)
+    players, done = table.players.copy(), set()
+    for s, e, k, goal in keeper_windows(table, window_s, occupancy, present, zones):
+        if (s, k) in done:
+            continue
+        team = table.slot_team == goal
+        wrong = s + np.flatnonzero(zones[s:e, k, goal])
+        occ = zones[s:e].mean(axis=0)[:, 1 - goal]
+        pair = np.flatnonzero(team & (occ >= occupancy))
+        free = np.flatnonzero(team & ~np.isfinite(players[s:e, :, 0]).any(axis=0))
+        if len(pair):
+            j = int(pair[np.argmax(occ[pair])])
+            players[wrong[:, None], [k, j]] = players[wrong[:, None], [j, k]]
+            done |= {(s, k), (s, j)}
+        elif len(free):
+            players[wrong, free[0]] = players[wrong, k]
+            players[wrong, k] = np.nan
+        else:
+            players[wrong, k] = np.nan
+    return replace(table, players=players)
