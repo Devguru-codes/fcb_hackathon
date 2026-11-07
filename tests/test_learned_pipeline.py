@@ -607,6 +607,68 @@ class LabelCalibrationTests(unittest.TestCase):
         self.assertEqual(verdict([3])[0], 50)
 
 
+class PffLoaderTests(unittest.TestCase):
+    def _events(self):
+        def ev(t, kind, team=1, piece=None, end=None):
+            return {"startTime": t, "endTime": t if end is None else end,
+                    "gameEvents": {"gameEventType": kind, "teamId": team, "setpieceType": piece}}
+        return [ev(2.0, "FIRSTKICKOFF", 1, "K"), ev(4.0, "OTB", 2, "O"),     # away gains it
+                ev(6.0, "OUT", 2), ev(7.0, "SUB", 1), ev(8.0, "OTB", 1, "T"),  # throw-in: home
+                ev(9.0, "OTB", 1, "O", end=9.5), ev(10.0, "OFF", 2),
+                ev(11.0, "OTB", 2, "F")]                                       # foul, free kick
+
+    def test_labels_from_events(self):
+        from tempolens.opendata import pff_labels
+        labels, untagged = pff_labels(self._events(), 13, 1.0, home_id=1)
+        #                frame: 0  1  2  3  4  5  6  7  8  9  10 11 12
+        np.testing.assert_array_equal(labels, [D, D, H, H, A, A, D, D, H, H, D, A, A])
+        self.assertEqual(untagged, 0)
+
+    def test_loader_on_a_tiny_match(self):
+        import bz2
+        import json
+        import tempfile
+        from pathlib import Path
+        from tempolens.opendata import pff_game
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for sub in ("metadata", "rosters", "tracking_data", "event_data/day"):
+                (root / sub).mkdir(parents=True)
+            fps = 30.0
+            (root / "metadata" / "9.json").write_text(json.dumps([{
+                "fps": fps, "homeTeam": {"id": 1, "name": "Home"},
+                "awayTeam": {"id": 2, "name": "Away"},
+                "stadium": {"pitches": [{"length": 105.0, "width": 68.0}]}}]))
+            (root / "rosters" / "9.json").write_text(json.dumps(
+                [{"team": {"id": 1}, "shirtNumber": "7"}, {"team": {"id": 2}, "shirtNumber": "4"}]))
+            events = [{"startTime": e["startTime"] * 2, "endTime": e["endTime"] * 2,
+                       "gameEvents": e["gameEvents"]} for e in self._events()]
+            (root / "event_data" / "day" / "9.json").write_text(json.dumps(events))
+            rows = []
+            for f in range(int(30 * fps)):
+                row = {"frameNum": f, "period": 1 if f >= 4 * fps else None,
+                       "ballsSmoothed": None if f % 10 == 0 else {"x": 1.0, "y": -2.0, "z": 0},
+                       "homePlayersSmoothed": [{"jerseyNum": 7, "x": 0.0, "y": 0.0}],
+                       "awayPlayersSmoothed": [{"jerseyNum": 4, "x": 10.0, "y": 5.0},
+                                               {"jerseyNum": 99, "x": 1.0, "y": 1.0}]}
+                rows.append(json.dumps(row))
+            with bz2.open(root / "tracking_data" / "9.jsonl.bz2", "wt") as handle:
+                handle.write(chr(10).join(rows))
+            table = pff_game("9", folder=root)
+        self.assertEqual(table.n_frames, 25 * 30)
+        np.testing.assert_array_equal(table.slot_team, [H, A])
+        np.testing.assert_allclose(table.players[200, 0], [52.5, 34.0])
+        np.testing.assert_allclose(table.players[200, 1], [62.5, 39.0])
+        self.assertTrue(np.isnan(table.ball[0]).all())
+        np.testing.assert_allclose(table.ball[101], [53.5, 32.0])
+        self.assertTrue((table.labels[:100] == X).all())      # before the period: ungraded
+        self.assertEqual(table.labels[25 * 5], H)              # 5 s: home kicked off at 4 s
+        self.assertEqual(table.labels[25 * 9], A)
+        self.assertEqual(table.labels[25 * 13], D)             # out at 12 s, throw-in at 16 s
+        self.assertEqual(table.labels[25 * 17], H)
+        self.assertEqual(table.meta["kickoff_offset_s"], 0.0)
+
+
 class ReviewStudyTests(unittest.TestCase):
     def test_split_bonus_with_equal_weights_is_the_plain_decoder(self):
         from tempolens.decoder import transition_matrix

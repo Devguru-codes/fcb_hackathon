@@ -396,6 +396,127 @@ def skillcorner_ids():
     return sorted(p.name for p in folder.iterdir() if p.is_dir()) if folder.is_dir() else []
 
 
+KICKOFFS = ("FIRSTKICKOFF", "SECONDKICKOFF", "THIRDKICKOFF", "FOURTHKICKOFF")
+
+
+def pff_labels(events, n_frames, fps, home_id):
+    """(n_frames,) H/A/D at the tracking's video frame rate from PFF events (plan row PFF):
+    alive possession = team of the latest OTB; dead from OUT / END to the next restart (a
+    kickoff or an OTB with a set-piece type other than open play "O"), and from the end of the
+    previous event to any set-piece restart (a foul has no OUT before its free kick); dead
+    before the first kickoff. OFF and SUB change nothing. Returns (labels, open-play OTBs that
+    ended a dead stretch without a restart tag)."""
+    def frame(t):
+        return min(max(int(round(float(t) * fps)), 0), n_frames)
+
+    events = sorted((e for e in events if e.get("startTime") is not None),
+                    key=lambda e: float(e["startTime"]))
+    labels = np.full(n_frames, D, dtype=np.int8)
+    changes, gaps, untagged = [], [], 0
+    dead, prev_end = True, 0
+    for e in events:
+        g = e.get("gameEvents") or {}
+        kind, start = g.get("gameEventType"), frame(e["startTime"])
+        side = H if g.get("teamId") == home_id else A
+        restart = kind in KICKOFFS or (kind == "OTB" and g.get("setpieceType") not in (None, "O"))
+        if kind in ("OUT", "END"):
+            changes.append((start, D))
+            dead = True
+        elif kind in KICKOFFS or kind == "OTB":
+            if restart and kind == "OTB":
+                gaps.append((prev_end, start))
+            elif dead and not restart:
+                untagged += 1      # an open-play touch while dead: play has resumed regardless
+            changes.append((start, side))
+            dead = False
+        if e.get("endTime") is not None:
+            prev_end = frame(e["endTime"])
+    for (start, value), nxt in zip(changes, changes[1:] + [(n_frames, None)]):
+        labels[start:nxt[0]] = value
+    for a, b in gaps:
+        labels[a:b] = D
+    return labels, untagged
+
+
+def _pff_dir():
+    return open_data_dir() / "pff_wc2022"
+
+
+def pff_ids():
+    """Game ids whose PFF tracking file is on disk (the download lands file by file)."""
+    try:
+        folder = _pff_dir() / "tracking_data"
+    except IOError:
+        return []
+    return sorted(p.name.split(".")[0] for p in folder.glob("*.jsonl.bz2")) if folder.is_dir() \
+        else []
+
+
+def pff_game(game_id, folder=None, fps=25):
+    """A labelled MatchTable from PFF FC's World Cup 2022 data: tracking_data/<id>.jsonl.bz2,
+    metadata/<id>.json, rosters/<id>.json, event_data/*/<id>.json. Test condition only."""
+    import bz2
+    folder = Path(folder) if folder else _pff_dir()
+    meta = json.loads((folder / "metadata" / "{}.json".format(game_id)).read_text(
+        encoding="utf-8"))
+    meta = meta[0] if isinstance(meta, list) else meta
+    roster = json.loads((folder / "rosters" / "{}.json".format(game_id)).read_text(
+        encoding="utf-8"))
+    events_path = next((folder / "event_data").rglob("{}.json".format(game_id)))
+    events = json.loads(events_path.read_text(encoding="utf-8"))
+    home_id, away_id = meta["homeTeam"]["id"], meta["awayTeam"]["id"]
+    pitch = meta["stadium"]["pitches"][0]
+    length, width = float(pitch["length"]), float(pitch["width"])
+    video_fps = float(meta["fps"])
+    people = [(H if r["team"]["id"] == home_id else A, int(r["shirtNumber"])) for r in roster
+              if r["team"]["id"] in (home_id, away_id)]
+    people = sorted(set(people))
+    slot = {p: k for k, p in enumerate(people)}
+    slot_team = np.asarray([team for team, _ in people], dtype=np.int8)
+
+    with bz2.open(folder / "tracking_data" / "{}.jsonl.bz2".format(game_id), "rt",
+                  encoding="utf-8") as handle:
+        rows = [json.loads(line) for line in handle if line.strip()]
+    n = max(int(r["frameNum"]) for r in rows) + 1
+    ball = np.full((n, 2), np.nan)
+    players = np.full((n, len(people), 2), np.nan)
+    period = np.zeros(n, dtype=np.int8)
+    for r in rows:
+        f = int(r["frameNum"])
+        if r.get("period") in (1, 2):
+            period[f] = r["period"]
+        b = r.get("ballsSmoothed") or {}
+        if b.get("x") is not None and b.get("y") is not None:
+            ball[f] = (float(b["x"]) + length / 2, float(b["y"]) + width / 2)
+        for key, team in (("homePlayersSmoothed", H), ("awayPlayersSmoothed", A)):
+            for p in r.get(key) or []:
+                k = slot.get((team, int(p["jerseyNum"])))
+                if k is not None and p.get("x") is not None and p.get("y") is not None:
+                    players[f, k] = (float(p["x"]) + length / 2, float(p["y"]) + width / 2)
+
+    kickoff = next((e for e in events
+                    if (e.get("gameEvents") or {}).get("gameEventType") == "FIRSTKICKOFF"), None)
+    first = np.flatnonzero(period == 1)
+    if kickoff is None or not len(first):
+        raise ValueError("pff {}: no first kickoff or no period-1 frame".format(game_id))
+    offset = float(kickoff["startTime"]) - first[0] / video_fps
+    if abs(offset) > 2.0:
+        raise ValueError("pff {}: events and tracking {:+.1f} s apart".format(game_id, offset))
+    labels, untagged = pff_labels(events, n, video_fps, home_id)
+    labels[period == 0] = X
+
+    ratio = fps / video_fps
+    n_out = int(round(n * ratio))
+    nearest = np.minimum(np.round(np.arange(n_out) / ratio).astype(int), n - 1)
+    table = MatchTable(name="pff_{}".format(game_id), ball=ball[nearest].astype(np.float32),
+                       players=players[nearest].astype(np.float32), slot_team=slot_team,
+                       period=period[nearest], pitch=(length, width), fps=fps,
+                       meta={"home": meta["homeTeam"]["name"], "away": meta["awayTeam"]["name"],
+                             "kickoff_offset_s": round(offset, 3), "untagged_resumes": untagged})
+    table.labels = labels[nearest]
+    return table
+
+
 LOADERS = {
     "metrica1": lambda: metrica_csv_game(1),
     "metrica2": lambda: metrica_csv_game(2),
@@ -459,9 +580,12 @@ def load_open_match(name, cache_dir=None):
     if path.exists():
         table = MatchTable.load(path)
     else:
-        table = {**LOADERS, **EXTRA_LOADERS}[name]()
+        if name.startswith("pff_"):        # test condition only: never in LOADERS / EXTRA_LOADERS
+            table = pff_game(name[4:])
+        else:
+            table = {**LOADERS, **EXTRA_LOADERS}[name]()
         table.save(path)
-    if name.startswith(("dfl_", "sc_")) and DFL_MIN_SPELL:
+    if name.startswith(("dfl_", "sc_", "pff_")) and DFL_MIN_SPELL:
         table.labels = remove_flicker(table.labels, table.runs(), DFL_MIN_SPELL)
     if name.startswith("metrica"):
         table = fill_dead_ball(table)
