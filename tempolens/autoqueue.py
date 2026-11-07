@@ -122,11 +122,13 @@ def write_plan(jobs):
     note = ("Written by `python -m tempolens.autoqueue` from `experiments/queue.json` "
             "(✅ here = finished; adoption still follows the decision rules above).")
     block = "{}\n{}\n\n{}\n{}".format(START, note, table, END)
-    text = PLAN.read_text(encoding="utf-8")
-    if START in text and END in text:
-        text = text[:text.index(START)] + block + text[text.index(END) + len(END):]
+    old = PLAN.read_text(encoding="utf-8")
+    if START in old and END in old:
+        text = old[:old.index(START)] + block + old[old.index(END) + len(END):]
     else:
-        text = text.rstrip() + "\n\n## F. Automatic experiment queue\n\n" + block + "\n"
+        text = old.rstrip() + "\n\n## F. Automatic experiment queue\n\n" + block + "\n"
+    if text == old:     # nothing new: never rewrite, so a person's save in between is not lost
+        return
     tmp = PLAN.with_suffix(".tmp")
     tmp.write_text(text, encoding="utf-8")
     os.replace(tmp, PLAN)

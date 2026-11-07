@@ -66,6 +66,17 @@ class AutoqueueTests(unittest.TestCase):
         self.assertEqual(text.count(autoqueue.START), 1)
         self.assertIn("| ✅ | Q1 | first | 0.7000 |", text)
 
+    def test_plan_is_not_rewritten_when_the_table_is_unchanged(self):
+        with tempfile.TemporaryDirectory() as folder:
+            plan = Path(folder) / "plan.md"
+            plan.write_text("# Plan\n", encoding="utf-8")
+            jobs = [{"id": "Q1", "title": "first", "args": [], "status": "pending"}]
+            with patch.object(autoqueue, "PLAN", plan):
+                autoqueue.write_plan(jobs)
+                with patch.object(autoqueue.os, "replace") as replace:
+                    autoqueue.write_plan(jobs)
+        replace.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()
