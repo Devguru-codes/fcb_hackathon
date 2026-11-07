@@ -403,9 +403,10 @@ every member) at a small cost on simulated tracking (−0.001 to −0.003), whic
 for a match tracked by a real system.
 
 **Tie-break.** Two settings passed the pre-registered every-seed rule and tied within 0.0001 on the ensemble (TTA 0.5: 0.6476; TTA 0.5 + EATA 10: 0.6475). The rule's tie-break would pick TTA alone. The team chose TTA 0.5 + EATA 10 after seeing the results, because its smallest per-seed gain is larger (+0.0022 vs +0.0001) and its gain on the real-tracking SkillCorner condition is larger (+0.0122 vs +0.0108). The public window was not used for this choice. The adopted setting's per-condition gains are sim −0.0029, shift −0.0013,
-SkillCorner +0.0122. One caveat: the study adapts the output layer on the per-frame head inputs of
-the whole match, while `predict.py` adapts it on its overlapping inference windows; the update
-loop is the same, so the study measures a close approximation of what is submitted. The rule's own
+SkillCorner +0.0122. The submission adapts the output layer on exactly the study's fit set (both
+team views' per-frame head inputs, every 5th in-half frame; `temporal.eata_inputs`, with a test
+that the two paths give the same head). The study runs in float32 and the submission in float64;
+on two held-out open matches the spellF1 of TTA 0.5 + EATA 10 is identical in both precisions. The rule's own
 pick, TTA alone, is kept as a validated, reproduced file (`554fcb55…`).
 
 ## 6b. Video ball detector (built, tested on the real video, not used)
