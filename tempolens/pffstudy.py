@@ -40,13 +40,14 @@ def _cache():
 
 
 def ready(game_id, settle_s=120):
-    """All four files present, the tracking file not written to in the last `settle_s`."""
+    """All four files present and none written to in the last `settle_s` (still downloading)."""
     root = _pff_dir()
-    track = root / "tracking_data" / "{}.jsonl.bz2".format(game_id)
-    return (track.exists() and time.time() - track.stat().st_mtime > settle_s
-            and (root / "metadata" / "{}.json".format(game_id)).exists()
-            and (root / "rosters" / "{}.json".format(game_id)).exists()
-            and any((root / "event_data").rglob("{}.json".format(game_id))))
+    events = list((root / "event_data").rglob("{}.json".format(game_id)))         if (root / "event_data").is_dir() else []
+    paths = [root / "tracking_data" / "{}.jsonl.bz2".format(game_id),
+             root / "metadata" / "{}.json".format(game_id),
+             root / "rosters" / "{}.json".format(game_id)] + events[:1]
+    return len(paths) == 4 and all(p.exists() and time.time() - p.stat().st_mtime > settle_s
+                                   for p in paths)
 
 
 def score_match(members, game_id):
@@ -103,6 +104,8 @@ def main(argv=None):
                 results[game_id] = score_match(members, game_id)
                 new += 1
                 print("scored pff_{} ({:%H:%M})".format(game_id, datetime.now()), flush=True)
+            except json.JSONDecodeError as error:  # a file caught mid-download: retry
+                print("not readable yet pff_{}: {!r}".format(game_id, error), flush=True)
             except ValueError as error:            # events and tracking disagree: never usable
                 skipped[game_id] = str(error)
                 print("skipped pff_{}: {}".format(game_id, error), flush=True)
