@@ -57,7 +57,13 @@ def score_match(members, game_id):
     if path.exists():
         return json.loads(path.read_text(encoding="utf-8"))
     sample = CachedSample("pff_{}".format(game_id))
-    grid = adaptcv.member_grid(members, sample, alphas=(0.0, 0.5), steps=(0, 10))
+    store = _cache() / "pff_{}_outputs.npz".format(game_id)     # labels never enter these
+    if not store.exists():
+        grid = adaptcv.member_grid(members, sample, alphas=(0.0, 0.5), steps=(0, 10))
+        np.savez(store, **{"a{}_s{}".format(*k): np.stack(grid[k]).astype(np.float32)
+                           for k in KEYS})
+    z = np.load(store)      # always score the stored values, so a re-score is identical
+    grid = {k: list(z["a{}_s{}".format(*k)].astype(np.float64)) for k in KEYS}
     labels = {c: (sample.labels if c == 10 else remove_flicker(sample.labels, sample.runs(), c))
               for c in CONVENTIONS}
     out = {}

@@ -417,7 +417,7 @@ def pff_labels(events, n_frames, fps, home_id):
     for e in events:
         g = e.get("gameEvents") or {}
         kind, start = g.get("gameEventType"), frame(e["startTime"])
-        side = H if g.get("teamId") == home_id else A
+        side = H if str(g.get("teamId")) == str(home_id) else A   # ids: int in events, str in metadata
         restart = kind in KICKOFFS or (kind == "OTB" and g.get("setpieceType") not in (None, "O"))
         if kind in ("OUT", "END"):
             changes.append((start, D))
@@ -468,8 +468,9 @@ def pff_game(game_id, folder=None, fps=25):
     pitch = meta["stadium"]["pitches"][0]
     length, width = float(pitch["length"]), float(pitch["width"])
     video_fps = float(meta["fps"])
-    people = [(H if r["team"]["id"] == home_id else A, int(r["shirtNumber"])) for r in roster
-              if r["team"]["id"] in (home_id, away_id)]
+    home_id, away_id = str(home_id), str(away_id)
+    people = [(H if str(r["team"]["id"]) == home_id else A, int(r["shirtNumber"])) for r in roster
+              if str(r["team"]["id"]) in (home_id, away_id)]
     people = sorted(set(people))
     slot = {p: k for k, p in enumerate(people)}
     slot_team = np.asarray([team for team, _ in people], dtype=np.int8)

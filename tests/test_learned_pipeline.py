@@ -632,6 +632,20 @@ class PffLoaderTests(unittest.TestCase):
         self.assertEqual(sub[:3], ["3812", "3816", "3820"])
         self.assertEqual(sub[-4:], ["10502", "10506", "10510", "10514"])
 
+    def test_team_ids_match_across_types_and_folds_change_labels(self):
+        from tempolens.opendata import pff_labels, remove_flicker
+        events = [{"startTime": t, "endTime": t, "gameEvents": {
+            "gameEventType": k, "teamId": team, "setpieceType": piece}}
+            for t, k, team, piece in ((0, "FIRSTKICKOFF", 372, "K"), (40, "OTB", 366, "O"),
+                                      (70, "OTB", 372, "O"), (200, "OUT", 372, None))]
+        labels, _ = pff_labels(events, 220, 1.0, home_id="372")   # events int, metadata str
+        self.assertEqual(set(labels[:200].tolist()), {H, A})
+        runs = [(0, 220)]
+        folded10, folded50 = (remove_flicker(labels, runs, f) for f in (10, 50))
+        np.testing.assert_array_equal(folded10, labels)          # the 30-frame away spell stays
+        self.assertTrue((folded50[40:70] == H).all())             # folded at 50 frames
+        self.assertFalse(np.array_equal(folded10, folded50))
+
     def test_loader_on_a_tiny_match(self):
         import bz2
         import json
