@@ -547,5 +547,33 @@ class DecodeTests(unittest.TestCase):
         self.assertTrue(np.all(out[10:120] == H) and np.all(out[120:190] == A))
 
 
+class ReviewStudyTests(unittest.TestCase):
+    def test_split_bonus_with_equal_weights_is_the_plain_decoder(self):
+        from tempolens.decoder import transition_matrix
+        from tempolens.reviewstudy import decode_split
+        table = _table()
+        rng = np.random.default_rng(3)
+        logp = np.concatenate([np.log(rng.dirichlet([1, 1, 1], len(table.period))),
+                               rng.normal(0, 2, (len(table.period), 1))], axis=1)
+        t = transition_matrix(2.0, 8.0, 8.0)
+        np.testing.assert_array_equal(decode_split(table, logp, t, 0.5, 0.5),
+                                      decode_table(table, logp, t, 0.5))
+        self.assertFalse(np.array_equal(decode_split(table, logp, t, 3.0, 0.0),
+                                        decode_split(table, logp, t, 0.0, 3.0)))
+
+    def test_geometric_combination(self):
+        from tempolens.reviewstudy import combine
+        from tempolens.temporal import combine as plain
+        rng = np.random.default_rng(4)
+        one = np.concatenate([np.log(rng.dirichlet([1, 1, 1], 50)), rng.normal(size=(50, 1))], 1)
+        np.testing.assert_allclose(combine([one, one], geometric=True), np.round(one, 4),
+                                   atol=2e-4)
+        two = one.copy()
+        two[:, 3] += 1.0
+        np.testing.assert_allclose(combine([one, two]), plain([one, two]))
+        np.testing.assert_allclose(combine([one, two], max_change=True)[:, 3],
+                                   np.round(two[:, 3], 4))
+
+
 if __name__ == "__main__":
     unittest.main()
