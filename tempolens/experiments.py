@@ -170,6 +170,16 @@ class CachedSample:
             return player_tokens(table["t"], swap=side)
         return self._cached("tok{}".format(FEATURE_VERSION), swap, compute)
 
+    def teamcue(self, swap=False):
+        """features.team_cue_features of this draw, cached like the features."""
+        from .features import TEAMCUE_VERSION, team_cue_features
+        table = {}
+
+        def compute(side):
+            table.setdefault("t", self.table())
+            return team_cue_features(table["t"], swap=side)
+        return self._cached("tc{}".format(TEAMCUE_VERSION), swap, compute)
+
     def touch_target(self, swap=False):
         """(n, 2) home / away touch targets from the match's events, from this side's view."""
         from .touches import touch_targets
@@ -454,6 +464,8 @@ def main(argv=None):
                         help="feature names masked out of the network's input ('restart' = "
                              "the v4 restart-spot features)")
     parser.add_argument("--protocol", default="sim", choices=("sim", "clean"))
+    parser.add_argument("--teamcue", action="store_true",
+                        help="append the team-cue feature pack (features.team_cue_features)")
     parser.add_argument("--min-spell", type=int, default=None,
                         help="flicker threshold of the training labels, in frames, DFL and "
                              "SkillCorner only (Metrica unchanged; held-out labels unchanged)")
@@ -472,6 +484,7 @@ def main(argv=None):
                             smooth=args.smooth, seg_balance=args.seg_balance,
                             focal=args.focal, mirror=args.mirror,
                             dead_weight=args.dead_weight, touch=args.touch,
+                            teamcue=args.teamcue,
                             drop=drop_names(args.drop), **sizes)
     from .opendata import EXTRA_LOADERS
     extra = sorted(EXTRA_LOADERS) if args.extra_train == "skillcorner" else ()

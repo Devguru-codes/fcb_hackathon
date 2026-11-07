@@ -326,6 +326,29 @@ class EnsembleTests(unittest.TestCase):
         self.assertEqual(share["home"]["slots"], 1)
         self.assertGreater(share["home"]["share_of_graded"], 0.0)
 
+    def test_team_cue_pack_is_symmetric_and_trains(self):
+        import tempfile
+        from pathlib import Path
+        from tempolens import temporal
+        from tempolens.features import TEAMCUE_NAMES, TableSample, team_cue_features
+        table = SimulatorTests()._labelled(3000)
+        x0, x1 = team_cue_features(table), team_cue_features(table, swap=True)
+        self.assertEqual(x0.shape, (table.n_frames, len(TEAMCUE_NAMES)))
+        inside = table.period > 0
+        self.assertTrue(np.isfinite(x0[inside][:, [2, 3, 6, 7]]).mean() > 0.9)   # times to the ball
+        np.testing.assert_allclose(x0[:, [0, 2, 3]], x1[:, [4, 6, 7]], equal_nan=True)
+        self.assertTrue(np.isnan(x0[~inside]).all())
+        config = temporal.TemporalConfig(hidden=16, teamcue=True)
+        self.assertTrue(config.tag().endswith("_tc1"))
+        model, normaliser = temporal.train([table], epochs=1, device="cpu", verbose=False,
+                                           config=config)
+        out = temporal.predict(model, normaliser, TableSample(table))
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "m.pt"
+            temporal.save(model, normaliser, path)
+            again = temporal.predict(*temporal.load(path), TableSample(table))
+        np.testing.assert_allclose(out, again, atol=1e-4)
+
     def test_seed_rule_needs_the_ensemble_and_every_seed_to_gain(self):
         from tempolens.adaptseeds import decide
         c = (2.0, 8.0, 8.0, 0.5)

@@ -372,6 +372,57 @@ def hidden_ball_target(clean, noisy, swap=False):
     return target
 
 
+# -- team-cue pack (plan row E4): an optional extra input, appended for models trained with it --
+
+TEAMCUE_VERSION = 1       # bump whenever a team-cue feature changes
+TEAMCUE_NAMES = ["{}_{}".format(team, name) for team in ("own", "opp")
+                 for name in ("dspread_2s", "dcentroid_vx_2s", "tti1", "tti2")]
+TTI_REACTION_S, TTI_SPEED = 0.7, 7.0
+
+
+def team_cue_features(table, swap=False):
+    """(n, 8) float32, per team (own, then opponent, from this view): the change of lateral spread
+    and of attacking-direction centroid velocity over the next 2 s against the previous 2 s, and
+    the time for the nearest two players to reach the last seen ball (reaction time, then running
+    at TTI_SPEED, less what their current velocity towards it covers). NaN outside the halves."""
+    fps, n = table.fps, table.n_frames
+    sign = attack_sign(table) * (-1.0 if swap else 1.0)
+    team0 = table.slot_team == (A if swap else H)
+    players = table.players.astype(np.float64)
+    ball = np.full((n, 2), np.nan)
+    vel = np.full_like(players, np.nan)
+    for a, b in table.runs():
+        for axis in (0, 1):
+            ball[a:b, axis] = _carry(table.ball[a:b, axis], forward=True)
+        vel[a:b] = _velocity(players[a:b], fps, 12.0)
+    out = []
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)   # frames without players -> NaN
+        for mask in (team0, ~team0):
+            q = players[:, mask]
+            spread = np.nanstd(q[..., 1], axis=1)
+            cx = np.nanmean(q[..., 0], axis=1)
+            cvx = np.full(n, np.nan)
+            cvx[1:-1] = (cx[2:] - cx[:-2]) * (fps / 2.0) * sign[1:-1]
+            for signal in (spread, cvx):
+                diff = np.full(n, np.nan)
+                for a, b in table.runs():
+                    seg = signal[a:b]
+                    diff[a:b] = (_one_sided_mean(seg, 2 * fps, True)
+                                 - _one_sided_mean(seg, 2 * fps, False))
+                out.append(diff)
+            to = ball[:, None, :] - q
+            dist = np.hypot(to[..., 0], to[..., 1])
+            toward = np.nansum(vel[:, mask] * to, axis=-1) / np.maximum(dist, 1e-6)
+            tti = TTI_REACTION_S + np.maximum(
+                dist - np.clip(np.nan_to_num(toward), 0.0, None) * TTI_REACTION_S, 0.0) / TTI_SPEED
+            tti = np.sort(np.where(np.isfinite(dist), tti, np.nan), axis=1)
+            out += [tti[:, 0], tti[:, 1]] if tti.shape[1] > 1 else [tti[:, 0], np.full(n, np.nan)]
+    x = np.stack(out, axis=1).astype(np.float32)
+    x[table.period == 0] = np.nan
+    return x
+
+
 class TableSample:
     """A match as the models see it: labels, periods, and features from either team's view."""
 
@@ -390,6 +441,12 @@ class TableSample:
         if swap not in self._cache:
             self._cache[swap] = frame_features(self.table, swap=swap)[0]
         return self._cache[swap]
+
+    def teamcue(self, swap=False):
+        key = ("teamcue", swap)
+        if key not in self._cache:
+            self._cache[key] = team_cue_features(self.table, swap=swap)
+        return self._cache[key]
 
     def tokens(self, swap=False):
         key = ("tokens", swap)

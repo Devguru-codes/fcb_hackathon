@@ -66,6 +66,7 @@ class TemporalConfig:
     chunk: int = CHUNK           # frames per training sequence (inference reads 3000)
     touch: float = 0.0           # weight of the touch-head loss; 0 = no touch head
     drop: tuple = ()             # feature names fed to the network as zeros (masked out)
+    teamcue: bool = False        # append features.team_cue_features (versioned pack)
 
     def tag(self):
         """Cache/file tag; the default config keeps the historical name "temporal"."""
@@ -93,6 +94,9 @@ class TemporalConfig:
             parts.append("tch{:g}".format(self.touch))
         if self.drop:
             parts.append("drop" + hashlib.md5(",".join(sorted(self.drop)).encode()).hexdigest()[:6])
+        if self.teamcue:
+            from .features import TEAMCUE_VERSION
+            parts.append("tc{}".format(TEAMCUE_VERSION))
         return "temporal" + ("_" + "_".join(parts) if parts else "")
 
 
@@ -360,6 +364,20 @@ def _as_sample(item):
     return item if hasattr(item, "features") else TableSample(item)
 
 
+class TeamCueSample:
+    """A sample whose features carry the team-cue pack after the standard columns."""
+
+    def __init__(self, sample):
+        self._sample = _as_sample(sample)
+
+    def __getattr__(self, name):
+        return getattr(self._sample, name)
+
+    def features(self, swap=False):
+        return np.concatenate([np.asarray(self._sample.features(swap)),
+                               self._sample.teamcue(swap)], axis=1)
+
+
 def mirror_y(x, names=None):
     """Features of the same frames reflected across the pitch's long axis (y -> -y).
 
@@ -383,7 +401,7 @@ def _sequences(samples, config=DEFAULT_CONFIG, normaliser=None):
     ball: the hidden-ball target. float16 keeps ten simulated matches x noise draws x two
     perspectives in memory; batches are cast to float32 on the device.
     """
-    samples = [_as_sample(s) for s in samples]
+    samples = [TeamCueSample(s) if config.teamcue else _as_sample(s) for s in samples]
     if normaliser is None:
         stacked = np.concatenate([np.asarray(s.features(False))[s.period > 0][::10]
                                   for s in samples])
@@ -573,7 +591,7 @@ def predict(model, normaliser, sample):
     """(n, 4): log P(H), log P(A), log P(D), change logit; averaged over both perspectives."""
     torch = _torch()
     torch.set_num_threads(4)
-    sample = _as_sample(sample)
+    sample = TeamCueSample(sample) if model.config.teamcue else _as_sample(sample)
     result = np.zeros((sample.n_frames, 4), dtype=np.float64)
     result[:, :3] = np.log(1.0 / 3)
     for swap in (False, True):
