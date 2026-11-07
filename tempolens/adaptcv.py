@@ -52,15 +52,18 @@ MEMBERS, DRAWS = 3, 4
 NOISE = 0.005
 
 
-def fold_members(held, rest, count=MEMBERS):
-    """The v7-recipe members trained without `held`, cached on disk."""
+def fold_members(held, rest, count=MEMBERS, swa=0):
+    """The v7-recipe members trained without `held` (with weight averaging over the last `swa`
+    epochs if set), cached on disk."""
     members = []
     for k in range(count):
-        path = OUT / "models" / "{}_m{}.pt".format("-".join(held), k)
+        folder = OUT / ("models_swa{}".format(swa) if swa else "models")
+        path = folder / "{}_m{}.pt".format("-".join(held), k)
         if not path.exists():      # its own process: training arrays never pile up here
             path.parent.mkdir(parents=True, exist_ok=True)
             subprocess.run([sys.executable, "-m", "tempolens.train", "--member", str(k),
-                            "--draws", str(DRAWS), "--out", str(path), "--matches", *rest],
+                            "--draws", str(DRAWS), "--out", str(path), "--matches", *rest]
+                           + (["--swa", str(swa)] if swa else []),
                            check=True)
         members.append(temporal.load(path))
     return members
@@ -109,20 +112,21 @@ def member_grid(members, sample, double=False, alphas=ALPHAS, steps=STEPS):
     return per
 
 
-def score_match(members, sample, per_member=False, costs=COSTS):
+def score_match(members, sample, per_member=False, costs=COSTS, alphas=ALPHAS, steps=STEPS,
+                gates=GATES):
     """Score rows for the whole grid on one match; with `per_member`, each member alone too, every
     row then carrying a `seed` (the ensemble is seed -1)."""
     rows = []
     features = np.asarray(sample.features(False))
-    for (alpha, steps), outs in member_grid(members, sample).items():
+    for (alpha, count), outs in member_grid(members, sample, alphas=alphas, steps=steps).items():
         variants = [(-1, temporal.combine(outs))] + (list(enumerate(outs)) if per_member else [])
         for seed, logp in variants:
-            for gate in GATES:
+            for gate in gates:
                 lp = gate_team_evidence(logp, features) if gate else logp
                 for c in costs:
                     r = score(sample.labels, decode_table(sample, lp, transition_matrix(*c[:3]),
                                                           c[3]))
-                    row = {"alpha": alpha, "steps": steps, "gate": gate, "costs": c,
+                    row = {"alpha": alpha, "steps": count, "gate": gate, "costs": c,
                            "spellF1": r["spellF1"], "macroF1": r["macroF1"]}
                     rows.append(dict(row, seed=seed) if per_member else row)
     return rows
@@ -138,14 +142,17 @@ def cached(folder, condition, name, compute):
     return rows
 
 
-def collect(count=MEMBERS, folder=None, scorer=score_match):
+def collect(count=MEMBERS, folder=None, scorer=score_match, final_paths=None, swa=0):
+    """`final_paths` (default: decoder.json's members) score sc; `swa` picks the fold models."""
     folder = folder or (OUT if count == MEMBERS else OUT / "m{}".format(count))
-    final = [temporal.load(ROOT / "models" / p) for p in load_decoder(DEFAULT_DECODER)["members"]]
+    final_paths = final_paths or [ROOT / "models" / p
+                                  for p in load_decoder(DEFAULT_DECODER)["members"]]
+    final = [temporal.load(p) for p in final_paths]
     assert len(final) == count, "decoder.json lists {} members, not {}".format(len(final), count)
     results = {"sim": {}, "shift": {}, "sc": {}}
     names = sorted(LOADERS)
     for held in folds(names):
-        members = fold_members(held, sorted(set(names) - set(held)), count)
+        members = fold_members(held, sorted(set(names) - set(held)), count, swa)
         for n in held:
             results["sim"][n] = cached(folder, "sim", n, lambda: scorer(
                 members, CachedSample(n, SIM_TEST_SEED)))

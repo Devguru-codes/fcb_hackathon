@@ -42,15 +42,19 @@ def main(argv=None):
     parser.add_argument("--drop", nargs="+", default=(),
                         help="feature names masked out of the input ('restart' = the v4 "
                              "restart-spot features)")
+    parser.add_argument("--swa", type=int, default=0,
+                        help="average the weights of the last N epochs (plan rows B3 / B3c)")
     args = parser.parse_args(argv)
     opendata.DFL_MIN_SPELL = args.min_spell
     out = args.out or "models/retrained_m{}.pt".format(args.member)
+    if Path(out).name.startswith("tempolens_rnd4_m"):
+        parser.error("never overwrite the submitted weights ({})".format(out))
     samples = training_samples(args.matches, args.member, args.draws, args.faults)
     if args.extra_train:     # as in the cross-validation: real broadcast noise, one draw each
         samples += [CachedSample(n, member_noise_seeds(args.member)[0])
                     for n in sorted(EXTRA_LOADERS)]
     config = temporal.TemporalConfig(hidden=args.hidden, epochs=args.epochs, chunk=args.chunk,
-                                     touch=args.touch, drop=drop_names(args.drop))
+                                     touch=args.touch, drop=drop_names(args.drop), swa=args.swa)
     model, normaliser = temporal.train(samples, seed=temporal.SEED + args.member, config=config)
     Path(out).parent.mkdir(parents=True, exist_ok=True)
     temporal.save(model, normaliser, out)

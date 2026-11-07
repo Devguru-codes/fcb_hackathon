@@ -758,5 +758,26 @@ class FinishLabelsTests(unittest.TestCase):
             finish_labels(states, self.BLOCKS, None, 14)       # X on a graded frame
 
 
+class SwaAdoptTests(unittest.TestCase):
+    @staticmethod
+    def row(ens, gains, sc, ok=True):
+        return {"ensemble": ens, "accepted": ok, "gain": dict({"-1": 0.0}, **gains),
+                "conditions": {"-1": {"sc": sc}}}
+
+    def test_pick_takes_the_highest_accepted_and_breaks_near_ties_by_the_weakest_member(self):
+        from tempolens.swaadopt import pick
+        a = self.row(0.6476, {"0": 0.0001, "1": 0.003}, 0.010)
+        b = self.row(0.6475, {"0": 0.0022, "1": 0.002}, 0.012)
+        c = self.row(0.6490, {"0": 0.01, "1": 0.01}, 0.02, ok=False)
+        self.assertIs(pick([a, b, c]), b)                 # within 0.0001: weakest member decides
+        far = self.row(0.6470, {"0": 0.0022, "1": 0.002}, 0.012)
+        self.assertIs(pick([far, a]), a)                  # a clear winner on the ensemble
+        self.assertIsNone(pick([c]))
+
+    def test_train_refuses_the_submitted_weights(self):
+        from tempolens import train
+        with self.assertRaises(SystemExit):
+            train.main(["--out", "models/tempolens_rnd4_m0.pt"])
+
 if __name__ == "__main__":
     unittest.main()

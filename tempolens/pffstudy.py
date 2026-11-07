@@ -52,6 +52,12 @@ def ready(game_id, settle_s=120):
                                    for p in paths)
 
 
+def labels_by_convention(sample):
+    """{10: the loader's labels (10-frame fold), 50: refolded at 50 frames}."""
+    return {c: (sample.labels if c == 10 else remove_flicker(sample.labels, sample.runs(), c))
+            for c in CONVENTIONS}
+
+
 def score_match(members, game_id):
     """{row label: {convention: spellF1}} for one match (cached)."""
     path = _cache() / "pff_{}.json".format(game_id)
@@ -65,8 +71,7 @@ def score_match(members, game_id):
                            for k in KEYS})
     z = np.load(store)      # always score the stored values, so a re-score is identical
     grid = {k: list(z["a{}_s{}".format(*k)].astype(np.float64)) for k in KEYS}
-    labels = {c: (sample.labels if c == 10 else remove_flicker(sample.labels, sample.runs(), c))
-              for c in CONVENTIONS}
+    labels = labels_by_convention(sample)
     out = {}
     for label, key, costs in ROWS:
         pred = decode_table(sample, temporal.combine(grid[key]), transition_matrix(*costs[:3]),
