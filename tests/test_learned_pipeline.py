@@ -722,5 +722,20 @@ class ReviewStudyTests(unittest.TestCase):
                                    np.round(two[:, 3], 4))
 
 
+class AtomicWriteTests(unittest.TestCase):
+    def test_caches_are_replaced_whole_and_leave_no_temporary_file(self):
+        import tempfile
+        from pathlib import Path
+        from tempolens.experiments import savez_atomic, write_atomic
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "rows.json"
+            write_atomic(path, "old")
+            write_atomic(path, "[1, 2]")
+            store = Path(folder) / "out.npz"
+            savez_atomic(store, a=np.arange(3, dtype=np.float32))
+            self.assertEqual(path.read_text(encoding="utf-8"), "[1, 2]")
+            np.testing.assert_array_equal(np.load(store)["a"], [0, 1, 2])
+            self.assertEqual(sorted(p.name for p in Path(folder).iterdir()), ["out.npz", "rows.json"])
+
 if __name__ == "__main__":
     unittest.main()

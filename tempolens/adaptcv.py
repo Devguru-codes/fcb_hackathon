@@ -36,7 +36,7 @@ import numpy as np
 
 from . import temporal
 from .decoder import transition_matrix
-from .experiments import SIM_TEST_SEED, CachedSample, decode_table, folds, score
+from .experiments import SIM_TEST_SEED, CachedSample, decode_table, folds, score, write_atomic
 from .match import A, D, H
 from .opendata import EXTRA_LOADERS, LOADERS
 from .predict import DEFAULT_DECODER, gate_team_evidence, load_decoder
@@ -134,7 +134,7 @@ def cached(folder, condition, name, compute):
         return json.loads(path.read_text(encoding="utf-8"))
     rows = compute()
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(rows), encoding="utf-8")
+    write_atomic(path, json.dumps(rows))
     return rows
 
 

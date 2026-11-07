@@ -13,6 +13,7 @@ ball is missing for 41% of the match, in long stretches.
 
 import argparse
 import hashlib
+import io
 import os
 import sys
 import time
@@ -102,6 +103,23 @@ def _replace_retry(src, dst, attempts=20):
             if attempt == attempts - 1:
                 raise
             time.sleep(0.5)
+
+
+def write_atomic(path, data):
+    """Write text or bytes through a temporary file: a run killed mid-write never leaves a
+    truncated cache that the next run would die on."""
+    tmp = path.with_name(path.name + ".tmp")
+    if isinstance(data, bytes):
+        tmp.write_bytes(data)
+    else:
+        tmp.write_text(data, encoding="utf-8")
+    _replace_retry(tmp, path)
+
+
+def savez_atomic(path, **arrays):
+    buffer = io.BytesIO()
+    np.savez(buffer, **arrays)
+    write_atomic(path, buffer.getvalue())
 
 
 class CachedSample:

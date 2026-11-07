@@ -20,7 +20,8 @@ import numpy as np
 
 from . import adaptcv, temporal
 from .decoder import transition_matrix
-from .experiments import CachedSample, decode_table, open_data_dir, score
+from .experiments import CachedSample, decode_table, open_data_dir, savez_atomic, score, \
+    write_atomic
 from .opendata import _pff_dir, pff_ids, remove_flicker
 from .predict import DEFAULT_DECODER, load_decoder
 
@@ -60,7 +61,7 @@ def score_match(members, game_id):
     store = _cache() / "pff_{}_outputs.npz".format(game_id)     # labels never enter these
     if not store.exists():
         grid = adaptcv.member_grid(members, sample, alphas=(0.0, 0.5), steps=(0, 10))
-        np.savez(store, **{"a{}_s{}".format(*k): np.stack(grid[k]).astype(np.float32)
+        savez_atomic(store, **{"a{}_s{}".format(*k): np.stack(grid[k]).astype(np.float32)
                            for k in KEYS})
     z = np.load(store)      # always score the stored values, so a re-score is identical
     grid = {k: list(z["a{}_s{}".format(*k)].astype(np.float64)) for k in KEYS}
@@ -71,7 +72,7 @@ def score_match(members, game_id):
         pred = decode_table(sample, temporal.combine(grid[key]), transition_matrix(*costs[:3]),
                             costs[3])
         out[label] = {str(c): score(y, pred)["spellF1"] for c, y in labels.items()}
-    path.write_text(json.dumps(out), encoding="utf-8")
+    write_atomic(path, json.dumps(out))
     return out
 
 

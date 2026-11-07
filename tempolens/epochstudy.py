@@ -18,7 +18,7 @@ import numpy as np
 from . import temporal
 from .decoder import transition_matrix
 from .experiments import SIM_TEST_SEED, CachedSample, decode_table, folds, score, \
-    training_samples
+    training_samples, write_atomic
 from .opendata import LOADERS
 
 OUT = Path(__file__).resolve().parents[1] / "models" / "exp" / "epochstudy"
@@ -46,7 +46,7 @@ def fold_scores(member, held, rest):
     temporal.train(training_samples(rest, member, draws=4), seed=temporal.SEED + member,
                    config=temporal.TemporalConfig(epochs=EPOCHS), on_epoch=on_epoch)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(out), encoding="utf-8")
+    write_atomic(path, json.dumps(out))
     return out
 
 

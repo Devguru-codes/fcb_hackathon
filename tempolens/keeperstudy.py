@@ -18,7 +18,7 @@ import numpy as np
 
 from . import adaptcv, temporal
 from .decoder import transition_matrix
-from .experiments import SIM_TEST_SEED, CachedSample, decode_table, folds, score
+from .experiments import SIM_TEST_SEED, CachedSample, decode_table, folds, score, write_atomic
 from .match import repair_keepers
 from .opendata import LOADERS
 
@@ -80,7 +80,7 @@ def cv(names, settings):
                 out[n][v] = score(s.labels, decode_table(s, logp, transition_matrix(*COSTS[:3]),
                                                           COSTS[3]))["spellF1"]
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(json.dumps(out[n]), encoding="utf-8")
+            write_atomic(path, json.dumps(out[n]))
             print("cv: {} {}".format(n, " ".join("{} {:.4f}".format(v, out[n][v])
                                                  for v in VERSIONS)), flush=True)
     return {v: float(np.mean([out[n][v] for n in names])) for v in VERSIONS}
