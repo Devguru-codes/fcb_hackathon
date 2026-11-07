@@ -29,21 +29,27 @@ GROUPS = {
     "defence": ("defending in attacking third", "defending in middle third",
                 "defending in defensive third", "defensive transition"),
 }
+# Plan row E7: one weight per code family instead of the two groups above (set pieces stay out).
+FAMILIES = {"build up": ("build up",), "progression": ("progression",),
+            "creating chances": ("creating chances",),
+            "attacking transition": ("attacking transition",), "long ball": ("long ball",),
+            "final third / box": ("ball in final third", "ball in the box", "players in the box"),
+            **{code: (code,) for code in GROUPS["defence"]}}
 CONFIDENT = 0.9      # model probability of a side above which a frame calibrates the tags
 SHRINK = 0.5         # fraction of the full naive-Bayes log-odds actually applied
 MAX_WEIGHT = 2.0
 MIN_FRAMES = 500     # a family with fewer confident frames under it gets no weight
 
 
-def group_of(code):
+def group_of(code, groups=GROUPS):
     code = _normalise(code)
-    for group, codes in GROUPS.items():
+    for group, codes in groups.items():
         if code in codes:
             return group
     return None
 
 
-def read_instances(path, home, away, fps=25):
+def read_instances(path, home, away, fps=25, groups=GROUPS):
     """[(start_frame, stop_frame, group, side)] for every tag naming a usable team."""
     out = []
     for instance in ET.parse(path).getroot().iter("instance"):
@@ -53,7 +59,7 @@ def read_instances(path, home, away, fps=25):
         except (TypeError, ValueError):
             continue
         code = instance.findtext("code")
-        group = group_of(code)
+        group = group_of(code, groups)
         labels = {label.findtext("group"): label.findtext("text")
                   for label in instance.findall("label")}
         side = possessing_side(code, resolve_side(labels.get("Team"), home, away))
@@ -62,9 +68,9 @@ def read_instances(path, home, away, fps=25):
     return out
 
 
-def votes(instances, n_frames):
+def votes(instances, n_frames, groups=GROUPS):
     """{group: (n,) int8} with +1 where the family says home has the ball, -1 away, 0 none."""
-    tally = {group: np.zeros(n_frames, dtype=np.int32) for group in GROUPS}
+    tally = {group: np.zeros(n_frames, dtype=np.int32) for group in groups}
     for start, stop, group, side in instances:
         start, stop = max(0, start), min(n_frames, stop)
         tally[group][start:stop] += 1 if side == H else -1
@@ -101,8 +107,8 @@ def apply(logp, group_votes, weights):
     return out
 
 
-def self_calibrated(logp, instances, inside):
+def self_calibrated(logp, instances, inside, groups=GROUPS):
     """(adjusted logp, calibration report) -- the whole prior in one call."""
-    group_votes = votes(instances, len(logp))
+    group_votes = votes(instances, len(logp), groups)
     weights = calibrate(logp, group_votes, inside)
     return apply(logp, group_votes, weights), weights

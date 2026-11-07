@@ -19,6 +19,11 @@ class TagPriorTests(unittest.TestCase):
         self.assertEqual(group_of("BUILD UP"), "attack")
         self.assertEqual(group_of("Defensive Transition"), "defence")
         self.assertIsNone(group_of("SET PIECES"))
+        from tempolens.tagprior import FAMILIES, GROUPS
+        self.assertEqual(group_of("Ball in the Box", FAMILIES), "final third / box")
+        self.assertEqual(group_of("Defensive Transition", FAMILIES), "defensive transition")
+        self.assertEqual(sorted(c for codes in FAMILIES.values() for c in codes),
+                         sorted(c for codes in GROUPS.values() for c in codes))
 
     def test_votes_sign_and_overlap(self):
         v = votes([(0, 10, "attack", H), (5, 15, "attack", A), (20, 30, "defence", A)], 40)

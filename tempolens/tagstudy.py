@@ -21,7 +21,7 @@ from .experiments import (CachedSample, ENSEMBLE_MEMBERS, SIM_TEST_SEED, _summar
 from .match import A, H
 from .opendata import LOADERS
 from .predict import load_decoder
-from .tagprior import GROUPS, self_calibrated
+from .tagprior import FAMILIES, GROUPS, group_of, self_calibrated
 
 COVER = 0.6          # share of possessions that get a phase tag
 MERGE = 0.3          # share of tags that run on over the following possession
@@ -47,6 +47,74 @@ def synthetic_tags(labels, error, seed):
         if stop > start:
             out.append((start, stop, group, side))
     return out
+
+
+def synthetic_coded_tags(labels, errors, seed):
+    """Like synthetic_tags, but each tag is a code family (tagprior.FAMILIES) with its own team
+    error rate (`errors`: {family: rate}): [(start, stop, family, side)]."""
+    rng = np.random.default_rng(seed)
+    spells = pm.possession_spells(labels, pm.valid_runs(labels))
+    defence = [f for f in FAMILIES if group_of(f) == "defence"]
+    attack = [f for f in FAMILIES if f not in defence]
+    out = []
+    for i, (start, stop, code) in enumerate(spells):
+        if rng.random() >= COVER:
+            continue
+        family = (defence[rng.integers(len(defence))] if rng.random() < DEFENCE_SHARE
+                  else attack[rng.integers(len(attack))])
+        side = code if rng.random() >= errors[family] else (A if code == H else H)
+        if rng.random() < MERGE and i + 1 < len(spells):
+            stop = spells[i + 1][1]
+        start = int(start + rng.normal(0, EDGE_SD))
+        stop = int(stop + rng.normal(0, EDGE_SD))
+        if stop > start:
+            out.append((start, stop, family, side))
+    return out
+
+
+def error_profiles():
+    """E7's tag error profiles: {name: {family: rate}}; "20% mixed" alternates 5% and 35% over
+    the families (mean 20%), so reliability differs by code."""
+    fams = list(FAMILIES)
+    return {"perfect": dict.fromkeys(fams, 0.0),
+            "20% mixed": {f: (0.05, 0.35)[i % 2] for i, f in enumerate(fams)},
+            "20% uniform": dict.fromkeys(fams, 0.2),
+            "random": dict.fromkeys(fams, 0.5)}
+
+
+def run_per_code(draws=4, seeds=3, members=5):
+    """E7: the two-group prior against one weight per code family, on the same synthetic tags,
+    at the decoder's costs. Prints mean spellF1 per error profile and the rule's verdict."""
+    names = sorted(LOADERS)
+    samples = {n: CachedSample(n, SIM_TEST_SEED) for n in names}
+    logps = oof_logp(names, "ensemble", draws=draws, members=members)
+    settings = load_decoder()
+    transition = transition_matrix(settings["switch"], settings["alive_to_dead"],
+                                   settings["dead_to_alive"])
+    change = settings.get("change_weight", 0.0)
+
+    def spell(n, lp):
+        return score(samples[n].labels, decode_table(samples[n], lp, transition, change))["spellF1"]
+
+    none = np.mean([spell(n, logps[n]) for n in names])
+    print("no prior {:.4f}  (costs {}, {}, {}, {})".format(
+        none, settings["switch"], settings["alive_to_dead"], settings["dead_to_alive"], change))
+    gains = {}
+    for p, (name, errors) in enumerate(error_profiles().items()):
+        two, per = [], []
+        for k, n in enumerate(names):
+            inside = samples[n].period > 0
+            for s in range(seeds):
+                tags = synthetic_coded_tags(samples[n].labels, errors,
+                                            7000 + 1000 * k + 100 * p + s)
+                grouped = [(a, b, group_of(f), side) for a, b, f, side in tags]
+                two.append(spell(n, self_calibrated(logps[n], grouped, inside)[0]))
+                per.append(spell(n, self_calibrated(logps[n], tags, inside, FAMILIES)[0]))
+        gains[name] = np.mean(per) - np.mean(two)
+        print("{:<12} two groups {:.4f}  per family {:.4f}  difference {:+.4f}".format(
+            name, np.mean(two), np.mean(per), gains[name]), flush=True)
+    ok = gains["perfect"] >= 0.003 and gains["20% mixed"] >= 0.003 and gains["random"] >= -0.003
+    print("E7: {}".format("passes" if ok else "fails"))
 
 
 def run(errors, costs=None, draws=0, seeds=1, members=ENSEMBLE_MEMBERS):
@@ -90,7 +158,11 @@ def main(argv=None):
     parser.add_argument("--draws", type=int, default=0, help="ensemble recipe (experiments)")
     parser.add_argument("--seeds", type=int, default=1, help="synthetic tag draws per match")
     parser.add_argument("--members", type=int, default=ENSEMBLE_MEMBERS, help="ensemble size")
+    parser.add_argument("--per-code", action="store_true",
+                        help="E7: one weight per code family against the two groups")
     args = parser.parse_args(argv)
+    if args.per_code:
+        return run_per_code(args.draws or 4, args.seeds, args.members)
     run(args.errors, draws=args.draws, seeds=args.seeds, members=args.members)
 
 
