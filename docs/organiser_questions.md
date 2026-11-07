@@ -1,4 +1,12 @@
-# Questions for the organisers (draft — post as a GitHub issue on metrica-sports/more-than-a-hack-2027)
+# Questions for the organisers (answered; never posted)
+
+**Status (2026-11-07).** This draft was never posted: the challenge repository's issues are
+now off. The organisers' Q&A answers #2, #10, #11 and #16 (as quoted in 7dracoder's
+`CoreOrigin.md`, lines 506–513) cover questions 2 and 3 below. Question 1, the licence of
+Metrica's sample data, stays open: the data is used with attribution, as its repository asks
+(README_Tempolens.md, "Open data"; technical document §2). The submission uses no component trained on the provided video
+(question 3 and the last section): the video ball detector is built but not used (§6b). The
+text below is the original draft, kept as history.
 
 RULES.md asks participants to ask before building on anything near a line. Three questions:
 
