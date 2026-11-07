@@ -54,7 +54,7 @@ def synthetic_coded_tags(labels, errors, seed):
     error rate (`errors`: {family: rate}): [(start, stop, family, side)]."""
     rng = np.random.default_rng(seed)
     spells = pm.possession_spells(labels, pm.valid_runs(labels))
-    defence = [f for f in FAMILIES if group_of(f) == "defence"]
+    defence = [f for f in FAMILIES if group_of(FAMILIES[f][0]) == "defence"]
     attack = [f for f in FAMILIES if f not in defence]
     out = []
     for i, (start, stop, code) in enumerate(spells):
@@ -107,7 +107,7 @@ def run_per_code(draws=4, seeds=3, members=5):
             for s in range(seeds):
                 tags = synthetic_coded_tags(samples[n].labels, errors,
                                             7000 + 1000 * k + 100 * p + s)
-                grouped = [(a, b, group_of(f), side) for a, b, f, side in tags]
+                grouped = [(a, b, group_of(FAMILIES[f][0]), side) for a, b, f, side in tags]
                 two.append(spell(n, self_calibrated(logps[n], grouped, inside)[0]))
                 per.append(spell(n, self_calibrated(logps[n], tags, inside, FAMILIES)[0]))
         gains[name] = np.mean(per) - np.mean(two)
