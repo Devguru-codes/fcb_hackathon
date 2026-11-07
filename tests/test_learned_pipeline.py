@@ -552,6 +552,23 @@ class DecodeTests(unittest.TestCase):
         self.assertTrue(np.all(out[10:120] == H) and np.all(out[120:190] == A))
 
 
+class WeightAveragingTests(unittest.TestCase):
+    def test_swa_averages_the_last_epochs(self):
+        import torch
+        from tempolens import temporal
+        table = SimulatorTests()._labelled(3000)
+        seen = []
+        keep = lambda e, m, n: seen.append({k: v.detach().double().cpu().clone()
+                                            for k, v in m.state_dict().items()})
+        config = temporal.TemporalConfig(hidden=16, swa=2)
+        model, _ = temporal.train([table], epochs=3, device="cpu", verbose=False, config=config,
+                                  on_epoch=keep)
+        for k, v in model.state_dict().items():
+            torch.testing.assert_close(v.double(), (seen[1][k] + seen[2][k]) / 2,
+                                       atol=1e-6, rtol=0)
+        self.assertEqual(config.tag(), "temporal_h16_swa2")
+
+
 class ReviewStudyTests(unittest.TestCase):
     def test_split_bonus_with_equal_weights_is_the_plain_decoder(self):
         from tempolens.decoder import transition_matrix

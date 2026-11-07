@@ -466,6 +466,8 @@ def main(argv=None):
     parser.add_argument("--protocol", default="sim", choices=("sim", "clean"))
     parser.add_argument("--teamcue", action="store_true",
                         help="append the team-cue feature pack (features.team_cue_features)")
+    parser.add_argument("--swa", type=int, default=0,
+                        help="average each member's weights over its last N epochs (B3)")
     parser.add_argument("--min-spell", type=int, default=None,
                         help="flicker threshold of the training labels, in frames, DFL and "
                              "SkillCorner only (Metrica unchanged; held-out labels unchanged)")
@@ -484,7 +486,7 @@ def main(argv=None):
                             smooth=args.smooth, seg_balance=args.seg_balance,
                             focal=args.focal, mirror=args.mirror,
                             dead_weight=args.dead_weight, touch=args.touch,
-                            teamcue=args.teamcue,
+                            teamcue=args.teamcue, swa=args.swa,
                             drop=drop_names(args.drop), **sizes)
     from .opendata import EXTRA_LOADERS
     extra = sorted(EXTRA_LOADERS) if args.extra_train == "skillcorner" else ()

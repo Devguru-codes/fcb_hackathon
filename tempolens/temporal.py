@@ -67,6 +67,7 @@ class TemporalConfig:
     touch: float = 0.0           # weight of the touch-head loss; 0 = no touch head
     drop: tuple = ()             # feature names fed to the network as zeros (masked out)
     teamcue: bool = False        # append features.team_cue_features (versioned pack)
+    swa: int = 0                 # average the weights of the last `swa` epochs (B3); 0 = off
 
     def tag(self):
         """Cache/file tag; the default config keeps the historical name "temporal"."""
@@ -97,6 +98,8 @@ class TemporalConfig:
         if self.teamcue:
             from .features import TEAMCUE_VERSION
             parts.append("tc{}".format(TEAMCUE_VERSION))
+        if self.swa:
+            parts.append("swa{}".format(self.swa))
         return "temporal" + ("_" + "_".join(parts) if parts else "")
 
 
@@ -487,6 +490,7 @@ def train(samples, epochs=None, device=None, seed=SEED, verbose=True,
                                      pos_weight=torch.tensor(4.0, device=device))
     huber = torch.nn.SmoothL1Loss(reduction="none", beta=0.1)
     rng = np.random.default_rng(seed)
+    average, n_avg = None, 0
 
     def batch_of(key, batch, dtype=None):
         array = np.stack([np.asarray(sequences[k][key][s:s + config.chunk]) for k, s in batch])
@@ -544,9 +548,17 @@ def train(samples, epochs=None, device=None, seed=SEED, verbose=True,
             total += float(loss) * len(batch)
         if verbose:
             print("  epoch {:>2}  loss {:.4f}".format(epoch + 1, total / len(index)), flush=True)
+        if config.swa and epoch >= epochs - config.swa:   # one run's checkpoints are aligned
+            state = {k: v.detach().double().cpu() for k, v in model.state_dict().items()}
+            average = state if average is None else {k: average[k] + state[k] for k in state}
+            n_avg += 1
         if on_epoch:
             on_epoch(epoch + 1, model, normaliser)
-    return model.cpu().eval(), normaliser
+    model = model.cpu()
+    if average is not None:
+        dtypes = {k: v.dtype for k, v in model.state_dict().items()}
+        model.load_state_dict({k: (v / n_avg).to(dtypes[k]) for k, v in average.items()})
+    return model.eval(), normaliser
 
 
 def _infer(model, z, tokens=None):
