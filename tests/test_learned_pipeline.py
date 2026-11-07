@@ -281,6 +281,11 @@ class EnsembleTests(unittest.TestCase):
             adapted = temporal.adapt_head(copy.deepcopy(m), normaliser, sample, 10)
             np.testing.assert_allclose(grid[(0.0, 10)][0],
                                        temporal.predict(adapted, normaliser, sample), atol=2e-4)
+            small = adaptcv.member_grid([(m, normaliser)], sample, double=double,
+                                        alphas=(0.0, 0.5), steps=(0, 10))   # hedgestudy's grid
+            self.assertEqual(sorted(small), [(0.0, 0), (0.0, 10), (0.5, 0), (0.5, 10)])
+            for key, outs in small.items():
+                np.testing.assert_array_equal(outs[0], grid[key][0])
 
     def test_per_member_scoring_keeps_the_ensemble_rows(self):
         from tempolens import adaptcv, temporal
