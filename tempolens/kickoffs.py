@@ -1,0 +1,114 @@
+"""Kickoff-team consistency on the match (plan of action row E9). Prints counts only.
+
+    python -m tempolens.kickoffs --data-root <bundle> --labels <submission csv>
+
+Rules of the game, nothing tuned: the team that kicks off the second half is the one that did not
+kick off the first; after a goal, the conceding team kicks off. The first-half kickoff team is
+taken from the decoded labels themselves; goals and their restarts come from Smart Tagging
+(GOALS with its Team; "Kick Off (After Goal)", which opens a few seconds early), the exact
+restart from the ball track. Each kickoff's decoded team is the majority of H/A over the first
+2 s after the restart. No ground truth is read.
+"""
+
+import argparse
+import sys
+import xml.etree.ElementTree as ET
+from pathlib import Path
+
+import numpy as np
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "evaluation"))
+sys.path.insert(0, str(ROOT / "starter"))
+
+from .match import A, H  # noqa: E402
+from .tags import _normalise, resolve_side  # noqa: E402
+
+HALF_KICKOFFS = (11185, 113742)    # FAQ.md
+WINDOW_S, SEARCH_S, CENTRE_M, MOVE_M = 2.0, 15.0, 3.0, 2.0
+
+
+def restart_frame(table, approx, search_s=SEARCH_S):
+    """The first frame from `approx` on (within `search_s`) where the ball sits within CENTRE_M of
+    the centre spot and has moved MOVE_M one second later; `approx` if none is found."""
+    fps, (length, width) = table.fps, table.pitch
+    ball = table.ball
+    for f in range(approx, min(table.n_frames - fps, approx + int(search_s * fps))):
+        b, later = ball[f], ball[f + fps]
+        if (np.isfinite(b).all() and np.isfinite(later).all()
+                and np.hypot(b[0] - length / 2, b[1] - width / 2) <= CENTRE_M
+                and np.hypot(*(later - b)) >= MOVE_M):
+            return f
+    return approx
+
+
+def decoded_team(codes, frame, fps):
+    """H or A by majority over the first WINDOW_S after `frame`; None if neither appears."""
+    window = codes[frame:frame + int(WINDOW_S * fps)]
+    h, a = int((window == H).sum()), int((window == A).sum())
+    return None if h == a == 0 else (H if h >= a else A)
+
+
+def goal_restarts(path, home, away, fps):
+    """[(approx restart frame, kicking-off side)] from GOALS + Kick Off (After Goal) tags."""
+    goals, restarts = [], []
+    for instance in ET.parse(path).getroot().iter("instance"):
+        code = _normalise(instance.findtext("code") or "")
+        try:
+            start = int(round(float(instance.findtext("start")) * fps))
+        except (TypeError, ValueError):
+            continue
+        labels = {l.findtext("group"): l.findtext("text") for l in instance.findall("label")}
+        if code == "goals":
+            goals.append((start, resolve_side(labels.get("Team"), home, away)))
+        elif code == "kick off (after goal)":
+            restarts.append(start)
+    out = []
+    for start, scorer in sorted(goals):
+        after = [r for r in sorted(restarts) if start <= r <= start + 180 * fps]
+        if after and scorer in (H, A):
+            out.append((after[0], A if scorer == H else H))
+    return out, len(goals), len(restarts)
+
+
+def check(codes, table, goals):
+    """[(kind, implied side, decoded side)] for every kickoff, in time order."""
+    fps = table.fps
+    first = decoded_team(codes, restart_frame(table, HALF_KICKOFFS[0]), fps)
+    events = [("half 1", HALF_KICKOFFS[0], first),
+              ("half 2", HALF_KICKOFFS[1], None if first is None else (A if first == H else H))]
+    events += [("goal", f, side) for f, side in goals]
+    out = []
+    for kind, approx, implied in sorted(events, key=lambda e: e[1]):
+        frame = restart_frame(table, approx)
+        out.append((kind, implied, decoded_team(codes, frame, fps)))
+    return out
+
+
+def main(argv=None):
+    import possession_metrics as pm
+    from games import GAME, GAMES, require
+    from .match import competition_table
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--data-root", required=True)
+    parser.add_argument("--labels", required=True, help="a full-match frame,label CSV")
+    args = parser.parse_args(argv)
+    table = competition_table(GAME, args.data_root)
+    codes = pm.label_codes(pm.read_label_csv(args.labels))
+    path = require(["smart_tagging"], GAME, args.data_root)[0]
+    goals, n_goals, n_restarts = goal_restarts(path, table.meta["home"], table.meta["away"],
+                                               GAMES[GAME]["fps"])
+    rows = check(codes, table, goals)
+    agree = sum(r[1] is not None and r[1] == r[2] for r in rows)
+    undecided = sum(r[2] is None or r[1] is None for r in rows)
+    print("GOALS tags {}, Kick Off (After Goal) tags {}, goal restarts paired {}".format(
+        n_goals, n_restarts, len(goals)))
+    print("kickoffs {}: decoded team agrees with the rule {}, disagrees {}, undecided {}".format(
+        len(rows), agree, len(rows) - agree - undecided, undecided))
+    print("per kickoff (time order): " + " ".join(
+        "{}={}".format(k, "?" if d is None or i is None else "yes" if d == i else "no")
+        for k, i, d in rows))
+
+
+if __name__ == "__main__":
+    main()

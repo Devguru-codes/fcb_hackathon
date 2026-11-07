@@ -349,6 +349,25 @@ class EnsembleTests(unittest.TestCase):
             again = temporal.predict(*temporal.load(path), TableSample(table))
         np.testing.assert_allclose(out, again, atol=1e-4)
 
+    def test_kickoff_rule_check(self):
+        from tempolens import kickoffs
+        from tempolens.match import MatchTable
+        n = 130000
+        ball = np.full((n, 2), np.nan, dtype=np.float32)
+        for f in (11185, 113742, 60000 + 100):            # kickoffs: ball leaves the centre spot
+            ball[f:f + 60] = [52.5, 34.0]
+            ball[f + 25:f + 60, 0] = 52.5 + np.arange(35) * 0.2
+        table = MatchTable("k", ball, np.zeros((n, 2, 2), dtype=np.float32),
+                           np.array([H, A], dtype=np.int8), np.ones(n, dtype=np.int8))
+        self.assertTrue(60100 <= kickoffs.restart_frame(table, 60000) <= 60125)
+        codes = np.full(n, D, dtype=np.int8)
+        codes[11185:11300] = H          # home kicks off the first half
+        codes[113742:113900] = A        # away the second: agrees
+        codes[60100:60200] = H          # home kicks off after home scored: disagrees
+        rows = kickoffs.check(codes, table, [(60000, A)])
+        self.assertEqual([(k, i, d) for k, i, d in rows],
+                         [("half 1", H, H), ("goal", A, H), ("half 2", A, A)])
+
     def test_seed_rule_needs_the_ensemble_and_every_seed_to_gain(self):
         from tempolens.adaptseeds import decide
         c = (2.0, 8.0, 8.0, 0.5)
