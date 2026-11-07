@@ -39,7 +39,8 @@ with a **simulator calibrated so the official baseline reproduces its published 
 ## Run
 
 ```bash
-pip install -r requirements-tempolens.txt
+pip install -r requirements-predict.txt     # the submission only: numpy, pandas, torch, numba
+pip install -r requirements-tempolens.txt   # training and studies (adds lightgbm, kloppy)
 
 # The submission, from committed weights, CPU-only and deterministic:
 python -m tempolens.predict --data-root data --output evaluation/results/<team>.csv

@@ -1,0 +1,8 @@
+# Only what the submission needs: python -m tempolens.predict and evaluation/validate_submission.py
+# (Python 3.11; same pins as requirements-tempolens.txt, which adds the training and study tools).
+numpy==1.26.4
+pandas==2.3.3
+# CPU inference is enough; a CUDA build only speeds training.
+torch==2.5.1
+# Optional: JIT for the Viterbi decoder (the numpy fallback gives identical results, slower).
+numba==0.61.2

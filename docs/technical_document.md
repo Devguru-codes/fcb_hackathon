@@ -494,7 +494,7 @@ per match +0.0024 — decoding is still not the bottleneck.
 ## 9. Reproduction
 
 ```bash
-pip install -r requirements-tempolens.txt
+pip install -r requirements-predict.txt     # numpy, pandas, torch, numba only
 python -m tempolens.predict --data-root data --output <team>.csv     # committed weights, CPU
 python evaluation/validate_submission.py <team>.csv
 ```
@@ -504,7 +504,8 @@ The ensemble members are listed in `models/decoder.json`, with the decoder costs
 its feature version and refuses to load against another. Inference runs on the CPU in float64 in
 a fixed order and outputs are rounded to 4 decimals; the end-to-end test checks that a run with
 the tag prior reproduces byte for byte. The submission was regenerated identically from a clean
-checkout of the submitted commit. A full run took 5 minutes on a laptop CPU (clean checkout, 5 members, with TTA and EATA); sha256 `1ea1f9e6…`. Retraining from open data:
+checkout of the submitted commit. A full run took 5 minutes on a laptop CPU (clean checkout, 5 members, with TTA and EATA); sha256 `1ea1f9e6…`. Retraining from open data
+(`pip install -r requirements-tempolens.txt`, which adds lightgbm and kloppy):
 `python -m tempolens.train --member k --draws 4 --out models/retrained_m<k>.pt` for k = 0–4, then
 `predict --model models/retrained_m0.pt ... models/retrained_m4.pt`. GPU
 training is not bit-reproducible, which is why the weights used for the submission are committed;
