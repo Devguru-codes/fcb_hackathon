@@ -737,5 +737,26 @@ class AtomicWriteTests(unittest.TestCase):
             np.testing.assert_array_equal(np.load(store)["a"], [0, 1, 2])
             self.assertEqual(sorted(p.name for p in Path(folder).iterdir()), ["out.npz", "rows.json"])
 
+
+class FinishLabelsTests(unittest.TestCase):
+    BLOCKS = [(1, 2, 5), (2, 8, 11)]     # graded video frames 2..5 and 8..11 of 14
+
+    def test_x_outside_the_halves_and_d_before_the_second_kickoff(self):
+        from tempolens.predict import finish_labels
+        states = np.array([0, 1, 0, 1, 2, 0, 3, 3, 1, 0, 1, 0, 1, 0])
+        labels = finish_labels(states, self.BLOCKS, 10, 14)
+        self.assertEqual("".join(labels), "XXHADHXXDDAHXX")
+        self.assertEqual("".join(finish_labels(states, self.BLOCKS, None, 14)), "XXHADHXXAHAHXX")
+
+    def test_contract_violations_raise(self):
+        from tempolens.predict import finish_labels
+        states = np.zeros(14, dtype=int)
+        with self.assertRaises(RuntimeError):
+            finish_labels(states, self.BLOCKS, None, 15)       # wrong length
+        states[3] = 3
+        with self.assertRaises(RuntimeError):
+            finish_labels(states, self.BLOCKS, None, 14)       # X on a graded frame
+
+
 if __name__ == "__main__":
     unittest.main()

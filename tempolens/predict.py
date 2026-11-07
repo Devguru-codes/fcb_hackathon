@@ -136,20 +136,27 @@ def predict(data_root, output, model_paths=None, decoder_path=DEFAULT_DECODER, g
         logp = gate_team_evidence(logp, sample.features(False), settings["flight_gate"],
                                   settings["loose_gate"])
     states, _ = decode_learned(table, logp, settings, data_root, game)
+    labels = finish_labels(states, half_video_blocks(game), SECOND_HALF_KICKOFF.get(game),
+                           source_frames("tactical", game))
+    write_submission(output, labels)
+    return labels
+
+
+def finish_labels(states, blocks, second_kickoff, n_frames):
+    """Decoded states -> submission labels, with the contract checks (pure, unit-tested)."""
     labels = np.array(["H", "A", "D", "X"])[np.where(states > 2, 3, states)].astype("<U1")
     # Only the two halves are graded. X elsewhere is free, and says plainly that halftime was not
     # predicted.
     graded = np.zeros(len(labels), dtype=bool)
-    for _, first, last in half_video_blocks(game):
+    for _, first, last in blocks:
         graded[first:last + 1] = True
     labels[~graded] = "X"
-    if game in SECOND_HALF_KICKOFF:
-        labels[half_video_blocks(game)[1][1]:SECOND_HALF_KICKOFF[game]] = "D"
+    if second_kickoff is not None:
+        labels[blocks[1][1]:second_kickoff] = "D"
     if np.any(labels[graded] == "X"):
         raise RuntimeError("abstention on a graded frame; the decoder must label every one")
-    if len(labels) != source_frames("tactical", game):
+    if len(labels) != n_frames:
         raise RuntimeError("prediction length does not match the tactical submission contract")
-    write_submission(output, labels)
     return labels
 
 
