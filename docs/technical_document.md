@@ -135,8 +135,9 @@ within 0.08 of the published values at any bias.
   submission averages five members (seeds and noise draws), each trained on 4 randomised noise
   draws per open match.
 - Test-time adaptation: each member's feature scaling moves halfway towards the match's own
-  statistics (`tta_alpha` 0.5), chosen on open data only (§7c). EATA and the team-evidence gate
-  are off. Inference runs on the CPU in float64, deterministic.
+  statistics (`tta_alpha` 0.5), then each member's output layer takes 10 entropy-minimisation
+  steps on the match (EATA 10), both chosen on open data only (§7c). The team-evidence gate is
+  off. Inference runs on the CPU in float64, deterministic.
 - Decoder: Viterbi over H/A/D, costs switch 4, alive→dead 8, dead→alive 8, and a bonus of 1.0 ×
   the change head's logit that makes a change cheaper where the model expects one — chosen together
   with the adaptation in the open-data adaptation study (§7c); without adaptation the
@@ -347,7 +348,7 @@ same recipe retrained with three seeds varies by sd 0.003, so a single-seed gain
 | feature set | v4 0.7716 vs v4 without the five restart-spot features (= v3) 0.7674, each at its own best costs; v4 ahead for each of the 3 members (+0.0016 to +0.0044) | v4 |
 | decoder costs | argmax over 189 settings of the 5-member cross-validation: switch 2, alive→dead 8, dead→alive 8, change bonus 0.5 (the next four settings within 0.0006) | used without adaptation; with `tta_alpha` 0.5 the adaptation study's (4, 8, 8, 1.0) |
 | Smart Tagging prior | §6a: +0.0081 with perfect synthetic tags, −0.0006 with random ones | on (`auto`) |
-| test-time adaptation, EATA, gate | study below: `tta_alpha` 0.5 at costs (4, 8, 8, 1.0) +0.0028, and it gains for the ensemble and for each of the 5 members alone (ADseeds rule) | `tta_alpha` 0.5; EATA and gate off |
+| test-time adaptation, EATA, gate | study below: `tta_alpha` 0.5 + EATA 10 at costs (4, 8, 8, 1.0) +0.0027, and it gains for the ensemble and for each of the 5 members alone (ADseeds rule) | `tta_alpha` 0.5 + EATA 10 (team's choice between the two that passed); gate off |
 
 **Adaptation study** (`python -m tempolens.adaptcv --members 5`). Test-time adaptation exists to correct a
 domain shift, which simulated test matches barely have. So the grid — `tta_alpha` {0, 0.5, 1} ×
@@ -390,15 +391,20 @@ those. Only open data is used; the choice of conditions and grid was not revisit
 | setting (4/8/8/1.0) | ensemble | gain | gain per member (0–4) | sc gain per member |
 |---|---|---|---|---|
 | no adaptation | 0.6448 | — | — | — |
-| **`tta_alpha` 0.5, adopted** | **0.6476** | **+0.0028** | +0.0008 / +0.0009 / +0.0024 / +0.0060 / +0.0001 | +0.0048 to +0.0189 |
-| `tta_alpha` 0.5, EATA 10 | 0.6475 | +0.0027 | +0.0022 / +0.0023 / +0.0034 / +0.0063 / +0.0028 | +0.0067 to +0.0219 |
+| `tta_alpha` 0.5, the rule's pick | 0.6476 | +0.0028 | +0.0008 / +0.0009 / +0.0024 / +0.0060 / +0.0001 | +0.0048 to +0.0189 |
+| **`tta_alpha` 0.5, EATA 10, adopted** | **0.6475** | **+0.0027** | +0.0022 / +0.0023 / +0.0034 / +0.0063 / +0.0028 | +0.0067 to +0.0219 |
 
 Eight of the 46 settings pass; every one has `tta_alpha` 0.5 or EATA 10 and the gate off, and no
 gate setting passes. The ensemble numbers equal the earlier study's, which checks the new code.
 The gain is small and comes from real tracking (SkillCorner +0.011 for the ensemble, positive for
-every member) at a small cost on simulated tracking (−0.001 to −0.002), which is the trade we want
-for a match tracked by a real system. The runner-up with EATA is within 0.0001; the rule takes the
-simpler setting by its higher mean.
+every member) at a small cost on simulated tracking (−0.001 to −0.003), which is the trade we want
+for a match tracked by a real system.
+
+**Tie-break.** Two settings passed the pre-registered every-seed rule and tied within 0.0001 on the ensemble (TTA 0.5: 0.6476; TTA 0.5 + EATA 10: 0.6475). The rule's tie-break would pick TTA alone. The team chose TTA 0.5 + EATA 10 after seeing the results, because its smallest per-seed gain is larger (+0.0022 vs +0.0001) and its gain on the real-tracking SkillCorner condition is larger (+0.0122 vs +0.0108). The public window was not used for this choice. The adopted setting's per-condition gains are sim −0.0029, shift −0.0013,
+SkillCorner +0.0122. One caveat: the study adapts the output layer on the per-frame head inputs of
+the whole match, while `predict.py` adapts it on its overlapping inference windows; the update
+loop is the same, so the study measures a close approximation of what is submitted. The rule's own
+pick, TTA alone, is kept as a validated, reproduced file (`554fcb55…`).
 
 ## 6b. Video ball detector (built, tested on the real video, not used)
 
@@ -473,7 +479,7 @@ python evaluation/validate_submission.py <team>.csv
 ```
 
 The ensemble members are listed in `models/decoder.json`, with the decoder costs, the tag prior
-(`auto`) and the adaptation settings (`tta_alpha` 0.5, `eata_steps` 0); each weights file records
+(`auto`) and the adaptation settings (`tta_alpha` 0.5, `eata_steps` 10); each weights file records
 its feature version and refuses to load against another. Inference runs on the CPU in float64 in
 a fixed order and outputs are rounded to 4 decimals; the end-to-end test checks that a run with
 the tag prior reproduces byte for byte. The submission was regenerated identically from a clean
