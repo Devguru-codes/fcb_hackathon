@@ -5,7 +5,8 @@
 Rules of the game, nothing tuned: the team that kicks off the second half is the one that did not
 kick off the first; after a goal, the conceding team kicks off. The first-half kickoff team is
 taken from the decoded labels themselves; goals and their restarts come from Smart Tagging
-(GOALS with its Team; "Kick Off (After Goal)", which opens a few seconds early), the exact
+(GOALS with its Team; the instance labelled Type "Kick Off (After Goal)", which opens a few
+seconds early), the exact
 restart from the ball track. Each kickoff's decoded team is the majority of H/A over the first
 2 s after the restart. No ground truth is read.
 """
@@ -56,16 +57,17 @@ def goal_restarts(path, home, away, fps):
         code = _normalise(instance.findtext("code") or "")
         try:
             start = int(round(float(instance.findtext("start")) * fps))
+            end = int(round(float(instance.findtext("end")) * fps))
         except (TypeError, ValueError):
             continue
         labels = {l.findtext("group"): l.findtext("text") for l in instance.findall("label")}
         if code == "goals":
-            goals.append((start, resolve_side(labels.get("Team"), home, away)))
-        elif code == "kick off (after goal)":
+            goals.append((end, resolve_side(labels.get("Team"), home, away)))
+        elif _normalise(labels.get("Type") or "") == "kick off (after goal)":   # a Type label
             restarts.append(start)
     out = []
-    for start, scorer in sorted(goals):
-        after = [r for r in sorted(restarts) if start <= r <= start + 180 * fps]
+    for end, scorer in sorted(goals):     # a GOALS tag runs until just before its restart
+        after = [r for r in sorted(restarts) if end - 10 * fps <= r <= end + 60 * fps]
         if after and scorer in (H, A):
             out.append((after[0], A if scorer == H else H))
     return out, len(goals), len(restarts)
