@@ -257,8 +257,8 @@ def oof_logp(names, kind="gbm", protocol="sim", refresh=False, member=0,
     held-out matches and their scores stay comparable with runs without them.
     `draws` > 0: train on that many randomised-noise draws per match (training_samples); the
     held-out matches keep the fixed test noise, so scores stay comparable.
-    `min_spell`: the DFL/SkillCorner flicker threshold of the *training* labels only (held-out
-    labels keep opendata.DFL_MIN_SPELL). `sc_visible`: extra matches enter the loss only on frames
+    `min_spell`: the flicker threshold of the *training* labels, DFL and SkillCorner only (Metrica
+    labels are never filtered; held-out labels keep opendata.DFL_MIN_SPELL). `sc_visible`: extra matches enter the loss only on frames
     where their ball is detected.
     """
     if kind == "ensemble":
@@ -440,8 +440,8 @@ def main(argv=None):
                              "the v4 restart-spot features)")
     parser.add_argument("--protocol", default="sim", choices=("sim", "clean"))
     parser.add_argument("--min-spell", type=int, default=None,
-                        help="flicker threshold of the DFL/SkillCorner training labels, in frames "
-                             "(held-out labels unchanged)")
+                        help="flicker threshold of the training labels, in frames, DFL and "
+                             "SkillCorner only (Metrica unchanged; held-out labels unchanged)")
     parser.add_argument("--sc-visible", action="store_true",
                         help="--extra-train frames enter the loss only where the ball is detected")
     parser.add_argument("--refresh", action="store_true", help="retrain, ignoring the cache")
