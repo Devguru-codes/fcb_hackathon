@@ -368,6 +368,34 @@ class EnsembleTests(unittest.TestCase):
         self.assertEqual([(k, i, d) for k, i, d in rows],
                          [("half 1", H, H), ("goal", A, H), ("half 2", A, A)])
 
+    def test_soup_of_one_member_and_of_copies_is_that_member(self):
+        from tempolens import soup, temporal
+        from tempolens.features import TableSample
+        table = SimulatorTests()._labelled(3000)
+        model, normaliser = temporal.train([table], epochs=1, device="cpu", verbose=False,
+                                           config=temporal.TemporalConfig(hidden=16))
+        model, sample = model.double(), TableSample(table)
+        want = temporal.predict(model, normaliser, sample)
+        for members in ([(model, normaliser)], [(model, normaliser)] * 3):
+            np.testing.assert_allclose(temporal.predict(*soup.soup(members), sample), want,
+                                       atol=2e-4)
+        # the same function under another normaliser: soup must re-express it exactly
+        import copy
+        import torch
+        shifted = temporal.Normaliser.from_state(dict(normaliser.state(),
+                                                      median=normaliser.median + 0.1 * normaliser.scale))
+        twin = copy.deepcopy(model)
+        k = len(normaliser.median)
+        with torch.no_grad():
+            w = twin.inp[0].weight
+            twin.inp[0].bias -= w[:, :k] @ torch.from_numpy(
+                (normaliser.median - shifted.median) / normaliser.scale)
+        # exact but for values the +/-10 clip catches under one scaling and not the other
+        np.testing.assert_allclose(temporal.predict(twin, shifted, sample), want, atol=1e-2)
+        np.testing.assert_allclose(temporal.predict(*soup.soup([(model, normaliser),
+                                                                 (twin, shifted)]), sample),
+                                   want, atol=1e-2)
+
     def test_seed_rule_needs_the_ensemble_and_every_seed_to_gain(self):
         from tempolens.adaptseeds import decide
         c = (2.0, 8.0, 8.0, 0.5)
