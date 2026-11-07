@@ -507,3 +507,14 @@ checkout of the submitted commit. A full run took 5 minutes on a laptop CPU (cle
 `predict --model models/retrained_m0.pt ... models/retrained_m4.pt`. GPU
 training is not bit-reproducible, which is why the weights used for the submission are committed;
 write retrained weights to new names, never over `models/tempolens_rnd4_m<k>.pt`.
+
+Tested with Python 3.11 (3.11.3); `torch==2.5.1` (pinned in `requirements-tempolens.txt`)
+supports Python 3.9–3.12. sha256 of the committed weights:
+
+| file | sha256 |
+|---|---|
+| `models/tempolens_rnd4_m0.pt` | `21716342e40cc11c131aa4d13e458cc15352e4cca6194c3b68fc222ab2604a25` |
+| `models/tempolens_rnd4_m1.pt` | `bce6e07766968086d35e760baef40093ff6c6562bd4fccc86fbf9a859ed6748c` |
+| `models/tempolens_rnd4_m2.pt` | `16433645fb7372a3702ae732239d04cb086dbd2e8783d63f22928d82b06f3484` |
+| `models/tempolens_rnd4_m3.pt` | `39b84ca878605639b2a188621737a954ece1e6b99df40a6c1916b62109e01243` |
+| `models/tempolens_rnd4_m4.pt` | `ad5cc8f7f7b45e70c2e44eaa5bd48ab0526df7990df44130d08ad32267556d7c` |
