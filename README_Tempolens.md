@@ -77,3 +77,7 @@ takes about 5 minutes on a laptop (EATA adds the head inputs of both team views)
 Competition data never enters the repository (`data/` is gitignored) and must not be sent to a
 hosted LLM. Trained weights come from open data only. `tempolens.diagnostics` prints aggregates
 only; nothing in this package exports frame-level tracking.
+
+`experiments/queue.json` is the history of the research queue (`tempolens.autoqueue`), kept as run; its
+jobs name folders on the authors' laptop, including public-window scoring runs from before the
+rules clarification (technical document §7b). It holds no data and the submission does not read it.
