@@ -966,5 +966,26 @@ class TrackerBallTests(unittest.TestCase):
             np.testing.assert_array_equal(np.convolve(x, kernel, mode="full")[half:half + n],
                                           np.convolve(x, kernel, mode="same"))
 
+
+class HalfSplitTests(unittest.TestCase):
+    def test_back_to_back_halves_each_start_dead_until_their_kickoff(self):
+        period = np.array([0] * 5 + [1] * 20 + [2] * 20 + [0] * 5)
+        events = _events([(H, "SET PIECE", "KICK OFF", 6, 6), (H, "PASS", "", 10, 12),
+                          (H, "PASS", "", 22, 24),           # first half runs to its end
+                          (A, "PASS", "", 28, 30),           # second half: before its kickoff
+                          (A, "SET PIECE", "KICK OFF", 32, 32), (A, "PASS", "", 35, 37)])
+        labels = labels_from_events(events, period, 50)
+        self.assertTrue(np.all(labels[period == 0] == X))
+        self.assertTrue(np.all(labels[6:25] == H))
+        self.assertTrue(np.all(labels[25:32] == D))          # dead from the half's first frame
+        self.assertTrue(np.all(labels[32:38] == A))
+        self.assertTrue(np.all(labels[38:45] == D))          # after the half's last event
+        # the same with a gap between the halves gives the same labels inside them
+        gap = period.copy()
+        gap[25] = 0
+        again = labels_from_events(events, gap, 50)
+        self.assertEqual(again[25], X)
+        np.testing.assert_array_equal(again[26:], labels[26:])
+
 if __name__ == "__main__":
     unittest.main()

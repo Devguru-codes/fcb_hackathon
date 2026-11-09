@@ -86,9 +86,11 @@ def labels_from_events(events, period, n_frames):
     """
     labels = np.full(n_frames, X, dtype=np.int8)
     events = events.sort_values(["start", "order"], kind="stable")
-    inside = period > 0
-    bounds = np.flatnonzero(np.diff(np.concatenate(([0], inside.astype(np.int8), [0]))))
-    for first, stop in zip(bounds[0::2], bounds[1::2]):
+    # one block per period: halves that follow each other without a gap are split too
+    bounds = np.concatenate(([0], np.flatnonzero(np.diff(period) != 0) + 1, [len(period)]))
+    for first, stop in zip(bounds[:-1], bounds[1:]):
+        if period[first] <= 0:
+            continue
         labels[first:stop] = D
         window = events[(events.start >= first) & (events.start < stop)]
         state, since = D, first
