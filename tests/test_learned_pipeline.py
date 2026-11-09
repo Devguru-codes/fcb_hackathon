@@ -1126,5 +1126,27 @@ class NoisyCacheNameTests(unittest.TestCase):
         self.assertIn("_clean_l2_", names[(2, "clean")])
         self.assertEqual(len(set(names.values())), 8)
 
+
+class TableBuildTests(unittest.TestCase):
+    def test_a_cache_miss_builds_the_noisy_table_once(self):
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        from tempolens.experiments import CachedSample
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            sample = CachedSample.__new__(CachedSample)
+            calls = []
+            with patch.object(CachedSample, "_path", lambda self, swap, kind="f":
+                              root / "x_{}_{}.npy".format(kind, int(swap))), \
+                    patch.object(CachedSample, "table",
+                                 lambda self: calls.append(1) or _table()):
+                for build in (sample.features, sample.tokens, sample.teamcue):
+                    calls.clear()
+                    build(False)
+                    self.assertEqual(len(calls), 1, build.__name__)    # both views, one table
+                    build(True)
+                    self.assertEqual(len(calls), 1, build.__name__)    # a hit builds none
+
 if __name__ == "__main__":
     unittest.main()

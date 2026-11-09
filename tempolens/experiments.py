@@ -217,7 +217,8 @@ class CachedSample:
         table = {}
 
         def compute(side):
-            table.setdefault("t", self.table())
+            if "t" not in table:
+                table["t"] = self.table()
             return player_tokens(table["t"], swap=side)
         return self._cached("tok{}".format(FEATURE_VERSION), swap, compute)
 
@@ -227,7 +228,8 @@ class CachedSample:
         table = {}
 
         def compute(side):
-            table.setdefault("t", self.table())
+            if "t" not in table:
+                table["t"] = self.table()
             return team_cue_features(table["t"], swap=side)
         return self._cached("tc{}".format(TEAMCUE_VERSION), swap, compute)
 
@@ -251,7 +253,8 @@ class CachedSample:
         table = {}
 
         def compute(side):
-            table.setdefault("t", self.table())
+            if "t" not in table:
+                table["t"] = self.table()
             return frame_features(table["t"], swap=side)[0]
         return self._cached("f{}".format(FEATURE_VERSION), swap, compute)
 
