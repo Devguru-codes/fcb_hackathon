@@ -16,18 +16,18 @@ from multiprocessing import Pool
 
 import numpy as np
 
-from .cvrescore import NAMES, SETTINGS
+from .cvrescore import CONVENTIONS, NAMES, SETTINGS
 from .decoder import transition_matrix
 from .experiments import (SIM_TEST_SEED, CachedSample, baseline_codes, decode_table, oof_logp,
                           score)
-from .opendata import remove_flicker
+from .pffstudy import labels_by_convention
 from .temporal import combine
 
 FRAMES = (10, 25, 37, 50, 75, 100)
 WINDOWS = (("raw", 0), ("smooth25", 25), ("smooth50", 50), ("smooth125", 125))
 SPELL_ORDER = ("smooth50", "smooth125", "smooth25", "raw")     # EVALUATION.md, best first
 MACRO_ORDER = ("smooth25", "smooth50", "raw", "smooth125")
-E2A = (("provider", 0), ("controlled-1s", 25), ("controlled-2s", 50), ("controlled-3s", 75))
+E2A = CONVENTIONS     # the four E2a label versions: provider, controlled 1 / 2 / 3 s
 
 
 def in_order(values, order):
@@ -47,7 +47,8 @@ def verdict(passing):
 
 
 def labels_at(sample, frames):
-    return remove_flicker(sample.labels, sample.runs(), frames) if frames else sample.labels
+    """The labels refolded at `frames` (0: the provider's, untouched)."""
+    return labels_by_convention(sample, (frames,), provider=0)[frames]
 
 
 def _step1_match(name):

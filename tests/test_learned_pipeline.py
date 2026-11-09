@@ -1410,5 +1410,54 @@ class QuotedRuleTests(unittest.TestCase):
                     self.assertEqual(mean, expected[0])
                 self.assertEqual((agree, reverses), expected[1:])
 
+
+class OneRecipeTests(unittest.TestCase):
+    def test_condition_sample_is_the_old_recipe_for_each_condition(self):
+        from unittest.mock import patch
+        from tempolens import adaptcv, hedgestudy
+        from tempolens.experiments import SIM_TEST_SEED
+        from tempolens.opendata import EXTRA_LOADERS, LOADERS
+
+        def record(name, seed=None, randomised=False, faults=False, keeper=False, repair=None):
+            return (name, seed, randomised, faults, keeper, repair)
+        names, sc = sorted(LOADERS), sorted(EXTRA_LOADERS)[0]
+        old = {"sim": (names[3], SIM_TEST_SEED, False, False, False, None),
+               "shift": (names[3], adaptcv.SHIFT_SEED + 3, True, True, False, None),
+               "sc": (sc, None, False, False, False, None)}
+        with patch.object(adaptcv, "CachedSample", side_effect=record):
+            for c, expected in old.items():
+                self.assertEqual(adaptcv.condition_sample(c, expected[0]), expected)
+            made = {(c, n): make() for c, n, make, _ in hedgestudy.matches()}
+        self.assertEqual(made[("sim", names[3])], old["sim"])
+        self.assertEqual(made[("shift", names[3])], old["shift"])
+        self.assertEqual(made[("sc", sc)], old["sc"])
+        self.assertEqual(len(made), 2 * len(names) + len(EXTRA_LOADERS))
+        with self.assertRaises(ValueError):
+            adaptcv.condition_sample("public", names[0])
+
+    def test_shared_constants_and_label_helpers_agree(self):
+        from tempolens import cvrescore, kickoffs, labelcal, pffstudy, predict
+        self.assertEqual(labelcal.E2A, (("provider", 0), ("controlled-1s", 25),
+                                        ("controlled-2s", 50), ("controlled-3s", 75)))
+        self.assertIs(labelcal.E2A, cvrescore.CONVENTIONS)
+        self.assertEqual(kickoffs.HALF_KICKOFFS, (11185, 113742))
+        self.assertEqual(kickoffs.HALF_KICKOFFS[1], predict.SECOND_HALF_KICKOFF["BAR-ATH"])
+        from tempolens.opendata import remove_flicker
+        table = SimulatorTests()._labelled(3000)
+        labels = table.labels.copy()
+        labels[500:510] = A                  # a 10-frame flicker inside a home spell
+        table.labels = labels
+
+        class S:
+            pass
+        s = S()
+        s.labels, s.runs = labels, table.runs
+        for f in (0, 10, 25, 50):            # labelcal: 0 is the provider, 10 refolds
+            old = remove_flicker(labels, table.runs(), f) if f else labels
+            np.testing.assert_array_equal(labelcal.labels_at(s, f), old)
+        new = pffstudy.labels_by_convention(s)            # pffstudy: 10 is the loader's labels
+        np.testing.assert_array_equal(new[10], labels)
+        np.testing.assert_array_equal(new[50], remove_flicker(labels, table.runs(), 50))
+
 if __name__ == "__main__":
     unittest.main()

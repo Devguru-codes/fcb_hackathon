@@ -160,6 +160,20 @@ def score_match(members, sample, per_member=False, costs=COSTS, alphas=ALPHAS, s
     return rows
 
 
+def condition_sample(condition, name):
+    """One match's test sample under a study condition, the one recipe every study uses: sim =
+    the fixed test noise; shift = one randomised draw plus tracker faults, seeded per match; sc =
+    SkillCorner's own broadcast tracking, no added noise."""
+    if condition == "sc":
+        return CachedSample(name)
+    if condition == "sim":
+        return CachedSample(name, SIM_TEST_SEED)
+    if condition == "shift":
+        return CachedSample(name, SHIFT_SEED + sorted(LOADERS).index(name), randomised=True,
+                            faults=True)
+    raise ValueError("unknown condition {!r}".format(condition))
+
+
 def cached(folder, condition, name, compute):
     path = folder / "{}_{}.json".format(condition, name)
     if path.exists():
@@ -184,14 +198,12 @@ def collect(count=MEMBERS, folder=None, scorer=score_match, final_paths=None, sw
     for held in folds(names):
         members = fold_members(held, sorted(set(names) - set(held)), count, swa)
         for n in held:
-            results["sim"][n] = cached(folder, "sim", n, lambda: scorer(
-                members, CachedSample(n, SIM_TEST_SEED)))
-            seed = SHIFT_SEED + names.index(n)
-            results["shift"][n] = cached(folder, "shift", n, lambda: scorer(
-                members, CachedSample(n, seed, randomised=True, faults=True)))
+            for condition in ("sim", "shift"):
+                results[condition][n] = cached(folder, condition, n, lambda: scorer(
+                    members, condition_sample(condition, n)))
             print("scored {}".format(n), flush=True)
     for n in sorted(EXTRA_LOADERS):
-        results["sc"][n] = cached(folder, "sc", n, lambda: scorer(final, CachedSample(n)))
+        results["sc"][n] = cached(folder, "sc", n, lambda: scorer(final, condition_sample("sc", n)))
         print("scored {}".format(n), flush=True)
     return results
 

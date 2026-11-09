@@ -21,8 +21,8 @@ import numpy as np
 
 from . import adaptcv, temporal
 from .decoder import transition_matrix
-from .experiments import SIM_TEST_SEED, CachedSample, check_members, decode_table, folds, \
-    open_data_dir, savez_atomic, score
+from .experiments import check_members, decode_table, folds, open_data_dir, savez_atomic, \
+    score
 from .opendata import EXTRA_LOADERS, LOADERS
 from .predict import DEFAULT_DECODER, load_decoder
 
@@ -43,14 +43,13 @@ def _cache():
 
 def matches():
     """[(condition, name, sample factory, which members)] in the ADseeds order."""
-    names, out = sorted(LOADERS), []
-    for held in folds(names):
+    out = []
+    for held in folds(sorted(LOADERS)):
         for n in held:
-            out.append(("sim", n, lambda n=n: CachedSample(n, SIM_TEST_SEED), held))
-            seed = adaptcv.SHIFT_SEED + names.index(n)
-            out.append(("shift", n, lambda n=n, seed=seed: CachedSample(
-                n, seed, randomised=True, faults=True), held))
-    out += [("sc", n, lambda n=n: CachedSample(n), None) for n in sorted(EXTRA_LOADERS)]
+            for c in ("sim", "shift"):
+                out.append((c, n, lambda c=c, n=n: adaptcv.condition_sample(c, n), held))
+    out += [("sc", n, lambda n=n: adaptcv.condition_sample("sc", n), None)
+            for n in sorted(EXTRA_LOADERS)]
     return out
 
 
@@ -95,19 +94,10 @@ def variants(out):
             "blend tta+eata": [temporal.combine([a, b]) for a, b in zip(none, eata)]}
 
 
-def _sample(condition, name):
-    if condition == "sc":
-        return CachedSample(name)
-    if condition == "sim":
-        return CachedSample(name, SIM_TEST_SEED)
-    return CachedSample(name, adaptcv.SHIFT_SEED + sorted(LOADERS).index(name),
-                        randomised=True, faults=True)
-
-
 def _score_job(job):
     """{(variant, seed, costs): spellF1} for one match; seed -1 = the ensemble."""
     condition, name, costs, keep = job
-    sample = _sample(condition, name)
+    sample = adaptcv.condition_sample(condition, name)
     rows = {}
     for variant, outs in variants(load(condition, name)).items():
         if variant not in keep:

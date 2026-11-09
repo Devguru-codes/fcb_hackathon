@@ -52,10 +52,11 @@ def ready(game_id, settle_s=120):
                                    for p in paths)
 
 
-def labels_by_convention(sample):
-    """{10: the loader's labels (10-frame fold), 50: refolded at 50 frames}."""
-    return {c: (sample.labels if c == 10 else remove_flicker(sample.labels, sample.runs(), c))
-            for c in CONVENTIONS}
+def labels_by_convention(sample, conventions=CONVENTIONS, provider=10):
+    """{c: the labels refolded at c frames} for each convention; `provider` names the one that is
+    the loader's labels untouched (10 here: the loader already folds at 10; 0 in labelcal)."""
+    return {c: (sample.labels if c == provider else remove_flicker(sample.labels, sample.runs(), c))
+            for c in conventions}
 
 
 def score_match(members, game_id):
