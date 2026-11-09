@@ -143,11 +143,22 @@ def predict(data_root, output, model_paths=None, decoder_path=DEFAULT_DECODER, g
     if settings.get("flight_gate") is not None:
         logp = gate_team_evidence(logp, sample.features(False), settings["flight_gate"],
                                   settings["loose_gate"])
+    if settings.get("kickoff_prior", False):     # plan row KOP; off in the submission
+        logp = kickoff_prior(logp, half_video_blocks(game), SECOND_HALF_KICKOFF.get(game))
     states, _ = decode_learned(table, logp, settings, data_root, game)
     labels = finish_labels(states, half_video_blocks(game), SECOND_HALF_KICKOFF.get(game),
                            source_frames("tactical", game))
     write_submission(output, labels)
     return labels
+
+
+def kickoff_prior(logp, blocks, second_kickoff):
+    """logp with the second half's graded frames before its kickoff (a FAQ fact) set to dead
+    ball as decoder evidence; finish_labels still writes D there as the check."""
+    out = logp.copy()
+    if second_kickoff is not None:
+        out[blocks[1][1]:second_kickoff, :3] = np.log([1e-6, 1e-6, 1.0])
+    return out
 
 
 def finish_labels(states, blocks, second_kickoff, n_frames):

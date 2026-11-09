@@ -1054,5 +1054,31 @@ class StudyMembersTests(unittest.TestCase):
                 with self.assertRaises(RuntimeError):
                     adaptcv.collect(1, root, final_paths=[new])
 
+
+class KickoffPriorTests(unittest.TestCase):
+    BLOCKS = [(1, 2, 5), (2, 8, 11)]
+
+    def test_forces_dead_from_the_half_start_up_to_the_kickoff_only(self):
+        from tempolens.predict import kickoff_prior
+        logp = np.log(np.tile([0.7, 0.2, 0.1, 0.0], (14, 1)))
+        logp[:, 3] = 0.25                                # the change logit is not a probability
+        out = kickoff_prior(logp, self.BLOCKS, 10)
+        dead = np.log([1e-6, 1e-6, 1.0])
+        np.testing.assert_array_equal(out[8:10, :3], np.tile(dead, (2, 1)))
+        np.testing.assert_array_equal(out[:8], logp[:8])         # first half and the gap
+        np.testing.assert_array_equal(out[10:], logp[10:])       # the kickoff frame itself on
+        np.testing.assert_array_equal(out[:, 3], logp[:, 3])
+        self.assertFalse(np.shares_memory(out, logp))
+        np.testing.assert_array_equal(kickoff_prior(logp, self.BLOCKS, None), logp)
+        np.testing.assert_array_equal(kickoff_prior(logp, self.BLOCKS, 8), logp)   # at the start
+
+    def test_the_decoder_then_enters_the_half_dead(self):
+        from tempolens.decoder import transition_matrix, viterbi_matrix
+        from tempolens.predict import kickoff_prior
+        logp = np.log(np.tile([0.6, 0.3, 0.1, 0.0], (14, 1)))[:, :4]
+        out = kickoff_prior(logp, self.BLOCKS, 10)
+        states = viterbi_matrix(out[8:12, :3], transition_matrix(4.0, 8.0, 8.0))
+        np.testing.assert_array_equal(states[:2], [D, D])
+
 if __name__ == "__main__":
     unittest.main()
