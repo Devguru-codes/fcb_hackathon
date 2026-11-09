@@ -187,6 +187,8 @@ class CachedSample:
         tag = ("clean_l{}".format(LOADER_VERSION) if self.seed is None else "{}{}v{}_{}".format(
                "rnf" if self.faults else "rnd", NOISE_TAG, RANDOM_VERSION, self.seed)
                if self.randomised else "sim{}_{}".format(NOISE_TAG, self.seed))
+        if self.seed is not None and LOADER_VERSION > 1:   # version 1 keeps today's names
+            tag += "_l{}".format(LOADER_VERSION)
         tag += "_kf{}".format(KEEPER_SWAPS) if self.keeper else ""
         if self.repair:
             tag += "_kr{window_s:g}-{occupancy:g}-{present:g}".format(**self.repair)

@@ -1104,5 +1104,27 @@ class BothViewsTests(unittest.TestCase):
         own = Normaliser(np.asarray(sample.features(False))[sample.period > 0][::10])
         np.testing.assert_array_equal(home.median, own.median)
 
+
+class NoisyCacheNameTests(unittest.TestCase):
+    def test_noisy_feature_names_carry_a_bumped_loader_version(self):
+        from unittest.mock import patch
+        import tempolens.experiments as ex
+        names = {}
+        for version in (1, 2):
+            with patch.object(ex, "LOADER_VERSION", version):
+                for kind in ("sim", "rnd", "rnf", "clean"):
+                    s = ex.CachedSample.__new__(ex.CachedSample)
+                    s.name, s.keeper, s.repair = "x", False, None
+                    s.seed = None if kind == "clean" else 7
+                    s.randomised, s.faults = kind in ("rnd", "rnf"), kind == "rnf"
+                    names[(version, kind)] = s._path(False).name
+        for kind in ("sim", "rnd", "rnf"):
+            self.assertNotIn("_l1", names[(1, kind)])           # today's names, nothing recomputed
+            self.assertIn("_l2_", names[(2, kind)])
+            self.assertNotEqual(names[(1, kind)], names[(2, kind)])
+        self.assertIn("_clean_l1_", names[(1, "clean")])
+        self.assertIn("_clean_l2_", names[(2, "clean")])
+        self.assertEqual(len(set(names.values())), 8)
+
 if __name__ == "__main__":
     unittest.main()
