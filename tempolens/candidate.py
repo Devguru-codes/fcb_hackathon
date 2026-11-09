@@ -109,9 +109,15 @@ def build(name, overrides, data_root):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("row", choices=("ts", "b2", "combo"))
+    parser.add_argument("row", choices=("ts", "b2", "combo", "tta2v"))
     parser.add_argument("--data-root", required=True)
     args = parser.parse_args(argv)
+    if args.row == "tta2v":
+        from .twoview import settings
+        two = settings()
+        if two is None:
+            stop("TTA-2V did not pass every step (or has no verdict)")
+        return build("tta2v", two, args.data_root)
     ts, b2 = ts_settings(), b2_settings()
     if args.row == "ts" and ts is None:
         stop("TS adopted no shrink")

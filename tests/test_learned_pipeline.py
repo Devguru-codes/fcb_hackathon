@@ -1648,5 +1648,78 @@ class Draw2Tests(unittest.TestCase):
             self.assertEqual(sorted(p.name for p in Path(folder).iterdir()),
                              ["sim1001_m.json", "sim1002_m.json"])
 
+
+class TwoViewTests(unittest.TestCase):
+    def test_rule_needs_the_mean_and_every_member(self):
+        from tempolens import twoview
+        ens = -1
+
+        def table(ens_means, member_mean):
+            t = {}
+            for i, s in enumerate(twoview.STEPS):
+                for j, c in enumerate(twoview.COSTS):
+                    k = (0.5, s, False, c)
+                    m = ens_means[2 * i + j]
+                    t[(ens,) + k] = {c2: m for c2 in twoview.CONDITIONS}
+                    for mem in range(5):
+                        t[(mem,) + k] = {c2: member_mean[mem] for c2 in twoview.CONDITIONS}
+            return t
+        ref, refm = 0.6475, [0.64] * 5
+        best, mean, _, ok = twoview.decide(table([0.6480, 0.6470, 0.6460, 0.6400], [0.64] * 5),
+                                           ref, refm)
+        self.assertEqual((best[1], best[3], ok), (10, (4.0, 8.0, 8.0, 1.0), True))
+        self.assertFalse(twoview.decide(table([0.6475] * 4, [0.65] * 5), ref, refm)[3])  # equal
+        low = [0.65, 0.65, 0.65, 0.65, 0.6399]
+        self.assertFalse(twoview.decide(table([0.66] * 4, low), ref, refm)[3])   # one member
+        tie = twoview.decide(table([0.6500, 0.6500, 0.6500, 0.6500], [0.64] * 5), ref, refm)
+        self.assertEqual((tie[0][1], tie[0][3]), (10, (4.0, 8.0, 8.0, 1.0)))     # tie order
+        best0 = twoview.decide(table([0.6476, 0.6477, 0.6490, 0.6400], [0.64] * 5), ref, refm)
+        self.assertEqual((best0[0][1], best0[0][3]), (0, (4.0, 8.0, 8.0, 1.0)))
+
+    def test_steps_stop_without_their_predecessor(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        from tempolens import twoview
+        with tempfile.TemporaryDirectory() as folder, patch.object(twoview, "DIR", Path(folder)):
+            with self.assertRaises(SystemExit) as stop:
+                twoview.pff()
+            self.assertEqual(stop.exception.code, 3)
+            (Path(folder) / "verdict_study.json").write_text(json.dumps({"pass": False}))
+            with self.assertRaises(SystemExit) as stop:
+                twoview.pff()
+            self.assertEqual(stop.exception.code, 3)
+            self.assertIsNone(twoview.settings())
+            (Path(folder) / "verdict_study.json").write_text(json.dumps(
+                {"pass": True, "steps": 0, "costs": [2.0, 8.0, 8.0, 0.5]}))
+            (Path(folder) / "verdict_pff.json").write_text(json.dumps({"pass": True}))
+            self.assertEqual(twoview.settings(), {
+                "tta_both_views": True, "tta_alpha": 0.5, "eata_steps": 0, "switch": 2.0,
+                "alive_to_dead": 8.0, "dead_to_alive": 8.0, "change_weight": 0.5})
+
+    def test_both_views_reaches_the_study_and_predict(self):
+        import copy
+        from tempolens import adaptcv, temporal
+        from tempolens.features import TableSample
+        from tempolens.predict import adapt_members
+        table = SimulatorTests()._labelled(3000)
+        model, normaliser = temporal.train([table], epochs=1, device="cpu", verbose=False,
+                                           config=temporal.TemporalConfig(hidden=8))
+        model = model.double()
+        other = SimulatorTests()._labelled(3000)
+        other.players = other.players * 0.8 + 5.0
+        other.ball = other.ball * 0.8 + 5.0
+        other.slot_team = other.slot_team[::-1].copy()    # the views differ
+        sample = TableSample(other)
+        grid = {bv: adaptcv.member_grid([(model, normaliser)], sample, double=True,
+                                        alphas=(0.5,), steps=(0,), both_views=bv)
+                for bv in (False, True)}
+        for bv in (False, True):
+            (m, n), = adapt_members([(copy.deepcopy(model), normaliser)], sample, 0.5, 0, bv)
+            np.testing.assert_allclose(temporal.predict(m, n, sample), grid[bv][(0.5, 0)][0],
+                                       atol=2e-4)
+        self.assertFalse(np.allclose(grid[False][(0.5, 0)][0], grid[True][(0.5, 0)][0]))
+
 if __name__ == "__main__":
     unittest.main()

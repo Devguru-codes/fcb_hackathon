@@ -118,7 +118,7 @@ def member_output(head, h0, h1, inside):
     return np.round(result, 4)
 
 
-def member_grid(members, sample, double=False, alphas=ALPHAS, steps=STEPS):
+def member_grid(members, sample, double=False, alphas=ALPHAS, steps=STEPS, both_views=False):
     """{(alpha, steps): [one output per member]} for the grid on one match (float32, or float64
     like predict.py with `double`); `alphas` / `steps` restrict it (steps must include 0)."""
     per = {(a, s): [] for a in alphas for s in steps}
@@ -126,7 +126,8 @@ def member_grid(members, sample, double=False, alphas=ALPHAS, steps=STEPS):
         model = copy.deepcopy(model)
         model = model.double() if double else model.float()
         for alpha in alphas:
-            norm = temporal.adapt_normaliser(normaliser, sample, alpha) if alpha else normaliser
+            norm = (temporal.adapt_normaliser(normaliser, sample, alpha, both_views) if alpha
+                    else normaliser)
             h0, h1, inside, fit = temporal.eata_inputs(model, norm, sample)
             per[(alpha, 0)].append(member_output(model.head, h0, h1, inside))
             # one Adam run read at each step count equals a separate run of that many steps
@@ -141,12 +142,13 @@ def member_grid(members, sample, double=False, alphas=ALPHAS, steps=STEPS):
 
 
 def score_match(members, sample, per_member=False, costs=COSTS, alphas=ALPHAS, steps=STEPS,
-                gates=GATES):
+                gates=GATES, both_views=False):
     """Score rows for the whole grid on one match; with `per_member`, each member alone too, every
     row then carrying a `seed` (the ensemble is seed -1)."""
     rows = []
     features = np.asarray(sample.features(False))
-    for (alpha, count), outs in member_grid(members, sample, alphas=alphas, steps=steps).items():
+    for (alpha, count), outs in member_grid(members, sample, alphas=alphas, steps=steps,
+                                            both_views=both_views).items():
         variants = [(-1, temporal.combine(outs))] + (list(enumerate(outs)) if per_member else [])
         for seed, logp in variants:
             for gate in gates:
