@@ -26,16 +26,16 @@ def viterbi_matrix(logits, transition, change_bonus=None):
                  else np.ascontiguousarray(change_bonus, dtype=np.float64))
         return _kernel(np.ascontiguousarray(logits, dtype=np.float64),
                        np.ascontiguousarray(transition, dtype=np.float64), bonus)
-    off_diagonal = 1.0 - np.eye(3)
+    off_diagonal = ~np.eye(3, dtype=bool)
     score = np.empty((n_frames, 3), dtype=np.float64)
     back = np.empty((n_frames, 3), dtype=np.int8)
     score[0] = logits[0]
     back[0] = 0
     for frame in range(1, n_frames):
-        step = transition
+        # numba's order of additions (score + transition, then the bonus), so exact ties agree
+        options = score[frame - 1][:, None] + transition
         if change_bonus is not None:
-            step = transition + change_bonus[frame] * off_diagonal
-        options = score[frame - 1][:, None] + step
+            options[off_diagonal] += change_bonus[frame]
         back[frame] = np.argmax(options, axis=0)
         score[frame] = logits[frame] + options[back[frame], np.arange(3)]
     states = np.empty(n_frames, dtype=np.int8)

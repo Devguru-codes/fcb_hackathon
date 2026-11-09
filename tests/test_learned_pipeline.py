@@ -542,6 +542,13 @@ class DecodeTests(unittest.TestCase):
             slow = decoder.viterbi_matrix(logits, transition, bonus)
         np.testing.assert_array_equal(fast, slow)
         self.assertGreater(len(np.unique(fast)), 1)
+        # an exact tie in real numbers that rounds differently if the additions are reordered
+        logits = np.array([[-12.6943, -7.6727, -50.0], [0.0, -50.0, -50.0]])
+        transition, bonus = decoder.transition_matrix(4.0, 8.0, 8.0), np.array([0.0, -1.0216])
+        with patch.object(decoder, "_kernel", None):
+            np.testing.assert_array_equal(decoder.viterbi_matrix(logits, transition, bonus), [1, 0])
+        if decoder._kernel is not None:
+            np.testing.assert_array_equal(decoder.viterbi_matrix(logits, transition, bonus), [1, 0])
 
     def test_decode_writes_x_outside_periods_and_respects_evidence(self):
         table = _table()
