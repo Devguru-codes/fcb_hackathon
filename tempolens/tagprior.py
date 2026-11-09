@@ -10,7 +10,8 @@ itself on the match, without labels:
    each family's votes with the model estimates that family's reliability;
 3. the family's weight is the shrunk log-odds of r, zero when r is no better than chance, so
    unreliable tags cost nothing;
-4. weighted votes shift the H-versus-A log-odds only; P(dead ball) is left to the model.
+4. the weighted vote s is added as +s/2 to log P(H) and -s/2 to log P(A), log P(D) untouched and
+   nothing renormalised: H gains s against A, and the favoured side also gains s/2 against D.
 
 Deterministic: the same model output and tags always give the same weights, so `predict`
 reproduces it exactly. Whether it helps is tested by `tagstudy.py` on synthetic tags.
@@ -97,7 +98,10 @@ def calibrate(logp, group_votes, inside):
 
 
 def apply(logp, group_votes, weights):
-    """logp with each family's weighted vote added to the H-versus-A log-odds (D untouched)."""
+    """logp with half of the summed weighted votes added to log P(H) and subtracted from log P(A).
+
+    log P(D) is untouched and nothing is renormalised, so the favoured side gains against D as
+    well as against the other side (the decoder reads the scores as they are)."""
     out = logp.copy()
     shift = np.zeros(len(logp))
     for group, vote in group_votes.items():

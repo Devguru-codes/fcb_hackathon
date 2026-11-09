@@ -44,7 +44,7 @@ class TagPriorTests(unittest.TestCase):
         self.assertGreater(good[0], 1.0)
         self.assertLess(random[0], 0.1)
 
-    def test_apply_moves_only_the_team_log_odds(self):
+    def test_apply_raises_h_lowers_a_and_leaves_d_unnormalised(self):
         logp = _logp(np.array([H, A]), confidence=0.6)
         out = apply(logp, {"attack": np.array([1, 1], np.int8)}, {"attack": (1.0, 0.9, 999)})
         np.testing.assert_allclose(out[:, 2], logp[:, 2])

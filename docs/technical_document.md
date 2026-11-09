@@ -153,7 +153,7 @@ within 0.08 of the published values at any bias.
   the change head's logit that makes a change cheaper where the model expects one — chosen together
   with the adaptation in the open-data adaptation study (§7c); without adaptation the
   cross-validation argmax is (2, 8, 8, 0.5). Before decoding, the Smart Tagging prior
-  shifts the home-versus-away log-odds (§6a). After decoding: X outside the halves, and D on the
+  raises the favoured team's log score and lowers the other's (§6a). After decoding: X outside the halves, and D on the
   second half's graded frames before its kickoff (a fact from the FAQ, not a tuned setting).
 
 ## 6a. Smart Tagging as a self-calibrated prior
@@ -163,7 +163,9 @@ and the public window is too small to tune it. The prior calibrates itself witho
 each tag votes for the side in possession over its interval (two families: attacking and
 defensive codes); on frames where the ensemble is >90% sure which side has the ball, the
 family's agreement rate r with the ensemble estimates its reliability; the family's weight is
-0.5·logit(r), clipped to [0, 2], and shifts only the home-versus-away log-odds.
+0.5·logit(r), clipped to [0, 2]. The summed weighted vote s is added as +s/2 to log P(home) and
+−s/2 to log P(away), with log P(dead) untouched and no renormalisation: the favoured team gains
+s against the other and s/2 against dead ball.
 
 Tested on the open matches with synthetic tags (phases on 60% of possessions, ±1 s boundaries,
 30% running on over the next possession, team error swept), on the 5-member ensemble's
