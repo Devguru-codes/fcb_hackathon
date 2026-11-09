@@ -987,5 +987,33 @@ class HalfSplitTests(unittest.TestCase):
         self.assertEqual(again[25], X)
         np.testing.assert_array_equal(again[26:], labels[26:])
 
+
+class AdaptMembersTests(unittest.TestCase):
+    def test_predict_adaptation_equals_the_study_cell(self):
+        import copy
+        from tempolens import adaptcv, temporal
+        from tempolens.features import TableSample
+        from tempolens.predict import adapt_members
+        table = SimulatorTests()._labelled(3000)
+        model, normaliser = temporal.train([table], epochs=1, device="cpu", verbose=False,
+                                           config=temporal.TemporalConfig(hidden=16))
+        import torch
+        model = model.double()
+        with torch.no_grad():                # a sharper head, so EATA finds confident frames
+            model.head.weight.mul_(30.0)
+            model.head.bias.mul_(30.0)
+        other = SimulatorTests()._labelled(3000)
+        other.players = other.players * 0.8 + 5.0      # another match: other medians for TTA
+        other.ball = other.ball * 0.8 + 5.0
+        sample = TableSample(other)
+        grid = adaptcv.member_grid([(model, normaliser)], sample, double=True,
+                                   alphas=(0.0, 0.5), steps=(0, 10))
+        for alpha, steps in ((0.5, 10), (0.5, 0), (0.0, 10), (0.0, 0)):
+            (m, n), = adapt_members([(copy.deepcopy(model), normaliser)], sample, alpha, steps)
+            np.testing.assert_allclose(temporal.predict(m, n, sample), grid[(alpha, steps)][0],
+                                       atol=2e-4)
+        for key in ((0.5, 0), (0.0, 10)):    # both adaptations really move the output
+            self.assertGreater(np.abs(grid[key][0] - grid[(0.0, 0)][0]).max(), 1e-3, key)
+
 if __name__ == "__main__":
     unittest.main()

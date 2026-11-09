@@ -66,13 +66,21 @@ def learned_logp(data_root, game, model_paths, tta_alpha=0.0, eata_steps=0):
     members = [temporal.load(path) for path in paths]
     from .features import TableSample
     sample = TableSample(table)      # features computed once, shared by every member
+    members = adapt_members(members, sample, tta_alpha, eata_steps)
+    return table, temporal.predict_ensemble(members, sample), sample
+
+
+def adapt_members(members, sample, tta_alpha=0.0, eata_steps=0):
+    """[(model, normaliser)] after test-time adaptation of the feature scaling (`tta_alpha`),
+    then of the output layer (`eata_steps`), both unlabelled; see learned_logp."""
+    from . import temporal
     if tta_alpha:
         members = [(model, temporal.adapt_normaliser(normaliser, sample, tta_alpha))
                    for model, normaliser in members]
     if eata_steps:
         members = [(temporal.adapt_head(model, normaliser, sample, eata_steps), normaliser)
                    for model, normaliser in members]
-    return table, temporal.predict_ensemble(members, sample), sample
+    return members
 
 
 def gate_team_evidence(logp, features, flight=0.2, loose=0.3, flight_speed=9.5, loose_m=1.35):
