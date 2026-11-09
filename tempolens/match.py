@@ -6,6 +6,7 @@ match. Positions are metres on a pitch of `pitch` = (length, width); missing val
 Player slots are anonymous: a slot is a column, not a person.
 """
 
+import io
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -47,13 +48,17 @@ class MatchTable:
         return out
 
     def save(self, path):
+        """Write the table as .npz through a temporary file (experiments.write_atomic)."""
+        from .experiments import write_atomic   # lazy: experiments imports this module
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
+        buffer = io.BytesIO()
         np.savez_compressed(
-            path, name=self.name, ball=self.ball, players=self.players,
+            buffer, name=self.name, ball=self.ball, players=self.players,
             slot_team=self.slot_team, period=self.period, pitch=np.asarray(self.pitch),
             fps=self.fps,
             labels=self.labels if self.labels is not None else np.zeros(0, dtype=np.int8))
+        write_atomic(path, buffer.getvalue())
 
     @classmethod
     def load(cls, path):

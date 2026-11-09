@@ -108,7 +108,7 @@ def _replace_retry(src, dst, attempts=20):
 def write_atomic(path, data):
     """Write text or bytes through a temporary file: a run killed mid-write never leaves a
     truncated cache that the next run would die on."""
-    tmp = path.with_name(path.name + ".tmp")
+    tmp = path.with_name("{}.{}.tmp".format(path.name, os.getpid()))
     if isinstance(data, bytes):
         tmp.write_bytes(data)
     else:
@@ -174,8 +174,11 @@ class CachedSample:
                 final = self._path(side, kind)
                 if final.exists():     # keep a file this process may already have memory-mapped
                     continue
-                partial = final.with_name(final.stem + ".partial.npy")
+                partial = final.with_name("{}.{}.partial.npy".format(final.stem, os.getpid()))
                 np.save(partial, compute(side))
+                if final.exists():     # another process finished it meanwhile: keep theirs
+                    partial.unlink()
+                    continue
                 _replace_retry(partial, final)
         return np.load(path, mmap_mode="r")
 
@@ -215,20 +218,12 @@ class CachedSample:
         return self._cached("ball{}".format(FEATURE_VERSION), swap, compute)
 
     def features(self, swap=False):
-        path = self._path(swap)
-        if not path.exists():
-            path.parent.mkdir(parents=True, exist_ok=True)
-            table = self.table()
-            for side in (False, True):
-                # Write then rename, so an interrupted run never leaves a truncated cache file.
-                # Only missing files: one already mapped by this process cannot be replaced.
-                final = self._path(side)
-                if final.exists():
-                    continue
-                partial = final.with_name(final.stem + ".partial.npy")
-                np.save(partial, frame_features(table, swap=side)[0])
-                _replace_retry(partial, final)
-        return np.load(path, mmap_mode="r")
+        table = {}
+
+        def compute(side):
+            table.setdefault("t", self.table())
+            return frame_features(table["t"], swap=side)[0]
+        return self._cached("f{}".format(FEATURE_VERSION), swap, compute)
 
 
 def folds(names, k=N_FOLDS):
@@ -373,7 +368,9 @@ def oof_logp(names, kind="gbm", protocol="sim", refresh=False, member=0,
             predict = lambda sample: temporal.predict(model, normaliser, sample)
         for n in held:
             logps[n] = predict(CachedSample(n, test_seed))
-            np.save(paths[n], logps[n])
+            buffer = io.BytesIO()
+            np.save(buffer, logps[n])
+            write_atomic(paths[n], buffer.getvalue())
         print("trained {} without {} in {:.0f}s".format(tag, ", ".join(held), time.time() - t0),
               flush=True)
     return logps

@@ -856,5 +856,68 @@ class StudyReferenceTests(unittest.TestCase):
                 rs.b4(Pool())
         self.assertTrue(out.getvalue().strip().splitlines()[-1].startswith("B4: fails (+0.0039"))
 
+
+class CacheWriteTests(unittest.TestCase):
+    def setUp(self):
+        import tempfile
+        from pathlib import Path
+        self.folder = tempfile.TemporaryDirectory()
+        self.root = Path(self.folder.name)
+
+    def tearDown(self):
+        self.folder.cleanup()
+
+    def sample(self):
+        from unittest.mock import patch
+        from tempolens.experiments import CachedSample
+        sample = CachedSample.__new__(CachedSample)
+        root = self.root
+        return sample, patch.object(CachedSample, "_path", lambda self, swap, kind="f":
+                                    root / "x_{}_{}.npy".format(kind, int(swap)))
+
+    def test_a_final_written_meanwhile_by_another_process_is_kept(self):
+        from unittest.mock import patch
+        import tempolens.experiments as ex
+        sample, path = self.sample()
+        theirs = self.root / "x_k_1.npy"
+
+        def compute(side):
+            if side:                               # another process finishes side 1 first
+                np.save(theirs, np.full(3, 7.0))
+            return np.full(3, float(side))
+        with path, patch.object(ex, "_replace_retry", wraps=ex._replace_retry) as replace:
+            out = sample._cached("k", False, compute)
+            np.testing.assert_array_equal(out, [0.0, 0.0, 0.0])
+            self.assertEqual(replace.call_count, 1)          # side 0 only: side 1 skipped
+            np.testing.assert_array_equal(np.load(theirs), [7.0, 7.0, 7.0])
+        self.assertEqual(sorted(p.name for p in self.root.iterdir()), ["x_k_0.npy", "x_k_1.npy"])
+
+    def test_partial_and_tmp_names_carry_the_process_id(self):
+        import os
+        from unittest.mock import patch
+        import tempolens.experiments as ex
+        sample, path = self.sample()
+        seen = []
+        with path, patch.object(ex, "_replace_retry",
+                                side_effect=lambda s, d: (seen.append(s.name), os.replace(s, d))):
+            sample._cached("k", True, lambda side: np.zeros(2))
+            ex.write_atomic(self.root / "t.json", "{}")
+        pid = str(os.getpid())
+        self.assertEqual(seen, ["x_k_0.{}.partial.npy".format(pid),
+                                "x_k_1.{}.partial.npy".format(pid), "t.json.{}.tmp".format(pid)])
+
+    def test_match_table_save_round_trips_through_the_atomic_writer(self):
+        from unittest.mock import patch
+        import tempolens.experiments as ex
+        from tempolens.match import MatchTable
+        table = _table()
+        with patch.object(ex, "write_atomic", wraps=ex.write_atomic) as write:
+            table.save(self.root / "m.npz")
+            self.assertEqual(write.call_count, 1)
+        back = MatchTable.load(self.root / "m.npz")
+        np.testing.assert_array_equal(back.ball, table.ball)
+        np.testing.assert_array_equal(back.period, table.period)
+        self.assertEqual([p.name for p in self.root.iterdir()], ["m.npz"])
+
 if __name__ == "__main__":
     unittest.main()
