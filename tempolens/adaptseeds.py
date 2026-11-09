@@ -30,12 +30,14 @@ def score_match(members, sample):
 
 def table(results):
     """{(seed, alpha, steps, gate, costs): {condition: mean spellF1 over matches}}."""
-    acc = {}
+    acc, seen = {}, {}
     for condition, matches in results.items():
-        for rows in matches.values():
+        for name, rows in matches.items():
             for r in rows:
                 key = (r["seed"], r["alpha"], r["steps"], r["gate"], tuple(r["costs"]))
                 acc.setdefault(key, {}).setdefault(condition, []).append(r["spellF1"])
+                seen.setdefault(key, {}).setdefault(condition, set()).add(name)
+    adaptcv.require_complete(seen, results)
     return {k: {c: float(np.mean(v)) for c, v in conds.items()} for k, conds in acc.items()}
 
 

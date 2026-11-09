@@ -1148,5 +1148,49 @@ class TableBuildTests(unittest.TestCase):
                     build(True)
                     self.assertEqual(len(calls), 1, build.__name__)    # a hit builds none
 
+
+class CompleteRowsTests(unittest.TestCase):
+    @staticmethod
+    def rows(alphas, seed=None):
+        out = [{"alpha": a, "steps": 0, "gate": False, "costs": [4.0, 8.0, 8.0, 1.0],
+                "spellF1": 0.5 + a, "macroF1": 0.6} for a in alphas]
+        return [dict(r, seed=seed) for r in out] if seed is not None else out
+
+    def test_a_setting_missing_any_match_or_condition_raises(self):
+        from tempolens import adaptcv, adaptseeds
+        full = {"sim": {"m1": self.rows([0.0, 0.5]), "m2": self.rows([0.0, 0.5])},
+                "sc": {"s1": self.rows([0.0, 0.5])}}
+        self.assertEqual(len(adaptcv.table(full)), 2)
+        sim_only = {"sim": full["sim"], "sc": {"s1": self.rows([0.0])}}    # 0.5 on sim only
+        part = {"sim": {"m1": self.rows([0.0, 0.5]), "m2": self.rows([0.0])},
+                "sc": full["sc"]}                                      # 0.5 missing m2
+        for broken in (sim_only, part):
+            with self.assertRaises(ValueError):
+                adaptcv.table(broken)
+        seeded = {c: {n: self.rows([0.0, 0.5], -1) + self.rows([0.0, 0.5], 0)
+                      for n in m} for c, m in full.items()}
+        self.assertEqual(len(adaptseeds.table(seeded)), 4)
+        seeded["sc"]["s1"] = self.rows([0.0, 0.5], -1) + self.rows([0.0], 0)
+        with self.assertRaises(ValueError):
+            adaptseeds.table(seeded)
+
+    def test_the_default_folder_names_the_swa_models(self):
+        from unittest.mock import patch
+        from tempolens import adaptcv
+        seen = []
+
+        class Stop(Exception):
+            pass
+
+        def check(folder, paths):
+            seen.append(folder)
+            raise Stop                        # the folder is all this test needs
+
+        with patch.object(adaptcv, "check_members", side_effect=check):
+            for swa in (0, 4):
+                with self.assertRaises(Stop):
+                    adaptcv.collect(5, final_paths=["x.pt"], swa=swa)
+        self.assertEqual([f.name for f in seen], ["m5", "m5_swa4"])
+
 if __name__ == "__main__":
     unittest.main()

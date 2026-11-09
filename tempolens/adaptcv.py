@@ -145,7 +145,8 @@ def cached(folder, condition, name, compute):
 
 def collect(count=MEMBERS, folder=None, scorer=score_match, final_paths=None, swa=0):
     """`final_paths` (default: decoder.json's members) score sc; `swa` picks the fold models."""
-    folder = folder or (OUT if count == MEMBERS else OUT / "m{}".format(count))
+    folder = folder or (OUT / "m{}_swa{}".format(count, swa) if swa
+                        else OUT if count == MEMBERS else OUT / "m{}".format(count))
     final_paths = final_paths or [ROOT / "models" / p
                                   for p in load_decoder(DEFAULT_DECODER)["members"]]
     check_members(folder, final_paths)      # the sc rows are these members' outputs
@@ -168,17 +169,30 @@ def collect(count=MEMBERS, folder=None, scorer=score_match, final_paths=None, sw
     return results
 
 
+def require_complete(seen, results):
+    """Raise unless every setting in `seen` ({setting: {condition: {matches}}}) is scored on every
+    match of every condition in `results`: a mean over whatever rows exist is not the rule's."""
+    for key, conditions in seen.items():
+        for condition, matches in results.items():
+            missing = set(matches) - conditions.get(condition, set())
+            if missing:
+                raise ValueError("setting {} has no {} score for {}".format(
+                    key, condition, ", ".join(sorted(missing))))
+
+
 def table(results):
     """{setting: {condition: (mean spellF1, mean macroF1)}}."""
-    out = {}
+    out, seen = {}, {}
     for condition, matches in results.items():
         acc = {}
-        for rows in matches.values():
+        for name, rows in matches.items():
             for r in rows:
                 key = (r["alpha"], r["steps"], r["gate"], tuple(r["costs"]))
                 acc.setdefault(key, []).append((r["spellF1"], r["macroF1"]))
+                seen.setdefault(key, {}).setdefault(condition, set()).add(name)
         for key, values in acc.items():
             out.setdefault(key, {})[condition] = tuple(np.mean(values, axis=0))
+    require_complete(seen, results)
     return out
 
 
