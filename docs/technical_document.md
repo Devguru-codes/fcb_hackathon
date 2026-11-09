@@ -480,7 +480,11 @@ per match +0.0024 — decoding is still not the bottleneck.
 ## 8. Limitations
 
 - Open-data labels approximate, but are not, Metrica's corrected-tracking definition; the
-  public window is too small to calibrate the definition of "control" precisely.
+  public window is too small to calibrate the definition of "control" precisely. How much the
+  definition alone moves: on the 7 DFL matches, labels built from DFL's own events with the
+  Metrica rules agree with the ball-owner flag labels we train on at 81% of frames (90% on alive
+  vs dead), spellF1 0.46 one against the other (plan row LCEIL; ball-outs had to be inferred, so
+  this overstates the gap somewhat).
 - The simulator matches published aggregates, not the joint structure of the real errors.
 - Very short possessions (<2 s) remain the weakest part: on open data the model predicts 85% of
   the true possession count, and the oracle above puts most of the headroom in team calls. On
