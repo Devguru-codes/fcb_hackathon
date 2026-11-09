@@ -48,13 +48,14 @@ def _paths(model_paths):
     return [Path(path) for path in model_paths]
 
 
-def learned_logp(data_root, game, model_paths, tta_alpha=0.0, eata_steps=0):
+def learned_logp(data_root, game, model_paths, tta_alpha=0.0, eata_steps=0, blend=False):
     """(competition MatchTable, ensemble output (n, 4), its TableSample). The slow part: run it
     once; the sample holds the features, computed once.
 
     `tta_alpha` > 0: test-time adaptation -- each member's feature scaling is moved that far
     toward this match's own medians and spreads (temporal.adapt_normaliser), unlabelled.
     `eata_steps` > 0: then each member's output layer adapts to the match (temporal.adapt_head).
+    `blend`: each member's un-adapted and adapted outputs averaged before combining (plan row B2).
     """
     from . import temporal
     from .match import competition_table
@@ -66,8 +67,20 @@ def learned_logp(data_root, game, model_paths, tta_alpha=0.0, eata_steps=0):
     members = [temporal.load(path) for path in paths]
     from .features import TableSample
     sample = TableSample(table)      # features computed once, shared by every member
+    return table, ensemble_logp(members, sample, tta_alpha, eata_steps, blend), sample
+
+
+def ensemble_logp(members, sample, tta_alpha=0.0, eata_steps=0, blend=False):
+    """The ensemble output after adaptation; with `blend`, each member's un-adapted output
+    averaged with its adapted one first, as hedgestudy's blend variants (plan row B2)."""
+    from . import temporal
+    plain = [temporal.predict(model, normaliser, sample) for model, normaliser in members] \
+        if blend else None              # before adapting: adapt_head changes the models
     members = adapt_members(members, sample, tta_alpha, eata_steps)
-    return table, temporal.predict_ensemble(members, sample), sample
+    if not blend:
+        return temporal.predict_ensemble(members, sample)
+    return temporal.combine([temporal.combine([a, temporal.predict(model, normaliser, sample)])
+                             for a, (model, normaliser) in zip(plain, members)])
 
 
 def adapt_members(members, sample, tta_alpha=0.0, eata_steps=0):
@@ -140,7 +153,8 @@ def predict(data_root, output, model_paths=None, decoder_path=DEFAULT_DECODER, g
     model_paths = model_paths or default_models(decoder_path)
     settings = load_decoder(decoder_path)
     table, logp, sample = learned_logp(data_root, game, model_paths,
-                                       settings.get("tta_alpha", 0.0), settings.get("eata_steps", 0))
+                                       settings.get("tta_alpha", 0.0), settings.get("eata_steps", 0),
+                                       settings.get("blend", False))
     if settings.get("flight_gate") is not None:
         logp = gate_team_evidence(logp, sample.features(False), settings["flight_gate"],
                                   settings["loose_gate"])

@@ -1532,5 +1532,58 @@ class ShrinkTests(unittest.TestCase):
             decode_learned(table, logp, dict(settings, tag_shrink=1.0), "root", "BAR-ATH")
         self.assertEqual(seen, [tp.SHRINK, 1.0])
 
+
+class CandidateTests(unittest.TestCase):
+    def test_blend_is_the_hedge_composition_and_off_is_unchanged(self):
+        import copy
+        from tempolens import temporal
+        from tempolens.features import TableSample
+        from tempolens.predict import adapt_members, ensemble_logp
+        table = SimulatorTests()._labelled(3000)
+        model, normaliser = temporal.train([table], epochs=1, device="cpu", verbose=False,
+                                           config=temporal.TemporalConfig(hidden=8))
+        model = model.double()
+        import torch
+        with torch.no_grad():
+            model.head.weight.mul_(30.0)
+            model.head.bias.mul_(30.0)
+        sample = TableSample(table)
+        fresh = lambda: [(copy.deepcopy(model), normaliser), (copy.deepcopy(model), normaliser)]
+        plain = temporal.predict_ensemble(fresh(), sample)
+        adapted = temporal.predict_ensemble(adapt_members(fresh(), sample, 0.5, 10), sample)
+        np.testing.assert_array_equal(ensemble_logp(fresh(), sample, 0.5, 10), adapted)
+        one = temporal.predict(model, normaliser, sample)
+        (m, n), = adapt_members([(copy.deepcopy(model), normaliser)], sample, 0.5, 10)
+        mixed = temporal.combine([one, temporal.predict(m, n, sample)])
+        np.testing.assert_array_equal(ensemble_logp(fresh(), sample, 0.5, 10, blend=True),
+                                      temporal.combine([mixed, mixed]))
+        self.assertFalse(np.array_equal(plain, adapted))
+
+    def test_verdicts_are_read_and_failures_stop(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from tempolens import candidate
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            self.assertIsNone(candidate.ts_settings(root / "none.json"))
+            (root / "v.json").write_text(json.dumps({"chosen": None}))
+            self.assertIsNone(candidate.ts_settings(root / "v.json"))
+            (root / "v.json").write_text(json.dumps({"chosen": 0.75}))
+            self.assertEqual(candidate.ts_settings(root / "v.json"), {"tag_shrink": 0.75})
+            self.assertIsNone(candidate.b2_settings(root))                 # no log yet
+            (root / "b2.log").write_text("variant ...\nB2: fails\n")
+            self.assertIsNone(candidate.b2_settings(root))
+            (root / "b2.2.log").write_text(
+                "B2: passes: blend tta+eata at (2.0, 8.0, 8.0, 0.5) (sim 0.7741)\n")
+            self.assertEqual(candidate.b2_settings(root), {
+                "blend": True, "tta_alpha": 0.5, "eata_steps": 10, "switch": 2.0,
+                "alive_to_dead": 8.0, "dead_to_alive": 8.0, "change_weight": 0.5})
+            (root / "b2_other.log").write_text("B2: passes: blend tta at (1, 1, 1, 1) (sim 1)\n")
+            self.assertEqual(candidate.b2_settings(root)["eata_steps"], 10)   # not a b2 log
+        with self.assertRaises(SystemExit) as stop:
+            candidate.stop("x")
+        self.assertEqual(stop.exception.code, 3)
+
 if __name__ == "__main__":
     unittest.main()
