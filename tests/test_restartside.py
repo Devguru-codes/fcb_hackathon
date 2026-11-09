@@ -77,6 +77,11 @@ class SideTests(unittest.TestCase):
         self.assertEqual(rs.implied_side("corner", 0, ends[1]), A)          # away attacks it
         self.assertEqual(rs.implied_side("corner", 0, ends[2]), H)
         self.assertIsNone(rs.implied_side("corner", 0, None))
+        late = _table(400, np.full((400, 2), np.nan), period=period)
+        late.players[200:, :2, 0], late.players[200:, 2:, 0] = 20.0, 80.0  # walking out ...
+        late.players[300:, :2, 0], late.players[300:, 2:, 0] = 80.0, 20.0  # ... kickoff at 300
+        self.assertEqual(rs.defended_ends(late)[2], {H: 0, A: 1})          # read too early
+        self.assertEqual(rs.defended_ends(late, {2: 300})[2], {H: 1, A: 0})
         table.players[:200] = np.nan
         self.assertNotIn(1, rs.defended_ends(table))                       # no players seen
 

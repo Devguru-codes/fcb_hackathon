@@ -62,11 +62,13 @@ def find_restarts(table):
     return out
 
 
-def defended_ends(table):
-    """{period: {H: end, A: end}} from the teams' mean x over the period's first START_S."""
+def defended_ends(table, kickoffs=None):
+    """{period: {H: end, A: end}} from the teams' mean x over START_S from each period's kickoff:
+    `kickoffs` {period: frame} where a period starts before its kickoff (the match's second half
+    is graded from ~117 s before it, players still walking out), else the period's first frame."""
     out = {}
     for period in sorted(set(table.period[table.period > 0].tolist())):
-        first = int(np.flatnonzero(table.period == period)[0])
+        first = (kickoffs or {}).get(period, int(np.flatnonzero(table.period == period)[0]))
         x = table.players[first:first + int(START_S * table.fps), :, 0]
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)       # an all-NaN slice
@@ -91,8 +93,8 @@ def decoded_side(codes, frame, fps):
     return None if h == a == 0 else (H if h >= a else A)
 
 
-def restarts_with_sides(table):
-    ends = defended_ends(table)
+def restarts_with_sides(table, kickoffs=None):
+    ends = defended_ends(table, kickoffs)
     return [(f, kind, implied_side(kind, end, ends.get(int(table.period[f]))))
             for f, kind, end in find_restarts(table)]
 
@@ -135,9 +137,10 @@ def match(data_root, labels_path):
     from games import GAME
     from .experiments import pm          # puts evaluation/ on the path
     from .match import competition_table
+    from .kickoffs import HALF_KICKOFFS
     table = competition_table(GAME, data_root)
     codes = pm.label_codes(pm.read_label_csv(labels_path))
-    rows = restarts_with_sides(table)
+    rows = restarts_with_sides(table, dict(zip((1, 2), HALF_KICKOFFS)))     # the FAQ's kickoffs
     _print_tally("match, decoded", tally(codes, rows, table.fps))
     print("match: the post-pass would change {} stretch(es); {} restart(s) without a side".format(
         fill(codes, rows)[1], sum(r[2] is None for r in rows)), flush=True)
