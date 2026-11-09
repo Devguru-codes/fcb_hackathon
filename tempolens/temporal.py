@@ -670,11 +670,6 @@ def predict_ensemble(members, sample):
     return combine([predict(model, normaliser, sample) for model, normaliser in members])
 
 
-def train_and_predict(train_samples, test_sample, config=DEFAULT_CONFIG):
-    model, normaliser = train(train_samples, config=config)
-    return predict(model, normaliser, test_sample)
-
-
 def save(model, normaliser, path):
     torch = _torch()
     n_fields = model.players.embed[0].in_features if hasattr(model, "players") else None

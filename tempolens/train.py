@@ -3,7 +3,7 @@
     python -m tempolens.train                 # member 0 -> models/retrained_m0.pt
     python -m tempolens.train --member 1      # member 1 -> models/retrained_m1.pt
 
-The default is the submitted recipe (models/tempolens_rnd4_m0..2.pt): 4 randomised noise draws
+The default is the submitted recipe (models/tempolens_rnd4_m0..4.pt): 4 randomised noise draws
 per match (domain randomisation), both team perspectives, all 10 open matches; `--draws 0` gives
 the older two fixed-noise draws. Training uses only open data (no competition asset), so the
 weights may be committed. GPU training is not bit-reproducible, which is why the weights are
