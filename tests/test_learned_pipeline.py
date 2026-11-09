@@ -1326,5 +1326,28 @@ class PffOffsetTests(unittest.TestCase):
                              ["dfl_x_l{}.npz".format(od.LOADER_VERSION),
                               "pff_9_l{}_p{}.npz".format(od.LOADER_VERSION, od.PFF_VERSION)])
 
+
+class KickoffTallyTests(unittest.TestCase):
+    def test_the_first_half_is_the_reference_not_an_agreement(self):
+        from tempolens import kickoffs
+        from tempolens.match import MatchTable
+        n = 130000
+        ball = np.full((n, 2), np.nan, dtype=np.float32)
+        for f in (11185, 113742, 60100):
+            ball[f:f + 60] = [52.5, 34.0]
+            ball[f + 25:f + 60, 0] = 52.5 + np.arange(35) * 0.2
+        table = MatchTable("k", ball, np.zeros((n, 2, 2), dtype=np.float32),
+                           np.array([H, A], dtype=np.int8), np.ones(n, dtype=np.int8))
+        codes = np.full(n, D, dtype=np.int8)
+        codes[11185:11300] = H
+        codes[113742:113900] = H            # wrong: away should kick off the second half
+        codes[60100:60200] = H              # wrong: home scored, away kicks off
+        rows = kickoffs.check(codes, table, [(60000, A)])
+        self.assertEqual(kickoffs.tally(rows), (0, 2, 0))
+        codes[113742:113900] = A
+        codes[60100:60200] = D              # nothing decoded after the goal
+        self.assertEqual(kickoffs.tally(kickoffs.check(codes, table, [(60000, A)])), (1, 0, 1))
+        self.assertEqual(kickoffs.tally([("half 1", H, H)]), (0, 0, 0))
+
 if __name__ == "__main__":
     unittest.main()

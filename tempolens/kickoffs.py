@@ -92,6 +92,16 @@ def check(codes, table, goals):
             for kind, frame, implied in restarts(codes, table, goals)]
 
 
+def tally(rows):
+    """(agree, disagree, undecided) over the kickoffs the rules can check. The first half's
+    implied team is read from the decoded labels, so it agrees by construction: it is the
+    reference, not a check."""
+    checked = [r for r in rows if r[0] != "half 1"]
+    agree = sum(i is not None and d is not None and i == d for _, i, d in checked)
+    undecided = sum(i is None or d is None for _, i, d in checked)
+    return agree, len(checked) - agree - undecided, undecided
+
+
 def main(argv=None):
     import possession_metrics as pm
     from games import GAME, GAMES, require
@@ -106,12 +116,13 @@ def main(argv=None):
     goals, n_goals, n_restarts = goal_restarts(path, table.meta["home"], table.meta["away"],
                                                GAMES[GAME]["fps"])
     rows = check(codes, table, goals)
-    agree = sum(r[1] is not None and r[1] == r[2] for r in rows)
-    undecided = sum(r[2] is None or r[1] is None for r in rows)
+    agree, disagree, undecided = tally(rows)
     print("GOALS tags {}, Kick Off (After Goal) tags {}, goal restarts paired {}".format(
         n_goals, n_restarts, len(goals)))
-    print("kickoffs {}: decoded team agrees with the rule {}, disagrees {}, undecided {}".format(
-        len(rows), agree, len(rows) - agree - undecided, undecided))
+    print("first-half kickoff: the reference (its team is the decoded one, {})".format(
+        "found" if rows and rows[0][2] is not None else "none decoded"))
+    print("checkable kickoffs {}: decoded team agrees with the rule {}, disagrees {}, "
+          "undecided {}".format(len(rows) - 1, agree, disagree, undecided))
     print("per kickoff (time order): " + " ".join(
         "{}={}".format(k, "?" if d is None or i is None else "yes" if d == i else "no")
         for k, i, d in rows))
