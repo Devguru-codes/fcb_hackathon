@@ -132,8 +132,8 @@ def _print_tally(label, t):
 
 
 def match(data_root, labels_path):
-    import possession_metrics as pm
     from games import GAME
+    from .experiments import pm          # puts evaluation/ on the path
     from .match import competition_table
     table = competition_table(GAME, data_root)
     codes = pm.label_codes(pm.read_label_csv(labels_path))
