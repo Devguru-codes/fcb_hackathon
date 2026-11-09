@@ -81,6 +81,16 @@ def score_match(members, game_id):
     return out
 
 
+def reversal(diffs):
+    """Amendment 2 (iii) on rival minus submission at 10 frames, one value per match: (mean,
+    matches agreeing in sign with the mean, reversal?) -- a reversal needs a mean above
+    REVERSAL and at least AGREE matches on its side."""
+    diffs = np.asarray(diffs, dtype=np.float64)
+    mean = float(diffs.mean())
+    agree = int((diffs > 0).sum()) if mean > 0 else int((diffs < 0).sum())
+    return mean, agree, mean > REVERSAL and agree >= AGREE
+
+
 def report(results, skipped):
     print("\npff: {} matches scored, {} skipped".format(len(results), len(skipped)))
     means = {}
@@ -91,13 +101,12 @@ def report(results, skipped):
             label, str(costs), means[label][10], means[label][50]), flush=True)
     sub = ROWS[0][0]
     for rival in (ROWS[1][0], ROWS[2][0]):     # amendment 2 (iii): > 0.010 and >= 11 of 16
-        diffs = np.array([r[rival]["10"] - r[sub]["10"] for r in results.values()])
-        agree = int((diffs > 0).sum()) if diffs.mean() > 0 else int((diffs < 0).sum())
-        reversal = diffs.mean() > REVERSAL and agree >= AGREE
+        diffs = [r[rival]["10"] - r[sub]["10"] for r in results.values()]
+        mean, agree, reverses = reversal(diffs)
         print("PFF use rule (c): {} {:+.4f} against the submission at 10 frames, {} of {} "
               "matches agree in sign -> {}".format(
-                  rival, diffs.mean(), agree, len(diffs),
-                  "REVERSAL: goes to the user" if reversal else "no reversal"), flush=True)
+                  rival, mean, agree, len(diffs),
+                  "REVERSAL: goes to the user" if reverses else "no reversal"), flush=True)
 
 
 def test_ids(ids):

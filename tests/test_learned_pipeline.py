@@ -1349,5 +1349,66 @@ class KickoffTallyTests(unittest.TestCase):
         self.assertEqual(kickoffs.tally(kickoffs.check(codes, table, [(60000, A)])), (1, 0, 1))
         self.assertEqual(kickoffs.tally([("half 1", H, H)]), (0, 0, 0))
 
+
+class QuotedRuleTests(unittest.TestCase):
+    def test_build_gate_c_and_d(self):
+        from tempolens import swaadopt as sa
+        base = 0.5747761368684252
+        for mean10, ok in ((base, True), (base - sa.VETO, True), (base - sa.VETO - 1e-9, False),
+                           (base + 0.01, True), (0.0, False)):
+            self.assertEqual(sa.veto_passes(mean10, base), ok, mean10)
+        ref = 0.6475018131109088
+        for cand, ok in ((ref, False), (ref + 1e-12, True), (ref - 1e-12, False),
+                         (0.6466, False)):
+            self.assertEqual(sa.beats(cand, ref), ok, cand)
+
+    def test_build_stops_unless_c_and_d_pass(self):
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        from tempolens import swaadopt as sa
+
+        class Reached(Exception):
+            pass
+        cases = (({"pass": False}, True, 3, None),        # (c) fails: stop before (d)
+                 ({"pass": True}, False, 3, {"d": False}),  # (d) fails: stop, recorded
+                 ({"pass": True}, True, None, None))      # both pass: goes on to build
+        for pff, beats, code, saved in cases:
+            study = {"candidate": {"mean": 0.65}, "reference": {"mean": 0.64}, "beats": beats,
+                     "alpha": 0.5, "steps": 0, "costs": [2.0, 8.0, 8.0, 0.5]}
+            with tempfile.TemporaryDirectory() as folder:
+                with patch.object(sa, "DIR", Path(folder)), \
+                        patch.object(sa, "verdict", lambda step: study if step == "study" else pff), \
+                        patch.object(sa, "write_atomic", side_effect=Reached):
+                    if code is None:
+                        with self.assertRaises(Reached):          # the temporary decoder
+                            sa.build("bundle")
+                        continue
+                    with patch.object(sa, "save") as save, self.assertRaises(SystemExit) as stop:
+                        sa.build("bundle")
+                    self.assertEqual(stop.exception.code, code)
+                    if saved:
+                        save.assert_called_once_with("build", saved)
+                    else:
+                        save.assert_not_called()
+
+    def test_pff_reversal_rule(self):
+        from unittest.mock import patch
+        from tempolens import pffstudy
+        step = 0.0078125                              # exact in binary, so the boundary is exact
+        with patch.object(pffstudy, "REVERSAL", step):
+            for diffs, expected in (([step] * 16, (step, 16, False)),          # mean = limit
+                                    ([2 * step] * 11 + [0.0] * 5, None),
+                                    ([4 * step] * 11 + [-step] * 5, (None, 11, True)),
+                                    ([4 * step] * 10 + [-step] * 6, (None, 10, False)),
+                                    ([-4 * step] * 16, (None, 16, False))):     # wrong side
+                mean, agree, reverses = pffstudy.reversal(diffs)
+                if expected is None:
+                    self.assertTrue(mean > step and agree == 11 and reverses)
+                    continue
+                if expected[0] is not None:
+                    self.assertEqual(mean, expected[0])
+                self.assertEqual((agree, reverses), expected[1:])
+
 if __name__ == "__main__":
     unittest.main()

@@ -39,6 +39,16 @@ CONDITIONS = adaptseeds.CONDITIONS
 ENS = str(adaptseeds.ENSEMBLE)
 
 
+def veto_passes(mean10, submission10):
+    """Rule (c): the candidate's pff-16 mean at 10 frames is at most VETO below the submission's."""
+    return mean10 >= submission10 - VETO
+
+
+def beats(candidate, reference):
+    """Rule (d): strictly above the submission's three-condition mean, unrounded, no margin."""
+    return candidate > reference
+
+
 def stop(message):
     print("STOPPED: " + message, flush=True)
     sys.exit(3)
@@ -135,7 +145,7 @@ def study():
               "{:+.4f}".format(cand[k] - ref[k]) for k in CONDITIONS)), flush=True)
     save("study", {"alpha": setting[0], "steps": setting[1], "costs": list(setting[3]),
                    "accepted": chosen is not None, "candidate": dict(cand, mean=c_mean),
-                   "reference": dict(ref, mean=r_mean), "beats": c_mean > r_mean})
+                   "reference": dict(ref, mean=r_mean), "beats": beats(c_mean, r_mean)})
 
 
 def pff():
@@ -167,7 +177,7 @@ def pff():
         print("scored pff_{}".format(game_id), flush=True)
     mean = {c: float(np.mean(got[c])) for c in got}
     base = {c: float(np.mean(ref[c])) for c in ref}
-    ok = mean[10] >= base[10] - VETO
+    ok = veto_passes(mean[10], base[10])
     print("\n(c) pff-16, SWA finals at tta_alpha {} eata_steps {} costs {}: 10 frames {:.4f} "
           "(submission {:.4f}, {:+.4f}), 50 frames {:.4f} (submission {:.4f}, {:+.4f}) -> {}".format(
               alpha, steps, costs, mean[10], base[10], mean[10] - base[10], mean[50], base[50],
