@@ -783,8 +783,14 @@ class SwaAdoptTests(unittest.TestCase):
 
     def test_train_refuses_the_submitted_weights(self):
         from tempolens import train
-        with self.assertRaises(SystemExit):
-            train.main(["--out", "models/tempolens_rnd4_m0.pt"])
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as folder:      # the guard's name, never the tracked file
+            out = Path(folder) / "tempolens_rnd4_m0.pt"
+            with self.assertRaises(SystemExit):
+                train.main(["--out", str(out)])
+            self.assertFalse(out.exists())
+
 
 if __name__ == "__main__":
     unittest.main()
