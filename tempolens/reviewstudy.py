@@ -160,8 +160,9 @@ def b4(pool):
         print("team {:<3} ".format(wt) + "  ".join(
             "dead {} {:.4f}".format(wd, max(full[k] for k, s in enumerate(SPLIT)
                                             if s[3] == wt and s[4] == wd)) for wd in WEIGHTS))
-    print("B4: {} ({:+.4f} over 0.7760; rule +0.004)".format(
-        "passes" if full[i] - ENS5[0] >= 0.004 else "fails", full[i] - ENS5[0]))
+    gain = full[i] - full[e]      # over the computed ENS5 reproduction, not the rounded 0.7760
+    print("B4: {} ({:+.4f} over {:.4f}; rule +0.004)".format(
+        "passes" if gain >= 0.004 else "fails", gain, full[e]))
 
 
 def main(argv=None):

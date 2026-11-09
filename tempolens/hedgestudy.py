@@ -135,6 +135,9 @@ def mean3(cond):
 def b2(workers):
     t = collect(B2_COSTS, VARIANTS, workers)
     seeds = range(5)
+    # the rule's references (0.6475, 0.7727 rounded) taken from this run, not from literals
+    check = (mean3(t[("none", -1, SUBMITTED)]), mean3(t[("tta+eata", -1, SUBMITTED)]))
+    sim_none = t[("none", -1, SUBMITTED)]["sim"]
     print("variant          costs                  sim    shift  sc     mean   seed gains over none")
     passed = []
     for c in B2_COSTS:
@@ -144,10 +147,9 @@ def b2(workers):
             print("{:<16} {:<22} {:.4f} {:.4f} {:.4f} {:.4f} {}".format(
                 v, str(c), e["sim"], e["shift"], e["sc"], mean3(e),
                 " ".join("{:+.4f}".format(g) for g in gains)), flush=True)
-            if v.startswith("blend") and mean3(e) >= 0.6475 and e["sim"] >= 0.7727 \
+            if v.startswith("blend") and mean3(e) >= check[1] and e["sim"] >= sim_none \
                     and all(g > 0 for g in gains):
                 passed.append((e["sim"], v, c))
-    check = (mean3(t[("none", -1, SUBMITTED)]), mean3(t[("tta+eata", -1, SUBMITTED)]))
     print("ADseeds check at (4, 8, 8, 1.0): none {:.4f} (0.6448), tta+eata {:.4f} (0.6475)".format(
         *check))
     print("B2: {}".format("passes: {} at {} (sim {:.4f})".format(*max(passed)[1:], max(passed)[0])

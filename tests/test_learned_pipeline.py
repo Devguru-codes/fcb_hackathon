@@ -801,5 +801,60 @@ class SwaAdoptTests(unittest.TestCase):
         temporal.train([table], epochs=1, verbose=False,          # alone it is fine
                        config=temporal.TemporalConfig(hidden=8, dead_weight=2.0))
 
+
+class StudyReferenceTests(unittest.TestCase):
+    """The B2 and B4 rules compare with this run's computed references, not rounded literals."""
+
+    def test_b2_uses_the_computed_submission_and_no_adaptation_sim(self):
+        import contextlib
+        import io
+        import itertools
+        from unittest.mock import patch
+        from tempolens import hedgestudy as hs
+
+        def table(blend_mean, blend_sim):
+            t = {}
+            for v, s, c in itertools.product(hs.VARIANTS, range(-1, 5), hs.B2_COSTS):
+                t[(v, s, c)] = {"sim": 0.7700, "shift": 0.70, "sc": 0.40}
+                if v == "tta+eata":                       # the submission: mean 0.6480
+                    t[(v, s, c)] = {"sim": 0.7700, "shift": 0.7740, "sc": 0.40}
+                if v == "blend tta":
+                    shift = 3 * blend_mean - blend_sim - 0.40
+                    t[(v, s, c)] = {"sim": blend_sim, "shift": shift, "sc": 0.40}
+            return t
+
+        def verdict(t):
+            out = io.StringIO()
+            with patch.object(hs, "collect", return_value=t), contextlib.redirect_stdout(out):
+                hs.b2(1)
+            return out.getvalue().strip().splitlines()[-1]
+
+        # above the rounded 0.6475 but below this run's submission (0.6480): fails
+        self.assertEqual(verdict(table(0.6477, 0.7800)), "B2: fails")
+        # sim below the rounded 0.7727 but above this run's no-adaptation sim (0.7700): passes
+        self.assertTrue(verdict(table(0.6490, 0.7710)).startswith("B2: passes"))
+
+    def test_b4_gain_is_over_the_computed_equal_weights_score(self):
+        import contextlib
+        import io
+        from unittest.mock import patch
+        from tempolens import reviewstudy as rs
+        full = np.full(len(rs.SPLIT), 0.7000)
+        e = next(i for i, s in enumerate(rs.SPLIT) if s[3] == s[4])
+        b = next(i for i, s in enumerate(rs.SPLIT) if s[3] != s[4])
+        full[e], full[b] = 0.7762, 0.7801            # +0.0041 over 0.7760, +0.0039 over 0.7762
+
+        class Pool:
+            @staticmethod
+            def map(_, jobs):
+                return [full for _ in jobs]
+
+        outputs = {n: np.zeros((4, 4)) for n in rs.NAMES}
+        out = io.StringIO()
+        with patch.object(rs, "members", return_value=[outputs] * 5):
+            with contextlib.redirect_stdout(out):
+                rs.b4(Pool())
+        self.assertTrue(out.getvalue().strip().splitlines()[-1].startswith("B4: fails (+0.0039"))
+
 if __name__ == "__main__":
     unittest.main()
