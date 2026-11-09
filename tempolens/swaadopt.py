@@ -63,8 +63,8 @@ def final(k):
     if FINALS[k].exists():
         print("exists: {}".format(FINALS[k].name))
         return
-    subprocess.run([sys.executable, "-m", "tempolens.train", "--member", str(k), "--draws", "4",
-                    "--swa", str(SWA), "--out", str(FINALS[k])], check=True)
+    adaptcv.train_once(FINALS[k], [sys.executable, "-m", "tempolens.train", "--member", str(k),
+                                   "--draws", "4", "--swa", str(SWA), "--out", str(FINALS[k])])
 
 
 def score_match(members, sample):

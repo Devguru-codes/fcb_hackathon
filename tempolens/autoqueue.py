@@ -73,9 +73,9 @@ def python_processes():
 
 
 def other_runs():
-    """Running tempolens.experiments / tempolens.train processes."""
+    """Running tempolens processes other than the queue itself (studies train in-process too)."""
     return [line for line in python_processes()
-            if "tempolens.experiments" in line or "tempolens.train" in line]
+            if "tempolens." in line and "tempolens.autoqueue" not in line]
 
 
 def parse(log_text):

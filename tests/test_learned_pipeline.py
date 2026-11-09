@@ -1192,5 +1192,87 @@ class CompleteRowsTests(unittest.TestCase):
                     adaptcv.collect(5, final_paths=["x.pt"], swa=swa)
         self.assertEqual([f.name for f in seen], ["m5", "m5_swa4"])
 
+
+class SingleTrainerTests(unittest.TestCase):
+    def setUp(self):
+        import tempfile
+        from pathlib import Path
+        self.folder = tempfile.TemporaryDirectory()
+        self.root = Path(self.folder.name)
+
+    def tearDown(self):
+        self.folder.cleanup()
+
+    def test_a_held_lock_makes_the_job_wait_for_the_weights_not_train(self):
+        from unittest.mock import patch
+        from tempolens import adaptcv
+        path = self.root / "f_m0.pt"
+        (self.root / "f_m0.pt.lock").write_text("123")            # another job is training
+        waits = []
+
+        def sleep(_):
+            waits.append(1)
+            if len(waits) == 3:
+                path.write_bytes(b"weights")                      # ... and finishes
+        with patch.object(adaptcv.time, "sleep", side_effect=sleep), \
+                patch.object(adaptcv.subprocess, "run", side_effect=AssertionError("trained")):
+            self.assertEqual(adaptcv.train_once(path, ["train"], wait_s=1), path)
+        self.assertEqual(len(waits), 3)
+        self.assertTrue((self.root / "f_m0.pt.lock").exists())     # still the other job's
+
+    def test_the_lock_is_released_after_training_or_a_failure(self):
+        from unittest.mock import patch
+        from tempolens import adaptcv
+        path = self.root / "g_m0.pt"
+        with patch.object(adaptcv.subprocess, "run",
+                          side_effect=lambda cmd, check: path.write_bytes(b"w")) as run:
+            adaptcv.train_once(path, ["train"])
+            adaptcv.train_once(path, ["train"])                   # exists: no second training
+        self.assertEqual(run.call_count, 1)
+        other = self.root / "h_m0.pt"
+        with patch.object(adaptcv.subprocess, "run", side_effect=OSError("crashed")):
+            with self.assertRaises(OSError):
+                adaptcv.train_once(other, ["train"])
+        self.assertEqual(sorted(p.name for p in self.root.iterdir()), ["g_m0.pt"])
+
+    def test_a_stale_lock_is_reported(self):
+        from unittest.mock import patch
+        from tempolens import adaptcv
+        path = self.root / "s_m0.pt"
+        (self.root / "s_m0.pt.lock").write_text("1")
+        with patch.object(adaptcv.time, "sleep"):
+            with self.assertRaises(RuntimeError):
+                adaptcv.train_once(path, ["train"], wait_s=10, timeout_s=30)
+
+    def test_an_interrupted_save_leaves_no_final_file(self):
+        from unittest.mock import patch
+        from tempolens import temporal
+        table = SimulatorTests()._labelled(3000)
+        model, normaliser = temporal.train([table], epochs=1, device="cpu", verbose=False,
+                                           config=temporal.TemporalConfig(hidden=8))
+        torch = temporal._torch()
+        real = torch.save
+
+        def half(obj, f):
+            open(f, "wb").write(b"partial")
+            raise KeyboardInterrupt
+        out = self.root / "m.pt"
+        with patch.object(torch, "save", side_effect=half):
+            with self.assertRaises(KeyboardInterrupt):
+                temporal.save(model, normaliser, out)
+        self.assertEqual(list(self.root.iterdir()), [])
+        temporal.save(model, normaliser, out)
+        self.assertEqual([p.name for p in self.root.iterdir()], ["m.pt"])
+        temporal.load(out)
+        self.assertIs(torch.save, real)
+
+    def test_the_queue_sees_any_tempolens_job_but_itself(self):
+        from unittest.mock import patch
+        from tempolens import autoqueue
+        lines = ["python -m tempolens.autoqueue", "python -u -m tempolens.swaadopt study",
+                 "python -m tempolens.train --member 1", "python -m pytest tests"]
+        with patch.object(autoqueue, "python_processes", return_value=lines):
+            self.assertEqual(autoqueue.other_runs(), lines[1:3])
+
 if __name__ == "__main__":
     unittest.main()

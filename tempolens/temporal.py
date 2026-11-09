@@ -676,13 +676,25 @@ def predict_ensemble(members, sample):
 
 
 def save(model, normaliser, path):
+    """Write the weights through a per-process temporary file, then replace: an interrupted save
+    never leaves a truncated file under the final name for another job to load."""
+    import os
+    from pathlib import Path
+    from .experiments import _replace_retry      # lazy: experiments imports this module
     torch = _torch()
     n_fields = model.players.embed[0].in_features if hasattr(model, "players") else None
     n_inputs = model.inp[0].in_features - (model.players.out_features
                                            if hasattr(model, "players") else 0)
-    torch.save({"state_dict": model.state_dict(), "normaliser": normaliser.state(),
-                "n_inputs": n_inputs, "n_token_fields": n_fields,
-                "config": asdict(model.config), "feature_version": FEATURE_VERSION}, path)
+    path = Path(path)
+    tmp = path.with_name("{}.{}.tmp".format(path.name, os.getpid()))
+    try:
+        torch.save({"state_dict": model.state_dict(), "normaliser": normaliser.state(),
+                    "n_inputs": n_inputs, "n_token_fields": n_fields,
+                    "config": asdict(model.config), "feature_version": FEATURE_VERSION}, tmp)
+        _replace_retry(tmp, path)
+    finally:
+        if tmp.exists():
+            tmp.unlink()
 
 
 def load(path):

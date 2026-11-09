@@ -28,8 +28,10 @@ every 5th in-half frame); the study runs in float32, predict.py in float64.
 import argparse
 import copy
 import json
+import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import numpy as np
@@ -53,6 +55,34 @@ MEMBERS, DRAWS = 3, 4
 NOISE = 0.005
 
 
+def train_once(path, command, wait_s=30, timeout_s=4 * 3600):
+    """Run `command` (which writes `path`) unless `path` exists, by one job only: the job that
+    creates `<path>.lock` trains; any other waits for the weights. A lock older than `timeout_s`
+    without weights is reported, never broken silently."""
+    path = Path(path)
+    lock = path.with_name(path.name + ".lock")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    waited = 0.0
+    while not path.exists():
+        try:
+            handle = os.open(str(lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            if waited >= timeout_s:
+                raise RuntimeError("{} is locked by another job and still missing after {:.0f} s; "
+                                   "delete the lock if that job died".format(path, waited))
+            time.sleep(wait_s)
+            waited += wait_s
+            continue
+        try:
+            os.write(handle, str(os.getpid()).encode())
+            os.close(handle)
+            if not path.exists():      # its own process: training arrays never pile up here
+                subprocess.run(command, check=True)
+        finally:
+            os.unlink(str(lock))
+    return path
+
+
 def fold_members(held, rest, count=MEMBERS, swa=0):
     """The v7-recipe members trained without `held` (with weight averaging over the last `swa`
     epochs if set), cached on disk."""
@@ -60,12 +90,9 @@ def fold_members(held, rest, count=MEMBERS, swa=0):
     for k in range(count):
         folder = OUT / ("models_swa{}".format(swa) if swa else "models")
         path = folder / "{}_m{}.pt".format("-".join(held), k)
-        if not path.exists():      # its own process: training arrays never pile up here
-            path.parent.mkdir(parents=True, exist_ok=True)
-            subprocess.run([sys.executable, "-m", "tempolens.train", "--member", str(k),
-                            "--draws", str(DRAWS), "--out", str(path), "--matches", *rest]
-                           + (["--swa", str(swa)] if swa else []),
-                           check=True)
+        train_once(path, [sys.executable, "-m", "tempolens.train", "--member", str(k),
+                          "--draws", str(DRAWS), "--out", str(path), "--matches", *rest]
+                   + (["--swa", str(swa)] if swa else []))
         members.append(temporal.load(path))
     return members
 
