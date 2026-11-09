@@ -23,7 +23,7 @@ import numpy as np
 from .decoder import transition_matrix, viterbi_matrix
 from .features import FEATURE_VERSION, feature_names, frame_features, swap_labels
 from .match import A, D, H, X
-from .opendata import LOADERS, load_open_match, open_data_dir
+from .opendata import LOADER_VERSION, LOADERS, load_open_match, open_data_dir
 from .simulate import AtdNoise, TrackerFaults, add_tracker_faults, random_noise, simulate_atd
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -156,7 +156,7 @@ class CachedSample:
         return table
 
     def _path(self, swap, kind="f{}".format(FEATURE_VERSION)):
-        tag = ("clean" if self.seed is None else "{}{}v{}_{}".format(
+        tag = ("clean_l{}".format(LOADER_VERSION) if self.seed is None else "{}{}v{}_{}".format(
                "rnf" if self.faults else "rnd", NOISE_TAG, RANDOM_VERSION, self.seed)
                if self.randomised else "sim{}_{}".format(NOISE_TAG, self.seed))
         tag += "_kf{}".format(KEEPER_SWAPS) if self.keeper else ""

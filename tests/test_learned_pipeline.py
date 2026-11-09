@@ -919,5 +919,22 @@ class CacheWriteTests(unittest.TestCase):
         np.testing.assert_array_equal(back.period, table.period)
         self.assertEqual([p.name for p in self.root.iterdir()], ["m.npz"])
 
+
+class LoaderVersionTests(unittest.TestCase):
+    def test_table_cache_and_clean_features_name_the_loader_version(self):
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        import tempolens.opendata as od
+        from tempolens.experiments import CachedSample
+        with tempfile.TemporaryDirectory() as folder, \
+                patch.dict(od.LOADERS, {"fake": lambda: _table()}), \
+                patch.object(od, "LOADER_VERSION", 7):
+            od.load_open_match("fake", cache_dir=folder)
+            self.assertEqual([p.name for p in Path(folder).iterdir()], ["fake_l7.npz"])
+        sample = CachedSample.__new__(CachedSample)
+        sample.name, sample.seed, sample.keeper, sample.repair = "x", None, False, None
+        self.assertIn("_clean_l{}_".format(od.LOADER_VERSION), sample._path(False).name)
+
 if __name__ == "__main__":
     unittest.main()

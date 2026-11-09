@@ -575,10 +575,15 @@ def fill_dead_ball(table):
     return replace(table, ball=ball)
 
 
+# Bump whenever a loader or the label code changes: it is in the table cache's and the clean
+# features' file names, so stale tables and features are never read back.
+LOADER_VERSION = 1
+
+
 def load_open_match(name, cache_dir=None):
     """A labelled open MatchTable, cached as .npz under the open-data folder."""
     cache = Path(cache_dir) if cache_dir else open_data_dir() / "cache"
-    path = cache / "{}.npz".format(name)
+    path = cache / "{}_l{}.npz".format(name, LOADER_VERSION)
     if path.exists():
         table = MatchTable.load(path)
     else:
