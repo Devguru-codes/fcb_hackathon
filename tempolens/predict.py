@@ -119,11 +119,12 @@ def decode_learned(table, logp, settings, data_root, game, tag_prior=None):
     tag_report = None
     if mode == "auto":
         from games import GAMES, require
-        from .tagprior import read_instances, self_calibrated
+        from .tagprior import SHRINK, read_instances, self_calibrated
         path = require(["smart_tagging"], game, data_root)[0]
         instances = read_instances(path, table.meta["home"], table.meta["away"],
                                    GAMES[game]["fps"])
-        logp, tag_report = self_calibrated(logp, instances, table.period > 0)
+        logp, tag_report = self_calibrated(logp, instances, table.period > 0,     # plan row TS
+                                           shrink=settings.get("tag_shrink", SHRINK))
     elif mode != "off":
         raise ValueError("tag_prior must be 'auto' or 'off', not {!r}".format(mode))
     transition = transition_matrix(settings["switch"], settings["alive_to_dead"],

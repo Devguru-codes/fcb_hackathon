@@ -1459,5 +1459,78 @@ class OneRecipeTests(unittest.TestCase):
         np.testing.assert_array_equal(new[10], labels)
         np.testing.assert_array_equal(new[50], remove_flicker(labels, table.runs(), 50))
 
+
+class ShrinkTests(unittest.TestCase):
+    def test_shrink_scales_the_unclipped_weight_and_keeps_the_clip(self):
+        from tempolens.tagprior import MAX_WEIGHT, SHRINK, calibrate
+        rng = np.random.default_rng(0)
+        n = 5000
+        side = rng.choice([H, A], n)
+        logp = np.log(np.where(side[:, None] == np.array([H, A, 2]), 0.95, 0.025))
+        inside = np.ones(n, dtype=bool)
+        vote = np.where(side == H, 1, -1).astype(np.int8)
+        noisy = vote.copy()
+        noisy[rng.random(n) < 0.3] *= -1                         # r about 0.7: unclipped
+        today = calibrate(logp, {"g": noisy}, inside)["g"]
+        self.assertEqual(calibrate(logp, {"g": noisy}, inside, SHRINK)["g"], today)
+        double = calibrate(logp, {"g": noisy}, inside, 1.0)["g"]
+        self.assertAlmostEqual(double[0], 2 * today[0], places=12)
+        self.assertTrue(0 < today[0] < double[0] < MAX_WEIGHT)
+        sure = calibrate(logp, {"g": vote}, inside, 1.0)["g"]   # r near 1: clipped
+        self.assertEqual(sure[0], MAX_WEIGHT)
+
+    def test_self_calibrated_passes_the_shrink_through(self):
+        from tempolens.tagprior import self_calibrated
+        n = 3000
+        side = np.tile([H] * 500 + [A] * 500, 3)
+        logp = np.log(np.where(side[:, None] == np.array([H, A, 2]), 0.95, 0.025))
+        tags = [(i, i + 500, "attack", H if (i // 500) % 2 == 0 else A) for i in range(0, n, 500)]
+        tags[1] = (500, 1000, "attack", H)                      # one wrong: r = 5/6
+        half = self_calibrated(logp, tags, np.ones(n, bool))[1]["attack"][0]
+        full = self_calibrated(logp, tags, np.ones(n, bool), shrink=1.0)[1]["attack"][0]
+        self.assertAlmostEqual(full, 2 * half, places=12)
+
+    def test_shrink_rule_boundaries(self):
+        from tempolens.tagstudy import shrink_rule
+        e = (0.0, 0.1, 0.2, 0.35, 0.5)
+        base = dict(zip(e, (0.7820, 0.7772, 0.7763, 0.7733, 0.7730)))
+
+        def row(*deltas):
+            return {k: base[k] + d for k, d in zip(e, deltas)}
+        q = 0.00390625                                       # 2^-8, exact in binary
+        with __import__("unittest.mock").mock.patch("tempolens.tagstudy.GAIN", q), \
+                __import__("unittest.mock").mock.patch("tempolens.tagstudy.LOSS", q):
+            b = {k: 0.5 for k in e}                          # exact base for exact boundaries
+            for deltas, ok in (((0, q, q, -q, -q), True),            # all exactly at the limits
+                               ((0, q, q / 2, 0, 0), False),          # 20% short
+                               ((0, q, q, -2 * q, 0), False),         # loses too much at 35%
+                               ((0, q, q, 0, -2 * q), False)):        # ... at 50%
+                scores = {0.5: b, 0.75: {k: 0.5 + d for k, d in zip(e, deltas)}}
+                self.assertEqual(shrink_rule(scores)[1][0.75], ok, deltas)
+        both = {0.5: base, 0.75: row(0, 0.004, 0.005, 0, 0), 1.0: row(0, 0.004, 0.004, 0, 0)}
+        self.assertEqual(shrink_rule(both)[0], 0.75)          # larger gain at 20%
+        self.assertIsNone(shrink_rule({0.5: base, 1.0: row(0, 0.01, 0.01, -0.01, 0)})[0])
+
+    def test_predict_reads_tag_shrink_and_defaults_to_today(self):
+        from unittest.mock import patch
+        import games
+        import tempolens.tagprior as tp
+        from tempolens.predict import decode_learned
+        table = _table()
+        table.meta = {"home": "Home", "away": "Away"}
+        logp = np.log(np.tile([0.5, 0.3, 0.2, 0.0], (table.n_frames, 1)))[:, :4]
+        seen = []
+
+        def fake(logp, instances, inside, groups=tp.GROUPS, shrink=tp.SHRINK):
+            seen.append(shrink)
+            return logp, {}
+        settings = {"switch": 4.0, "alive_to_dead": 8.0, "dead_to_alive": 8.0, "tag_prior": "auto"}
+        with patch.object(games, "require", return_value=["tags.xml"]), \
+                patch.object(tp, "read_instances", return_value=[]), \
+                patch.object(tp, "self_calibrated", side_effect=fake):
+            decode_learned(table, logp, settings, "root", "BAR-ATH")
+            decode_learned(table, logp, dict(settings, tag_shrink=1.0), "root", "BAR-ATH")
+        self.assertEqual(seen, [tp.SHRINK, 1.0])
+
 if __name__ == "__main__":
     unittest.main()

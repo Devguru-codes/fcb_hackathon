@@ -78,8 +78,9 @@ def votes(instances, n_frames, groups=GROUPS):
     return {group: np.sign(t).astype(np.int8) for group, t in tally.items()}
 
 
-def calibrate(logp, group_votes, inside):
-    """{group: (weight, reliability, n_confident_frames)} from agreement with a confident model."""
+def calibrate(logp, group_votes, inside, shrink=SHRINK):
+    """{group: (weight, reliability, n_confident_frames)} from agreement with a confident model;
+    the weight is `shrink` times the family's log-odds, clipped to [0, MAX_WEIGHT]."""
     p = np.exp(logp[:, :3])
     side = np.where(p[:, H] > p[:, A], 1, -1)
     confident = inside & (np.maximum(p[:, H], p[:, A]) > CONFIDENT)
@@ -92,7 +93,7 @@ def calibrate(logp, group_votes, inside):
             continue
         r = float(np.mean(vote[frames] == side[frames]))
         r = min(max(r, 1e-3), 1 - 1e-3)
-        weight = float(np.clip(SHRINK * np.log(r / (1 - r)), 0.0, MAX_WEIGHT))
+        weight = float(np.clip(shrink * np.log(r / (1 - r)), 0.0, MAX_WEIGHT))
         out[group] = (weight, r, n)
     return out
 
@@ -111,8 +112,8 @@ def apply(logp, group_votes, weights):
     return out
 
 
-def self_calibrated(logp, instances, inside, groups=GROUPS):
+def self_calibrated(logp, instances, inside, groups=GROUPS, shrink=SHRINK):
     """(adjusted logp, calibration report) -- the whole prior in one call."""
     group_votes = votes(instances, len(logp), groups)
-    weights = calibrate(logp, group_votes, inside)
+    weights = calibrate(logp, group_votes, inside, shrink)
     return apply(logp, group_votes, weights), weights

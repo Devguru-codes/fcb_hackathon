@@ -21,7 +21,7 @@ from .experiments import (CachedSample, ENSEMBLE_MEMBERS, SIM_TEST_SEED, _summar
 from .match import A, H
 from .opendata import LOADERS
 from .predict import load_decoder
-from .tagprior import FAMILIES, GROUPS, group_of, self_calibrated
+from .tagprior import FAMILIES, GROUPS, SHRINK, group_of, self_calibrated
 
 COVER = 0.6          # share of possessions that get a phase tag
 MERGE = 0.3          # share of tags that run on over the following possession
@@ -117,10 +117,11 @@ def run_per_code(draws=4, seeds=3, members=5):
     print("E7: {}".format("passes" if ok else "fails"))
 
 
-def run(errors, costs=None, draws=0, seeds=1, members=ENSEMBLE_MEMBERS):
+def run(errors, costs=None, draws=0, seeds=1, members=ENSEMBLE_MEMBERS, shrink=SHRINK):
     """The decoder's costs and change bonus unless `costs` (switch, alive>dead, dead>alive,
     change) is given; `draws`: the ensemble's training recipe (experiments --draws); `seeds`:
-    tag draws per match, averaged; `members`: ensemble size."""
+    tag draws per match, averaged; `members`: ensemble size; `shrink`: the prior's. Returns
+    {error: mean spellF1 over the matches}, with None for no prior."""
     names = sorted(LOADERS)
     samples = {n: CachedSample(n, SIM_TEST_SEED) for n in names}
     logps = oof_logp(names, "ensemble", draws=draws, members=members)
@@ -132,6 +133,7 @@ def run(errors, costs=None, draws=0, seeds=1, members=ENSEMBLE_MEMBERS):
             for n in names}
     print("no prior              all {:.4f}  dfl {:.4f}  metrica {:.4f}".format(
         *_summary(base, names)))
+    out = {None: _summary(base, names)[0]}
     for error in errors:
         rows, weights = {}, []
         for k, n in enumerate(names):
@@ -139,7 +141,8 @@ def run(errors, costs=None, draws=0, seeds=1, members=ENSEMBLE_MEMBERS):
             for s in range(seeds):      # seed 0 is the original study's tag draw
                 tags = synthetic_tags(samples[n].labels, error,
                                       seed=1000 * k + int(error * 100) + 100000 * s)
-                adjusted, report = self_calibrated(logps[n], tags, samples[n].period > 0)
+                adjusted, report = self_calibrated(logps[n], tags, samples[n].period > 0,
+                                                   shrink=shrink)
                 runs.append(score(samples[n].labels,
                                   decode_table(samples[n], adjusted, transition, change)))
                 weights.append([report[g][0] for g in GROUPS])
@@ -150,6 +153,52 @@ def run(errors, costs=None, draws=0, seeds=1, members=ENSEMBLE_MEMBERS):
                   error, *_summary(rows, names),
                   np.round(np.mean(weights, axis=0), 2).tolist(),
                   np.round(reliability, 2).tolist()), flush=True)
+        out[error] = _summary(rows, names)[0]
+    return out
+
+
+GAIN, LOSS = 0.003, 0.003     # plan row TS
+
+
+def shrink_rule(scores, base=SHRINK):
+    """Plan row TS on {shrink: {error: mean spellF1}}: s passes if it beats `base` by >= GAIN at
+    10% and 20% team error and loses <= LOSS at 35% and 50%; of those, the larger gain at 20%.
+    Returns (chosen shrink or None, {shrink: passed})."""
+    ref, passed = scores[base], {}
+    for s, row in scores.items():
+        if s == base:
+            continue
+        passed[s] = (all(row[e] - ref[e] >= GAIN for e in (0.1, 0.2))
+                     and all(ref[e] - row[e] <= LOSS for e in (0.35, 0.5)))
+    winners = [s for s, ok in passed.items() if ok]
+    return (max(winners, key=lambda s: scores[s][0.2] - ref[0.2]) if winners else None), passed
+
+
+def shrink_study(shrinks, errors, draws, seeds, members):
+    """Each shrink on the same tag draws, the rule, and the verdict file for the candidate."""
+    import json
+    from .experiments import write_atomic
+    from .adaptcv import ROOT
+    assert SHRINK in shrinks and all(e in errors for e in (0.1, 0.2, 0.35, 0.5))
+    scores = {}
+    for s in shrinks:
+        print("\nshrink {}".format(s), flush=True)
+        scores[s] = run(errors, draws=draws, seeds=seeds, members=members, shrink=s)
+    chosen, passed = shrink_rule(scores)
+    print("\nshrink  " + "  ".join("{:>6.0%}".format(e) for e in errors) + "   (minus shrink 0.5)")
+    for s in shrinks:
+        print("{:<6}  ".format(s) + "  ".join("{:+.4f}".format(scores[s][e] - scores[SHRINK][e])
+                                            for e in errors)
+              + ("" if s == SHRINK else "   -> {}".format("passes" if passed[s] else "fails")))
+    print("TS: {}".format("adopt shrink {}".format(chosen) if chosen is not None
+                          else "none passes: shrink 0.5 stays"), flush=True)
+    out = ROOT / "models" / "exp" / "ts"
+    out.mkdir(parents=True, exist_ok=True)
+    write_atomic(out / "verdict.json", json.dumps({
+        "chosen": chosen, "passed": {str(k): v for k, v in passed.items()},
+        "scores": {str(s): {str(e): v for e, v in row.items()} for s, row in scores.items()}},
+        indent=1))
+    return chosen
 
 
 def main(argv=None):
@@ -158,12 +207,17 @@ def main(argv=None):
     parser.add_argument("--draws", type=int, default=0, help="ensemble recipe (experiments)")
     parser.add_argument("--seeds", type=int, default=1, help="synthetic tag draws per match")
     parser.add_argument("--members", type=int, default=ENSEMBLE_MEMBERS, help="ensemble size")
+    parser.add_argument("--shrink", type=float, default=SHRINK, help="the prior's shrink")
+    parser.add_argument("--shrinks", type=float, nargs="+",
+                        help="plan row TS: these shrinks on the same draws, with the rule")
     parser.add_argument("--per-code", action="store_true",
                         help="E7: one weight per code family against the two groups")
     args = parser.parse_args(argv)
     if args.per_code:
         return run_per_code(args.draws or 4, args.seeds, args.members)
-    run(args.errors, draws=args.draws, seeds=args.seeds, members=args.members)
+    if args.shrinks:
+        return shrink_study(args.shrinks, args.errors, args.draws, args.seeds, args.members)
+    run(args.errors, draws=args.draws, seeds=args.seeds, members=args.members, shrink=args.shrink)
 
 
 if __name__ == "__main__":
