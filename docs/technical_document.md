@@ -492,6 +492,9 @@ per match +0.0024 — decoding is still not the bottleneck.
 - A gain under the simulator can fail to transfer to the real match, and the rules leave no way
   to check the submission on it. The shifted-noise and SkillCorner conditions (§7c) are the
   closest external stand-ins; the competition's ATD is neither.
+- Test-time adaptation re-centres the features on the home team's view only, so its adjustment
+  depends on which club is listed as home; a version pooling both views
+  (`adapt_normaliser(..., both_views=True)`) exists but was not studied before the freeze.
 
 ## 9. Reproduction
 

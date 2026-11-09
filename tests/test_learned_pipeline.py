@@ -1080,5 +1080,29 @@ class KickoffPriorTests(unittest.TestCase):
         states = viterbi_matrix(out[8:12, :3], transition_matrix(4.0, 8.0, 8.0))
         np.testing.assert_array_equal(states[:2], [D, D])
 
+
+class BothViewsTests(unittest.TestCase):
+    def test_both_views_does_not_depend_on_which_club_is_home(self):
+        from tempolens.features import TableSample
+        from tempolens.temporal import Normaliser, adapt_normaliser
+        sample = TableSample(_table(400))
+
+        class Swapped:                        # the same match with the other club as home
+            period, n_frames = sample.period, sample.n_frames
+
+            @staticmethod
+            def features(swap):
+                return sample.features(not swap)
+
+        base = Normaliser(np.asarray(sample.features(False))[sample.period > 0])
+        one, other = (adapt_normaliser(base, s, 1.0, both_views=True) for s in (sample, Swapped))
+        np.testing.assert_array_equal(one.median, other.median)
+        np.testing.assert_array_equal(one.scale, other.scale)
+        home, away = (adapt_normaliser(base, s, 1.0) for s in (sample, Swapped))
+        self.assertFalse(np.array_equal(home.median, away.median))     # the default does depend
+        # the default is the submitted recipe, unchanged
+        own = Normaliser(np.asarray(sample.features(False))[sample.period > 0][::10])
+        np.testing.assert_array_equal(home.median, own.median)
+
 if __name__ == "__main__":
     unittest.main()

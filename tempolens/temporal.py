@@ -148,13 +148,18 @@ class Normaliser:
         return self
 
 
-def adapt_normaliser(normaliser, sample, alpha=1.0):
+def adapt_normaliser(normaliser, sample, alpha=1.0, both_views=False):
     """Test-time adaptation by re-centring: the scaling moved `alpha` of the way to the target
     match's own medians and spreads (unlabelled; AdaBN for a model without normalisation
     layers). The missing-value flags keep the training columns, so the network's inputs keep
-    their width."""
+    their width. The match's statistics come from the home view only (the submitted recipe);
+    `both_views` pools both team views, so they no longer depend on which club is home."""
     sample = _as_sample(sample)
-    own = Normaliser(np.asarray(sample.features(False))[sample.period > 0][::10])
+    inside = sample.period > 0
+    x = np.asarray(sample.features(False))[inside][::10]
+    if both_views:
+        x = np.concatenate([x, np.asarray(sample.features(True))[inside][::10]])
+    own = Normaliser(x)
     out = Normaliser.from_state(normaliser.state())
     out.median = (1 - alpha) * normaliser.median + alpha * own.median
     out.scale = (1 - alpha) * normaliser.scale + alpha * own.scale
