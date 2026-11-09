@@ -1603,5 +1603,50 @@ class LearningCurveTests(unittest.TestCase):
                          adaptcv.OUT / "models" / "{}_m0.pt".format("-".join(held)))
         self.assertNotEqual(lcurve.model_path(held, 6).parent, adaptcv.OUT / "models")
 
+
+class Draw2Tests(unittest.TestCase):
+    def test_summary_spreads_and_eata_count(self):
+        import contextlib
+        import io
+        from tempolens import draw2
+
+        def rows(shift):
+            out = []
+            for seed in [-1] + list(range(5)):
+                for name, (alpha, steps) in draw2.SETTINGS.items():
+                    for costs in draw2.COSTS:
+                        base = {"none": 0.70, "TTA 0.5": 0.71, "TTA 0.5 + EATA 10": 0.705}[name]
+                        out.append({"seed": seed, "alpha": alpha, "steps": steps, "gate": False,
+                                    "costs": list(costs), "spellF1": base + shift})
+                out.append({"seed": seed, "alpha": 0.0, "steps": 30, "gate": True,   # ignored
+                            "costs": [2.0, 2.0, 2.0, 0.5], "spellF1": 0.1})
+            return out
+        by_draw = {s: {"m1": rows(0.01 * i), "m2": rows(0.01 * i)}
+                   for i, s in enumerate(draw2.SEEDS)}
+        s = draw2.summarise(by_draw)
+        v = s[(-1, "TTA 0.5", draw2.COSTS[0])]
+        np.testing.assert_allclose(v, [0.71, 0.72, 0.73])
+        self.assertNotIn((-1, "none", (2.0, 2.0, 2.0, 0.5)), s)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            draw2.report(s)
+        text = out.getvalue()
+        self.assertIn("vs none +0.0100 (sd 0.0000)", text)             # same gap on every draw
+        self.assertIn("ensemble on 0 of 3 draws", text)                 # EATA below TTA alone
+        self.assertIn("members on 0 of 15", text)
+
+    def test_cache_names_carry_the_seed(self):
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        from tempolens import adaptcv
+        with tempfile.TemporaryDirectory() as folder:
+            adaptcv.cached(Path(folder), "sim1001", "m", lambda: [1])
+            adaptcv.cached(Path(folder), "sim1002", "m", lambda: [2])
+            self.assertEqual(adaptcv.cached(Path(folder), "sim1001", "m",
+                                            lambda: self.fail("recomputed")), [1])
+            self.assertEqual(sorted(p.name for p in Path(folder).iterdir()),
+                             ["sim1001_m.json", "sim1002_m.json"])
+
 if __name__ == "__main__":
     unittest.main()
