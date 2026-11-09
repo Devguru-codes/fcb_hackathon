@@ -36,7 +36,8 @@ import numpy as np
 
 from . import temporal
 from .decoder import transition_matrix
-from .experiments import SIM_TEST_SEED, CachedSample, decode_table, folds, score, write_atomic
+from .experiments import SIM_TEST_SEED, CachedSample, check_members, decode_table, folds, score, \
+    write_atomic
 from .match import A, D, H
 from .opendata import EXTRA_LOADERS, LOADERS
 from .predict import DEFAULT_DECODER, gate_team_evidence, load_decoder
@@ -147,6 +148,7 @@ def collect(count=MEMBERS, folder=None, scorer=score_match, final_paths=None, sw
     folder = folder or (OUT if count == MEMBERS else OUT / "m{}".format(count))
     final_paths = final_paths or [ROOT / "models" / p
                                   for p in load_decoder(DEFAULT_DECODER)["members"]]
+    check_members(folder, final_paths)      # the sc rows are these members' outputs
     final = [temporal.load(p) for p in final_paths]
     assert len(final) == count, "decoder.json lists {} members, not {}".format(len(final), count)
     results = {"sim": {}, "shift": {}, "sc": {}}

@@ -21,8 +21,8 @@ import numpy as np
 
 from . import adaptcv, temporal
 from .decoder import transition_matrix
-from .experiments import SIM_TEST_SEED, CachedSample, decode_table, folds, open_data_dir, \
-    savez_atomic, score
+from .experiments import SIM_TEST_SEED, CachedSample, check_members, decode_table, folds, \
+    open_data_dir, savez_atomic, score
 from .opendata import EXTRA_LOADERS, LOADERS
 from .predict import DEFAULT_DECODER, load_decoder
 
@@ -57,8 +57,9 @@ def matches():
 def compute(until=None):
     """Cache each member's outputs for KEYS on every match; False if stopped by `until`."""
     names = sorted(LOADERS)
-    final = [temporal.load(adaptcv.ROOT / "models" / p)
-             for p in load_decoder(DEFAULT_DECODER)["members"]]
+    paths = [adaptcv.ROOT / "models" / p for p in load_decoder(DEFAULT_DECODER)["members"]]
+    check_members(_cache(), paths)          # the sc outputs are these members'
+    final = [temporal.load(p) for p in paths]
     members_of = {}
     for condition, name, make, held in matches():
         path = _cache() / "{}_{}.npz".format(condition, name)

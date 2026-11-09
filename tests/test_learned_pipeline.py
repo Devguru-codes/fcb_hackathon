@@ -1015,5 +1015,44 @@ class AdaptMembersTests(unittest.TestCase):
         for key in ((0.5, 0), (0.0, 10)):    # both adaptations really move the output
             self.assertGreater(np.abs(grid[key][0] - grid[(0.0, 0)][0]).max(), 1e-3, key)
 
+
+class StudyMembersTests(unittest.TestCase):
+    def test_a_cache_folder_refuses_other_members(self):
+        import tempfile
+        from pathlib import Path
+        from tempolens.experiments import check_members
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            a, b = root / "a.pt", root / "b.pt"
+            a.write_bytes(b"first")
+            b.write_bytes(b"second")
+            cache = root / "cache"
+            first = check_members(cache, [a, b])                 # first use: recorded
+            self.assertTrue((cache / "members.json").exists())
+            self.assertEqual(check_members(cache, [a, b]), first)   # the same: fine
+            with self.assertRaises(RuntimeError):
+                check_members(cache, [b, a])                     # other order
+            with self.assertRaises(RuntimeError):
+                check_members(cache, [a])                        # fewer members
+            b.write_bytes(b"retrained")                          # same name, other weights
+            with self.assertRaises(RuntimeError):
+                check_members(cache, [a, b])
+
+    def test_collect_checks_the_sc_members_before_scoring(self):
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        from tempolens import adaptcv
+        from tempolens.experiments import check_members
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            old, new = root / "old.pt", root / "new.pt"
+            old.write_bytes(b"old")
+            new.write_bytes(b"new")
+            check_members(root, [old])
+            with patch.object(adaptcv.temporal, "load", side_effect=AssertionError("loaded")):
+                with self.assertRaises(RuntimeError):
+                    adaptcv.collect(1, root, final_paths=[new])
+
 if __name__ == "__main__":
     unittest.main()

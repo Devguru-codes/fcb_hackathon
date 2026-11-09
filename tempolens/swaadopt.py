@@ -21,7 +21,8 @@ import numpy as np
 
 from . import adaptcv, adaptseeds, pffstudy, temporal
 from .decoder import transition_matrix
-from .experiments import CachedSample, decode_table, savez_atomic, score, write_atomic
+from .experiments import CachedSample, check_members, decode_table, savez_atomic, score, \
+    write_atomic
 from .predict import DEFAULT_DECODER
 
 SWA, MEMBERS = 4, 5
@@ -95,6 +96,7 @@ def cached_results(folder):
 
 def reference():
     """The current submission's per-condition means from ADseeds' cache (step d)."""
+    # pinned to ADseeds' folder on purpose (its members.json records ENS5), not to decoder.json
     results = cached_results(ADSEEDS)
     counts = {c: len(m) for c, m in results.items()}
     assert counts == {"sim": 10, "shift": 10, "sc": 20}, counts
@@ -148,7 +150,7 @@ def pff():
             ref[c].append(r[SUBMITTED_PFF][str(c)])
     members = [temporal.load(p) for p in FINALS]
     folder = pffstudy._cache() / "swa4"
-    folder.mkdir(parents=True, exist_ok=True)
+    check_members(folder, FINALS)
     key = "a{}_s{}".format(alpha, steps)
     got = {c: [] for c in pffstudy.CONVENTIONS}
     for game_id in ids:

@@ -14,9 +14,11 @@ ball is missing for 41% of the match, in long stretches.
 import argparse
 import hashlib
 import io
+import json
 import os
 import sys
 import time
+from pathlib import Path
 
 import numpy as np
 
@@ -120,6 +122,32 @@ def savez_atomic(path, **arrays):
     buffer = io.BytesIO()
     np.savez(buffer, **arrays)
     write_atomic(path, buffer.getvalue())
+
+
+def check_members(folder, paths):
+    """Tie a study cache folder to the weight files it is computed with: members.json (each
+    file's path from the repository root and sha256) is written on first use, and every later
+    use raises if the members differ, so a cache is never read back for other models."""
+    root = Path(__file__).resolve().parents[1]
+
+    def name(path):
+        path = Path(path).resolve()
+        try:
+            return path.relative_to(root).as_posix()     # the same in every worktree
+        except ValueError:
+            return path.as_posix()
+    record = [{"path": name(p), "sha256": hashlib.sha256(Path(p).read_bytes()).hexdigest()}
+              for p in paths]
+    path = Path(folder) / "members.json"
+    if path.exists():
+        saved = json.loads(path.read_text(encoding="utf-8"))
+        if saved != record:
+            raise RuntimeError("{} holds outputs of other members: {} (asked for {})".format(
+                folder, [m["path"] for m in saved], [m["path"] for m in record]))
+    else:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        write_atomic(path, json.dumps(record, indent=1))
+    return record
 
 
 class CachedSample:
