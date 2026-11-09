@@ -29,9 +29,10 @@ HALF_KICKOFFS = (11185, 113742)    # FAQ.md
 WINDOW_S, SEARCH_S, CENTRE_M, MOVE_M = 2.0, 15.0, 3.0, 2.0
 
 
-def restart_frame(table, approx, search_s=SEARCH_S):
+def restart_frame(table, approx, search_s=SEARCH_S, strict=False):
     """The first frame from `approx` on (within `search_s`) where the ball sits within CENTRE_M of
-    the centre spot and has moved MOVE_M one second later; `approx` if none is found."""
+    the centre spot and has moved MOVE_M one second later; if none is found, `approx` (None with
+    `strict`)."""
     fps, (length, width) = table.fps, table.pitch
     ball = table.ball
     for f in range(approx, min(table.n_frames - fps, approx + int(search_s * fps))):
@@ -40,7 +41,7 @@ def restart_frame(table, approx, search_s=SEARCH_S):
                 and np.hypot(b[0] - length / 2, b[1] - width / 2) <= CENTRE_M
                 and np.hypot(*(later - b)) >= MOVE_M):
             return f
-    return approx
+    return None if strict else approx
 
 
 def decoded_team(codes, frame, fps):
@@ -51,7 +52,8 @@ def decoded_team(codes, frame, fps):
 
 
 def goal_restarts(path, home, away, fps):
-    """[(approx restart frame, kicking-off side)] from GOALS + Kick Off (After Goal) tags."""
+    """[(approx restart frame, kicking-off side, GOALS tag start, tag end)] from GOALS + Kick Off
+    (After Goal) tags."""
     goals, restarts = [], []
     for instance in ET.parse(path).getroot().iter("instance"):
         code = _normalise(instance.findtext("code") or "")
@@ -62,29 +64,32 @@ def goal_restarts(path, home, away, fps):
             continue
         labels = {l.findtext("group"): l.findtext("text") for l in instance.findall("label")}
         if code == "goals":
-            goals.append((end, resolve_side(labels.get("Team"), home, away)))
+            goals.append((end, resolve_side(labels.get("Team"), home, away), start))
         elif _normalise(labels.get("Type") or "") == "kick off (after goal)":   # a Type label
             restarts.append(start)
     out = []
-    for end, scorer in sorted(goals):     # a GOALS tag runs until just before its restart
+    for end, scorer, start in sorted(goals):     # a GOALS tag runs until just before its restart
         after = [r for r in sorted(restarts) if end - 10 * fps <= r <= end + 60 * fps]
         if after and scorer in (H, A):
-            out.append((after[0], A if scorer == H else H))
+            out.append((after[0], A if scorer == H else H, start, end))
     return out, len(goals), len(restarts)
+
+
+def restarts(codes, table, goals):
+    """[(kind, restart frame, implied side)] for every kickoff, in time order. The first half's
+    side is the decoded one (the rules cannot name it); `goals` as goal_restarts returns them."""
+    first = decoded_team(codes, restart_frame(table, HALF_KICKOFFS[0]), table.fps)
+    events = [("half 1", HALF_KICKOFFS[0], first),
+              ("half 2", HALF_KICKOFFS[1], None if first is None else (A if first == H else H))]
+    events += [("goal", f, side) for f, side, *_ in goals]
+    return [(kind, restart_frame(table, approx), implied)
+            for kind, approx, implied in sorted(events, key=lambda e: e[1])]
 
 
 def check(codes, table, goals):
     """[(kind, implied side, decoded side)] for every kickoff, in time order."""
-    fps = table.fps
-    first = decoded_team(codes, restart_frame(table, HALF_KICKOFFS[0]), fps)
-    events = [("half 1", HALF_KICKOFFS[0], first),
-              ("half 2", HALF_KICKOFFS[1], None if first is None else (A if first == H else H))]
-    events += [("goal", f, side) for f, side in goals]
-    out = []
-    for kind, approx, implied in sorted(events, key=lambda e: e[1]):
-        frame = restart_frame(table, approx)
-        out.append((kind, implied, decoded_team(codes, frame, fps)))
-    return out
+    return [(kind, implied, decoded_team(codes, frame, table.fps))
+            for kind, frame, implied in restarts(codes, table, goals)]
 
 
 def main(argv=None):
