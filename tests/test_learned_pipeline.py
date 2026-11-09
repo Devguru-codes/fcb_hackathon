@@ -791,6 +791,15 @@ class SwaAdoptTests(unittest.TestCase):
                 train.main(["--out", str(out)])
             self.assertFalse(out.exists())
 
+    def test_dead_weight_refuses_the_losses_that_would_drop_it(self):
+        from tempolens import temporal
+        table = SimulatorTests()._labelled(3000)
+        for extra in ({"focal": 2.0}, {"seg_balance": 1.0}):
+            config = temporal.TemporalConfig(hidden=8, dead_weight=2.0, **extra)
+            with self.assertRaisesRegex(ValueError, "dead_weight"):
+                temporal.train([table], epochs=1, verbose=False, config=config)
+        temporal.train([table], epochs=1, verbose=False,          # alone it is fine
+                       config=temporal.TemporalConfig(hidden=8, dead_weight=2.0))
 
 if __name__ == "__main__":
     unittest.main()

@@ -491,6 +491,9 @@ def train(samples, epochs=None, device=None, seed=SEED, verbose=True,
     """Fit a network on labelled samples (or MatchTables). Returns (CPU model, normaliser).
     `epochs` overrides config.epochs; `on_epoch(epoch, model, normaliser)` is called after each
     epoch (the model still training, on its device)."""
+    if config.dead_weight != 1.0 and (config.focal or config.seg_balance):
+        # the focal / seg_balance loss path builds its own weights and would drop dead_weight
+        raise ValueError("dead_weight cannot be combined with focal or seg_balance")
     epochs = config.epochs if epochs is None else epochs
     torch = _torch()
     torch.manual_seed(seed)
