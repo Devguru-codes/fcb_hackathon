@@ -399,17 +399,40 @@ def skillcorner_ids():
 
 
 KICKOFFS = ("FIRSTKICKOFF", "SECONDKICKOFF", "THIRDKICKOFF", "FOURTHKICKOFF")
+# Bump whenever the PFF loader or its labels change: it is in the PFF table cache's name only, so
+# the other open-data caches stay valid. 2: event times shifted by the measured kickoff offset.
+PFF_VERSION = 2
+MAX_OFFSET_DRIFT_S = 0.5
 
 
-def pff_labels(events, n_frames, fps, home_id):
+def pff_offset(events, period, video_fps):
+    """Event time minus tracking time at the first kickoff (seconds); raises if the second
+    half's kickoff disagrees by more than MAX_OFFSET_DRIFT_S, or if the first is missing."""
+    def offset(kind, half):
+        kick = next((e for e in events
+                     if (e.get("gameEvents") or {}).get("gameEventType") == kind), None)
+        frames = np.flatnonzero(period == half)
+        if kick is None or not len(frames):
+            return None
+        return float(kick["startTime"]) - frames[0] / video_fps
+    first, second = offset("FIRSTKICKOFF", 1), offset("SECONDKICKOFF", 2)
+    if first is None:
+        raise ValueError("no first kickoff or no period-1 frame")
+    if second is not None and abs(second - first) > MAX_OFFSET_DRIFT_S:
+        raise ValueError("kickoff offsets {:+.3f} s and {:+.3f} s disagree".format(first, second))
+    return first
+
+
+def pff_labels(events, n_frames, fps, home_id, offset=0.0):
     """(n_frames,) H/A/D at the tracking's video frame rate from PFF events (plan row PFF):
     alive possession = team of the latest OTB; dead from OUT / END to the next restart (a
     kickoff or an OTB with a set-piece type other than open play "O"), and from the end of the
     previous event to any set-piece restart (a foul has no OUT before its free kick); dead
-    before the first kickoff. OFF and SUB change nothing. Returns (labels, open-play OTBs that
+    before the first kickoff. OFF and SUB change nothing. `offset`: seconds subtracted from every
+    event time, so events land on the tracking's frames. Returns (labels, open-play OTBs that
     ended a dead stretch without a restart tag)."""
     def frame(t):
-        return min(max(int(round(float(t) * fps)), 0), n_frames)
+        return min(max(int(round((float(t) - offset) * fps)), 0), n_frames)
 
     events = sorted((e for e in events if e.get("startTime") is not None),
                     key=lambda e: float(e["startTime"]))
@@ -498,15 +521,13 @@ def pff_game(game_id, folder=None, fps=25):
                 if k is not None and p.get("x") is not None and p.get("y") is not None:
                     players[f, k] = (float(p["x"]) + length / 2, float(p["y"]) + width / 2)
 
-    kickoff = next((e for e in events
-                    if (e.get("gameEvents") or {}).get("gameEventType") == "FIRSTKICKOFF"), None)
-    first = np.flatnonzero(period == 1)
-    if kickoff is None or not len(first):
-        raise ValueError("pff {}: no first kickoff or no period-1 frame".format(game_id))
-    offset = float(kickoff["startTime"]) - first[0] / video_fps
+    try:
+        offset = pff_offset(events, period, video_fps)
+    except ValueError as error:
+        raise ValueError("pff {}: {}".format(game_id, error))
     if abs(offset) > 2.0:
         raise ValueError("pff {}: events and tracking {:+.1f} s apart".format(game_id, offset))
-    labels, untagged = pff_labels(events, n, video_fps, home_id)
+    labels, untagged = pff_labels(events, n, video_fps, home_id, offset)
     labels[period == 0] = X
 
     ratio = fps / video_fps
@@ -585,7 +606,8 @@ LOADER_VERSION = 1
 def load_open_match(name, cache_dir=None):
     """A labelled open MatchTable, cached as .npz under the open-data folder."""
     cache = Path(cache_dir) if cache_dir else open_data_dir() / "cache"
-    path = cache / "{}_l{}.npz".format(name, LOADER_VERSION)
+    path = cache / "{}_l{}{}.npz".format(
+        name, LOADER_VERSION, "_p{}".format(PFF_VERSION) if name.startswith("pff_") else "")
     if path.exists():
         table = MatchTable.load(path)
     else:

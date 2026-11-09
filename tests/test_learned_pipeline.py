@@ -1274,5 +1274,57 @@ class SingleTrainerTests(unittest.TestCase):
         with patch.object(autoqueue, "python_processes", return_value=lines):
             self.assertEqual(autoqueue.other_runs(), lines[1:3])
 
+
+class PffOffsetTests(unittest.TestCase):
+    @staticmethod
+    def events(shift):
+        def ev(t, kind, team=1, piece=None):
+            return {"startTime": t + shift, "endTime": t + shift,
+                    "gameEvents": {"gameEventType": kind, "teamId": team, "setpieceType": piece}}
+        return [ev(2.0, "FIRSTKICKOFF", 1, "K"), ev(4.0, "OTB", 2, "O"), ev(6.0, "OUT", 2),
+                ev(8.0, "OTB", 1, "T"), ev(12.0, "SECONDKICKOFF", 2, "K"), ev(14.0, "OTB", 1, "O")]
+
+    def test_shifted_event_times_land_on_the_tracking_frames(self):
+        from tempolens.opendata import pff_labels, pff_offset
+        period = np.zeros(20, dtype=np.int8)
+        period[2:10], period[12:20] = 1, 2                  # tracking: kickoffs at 2 s and 12 s
+        aligned, _ = pff_labels(self.events(0.0), 20, 1.0, home_id=1)
+        late = self.events(1.0)                             # events stamped 1 s late
+        offset = pff_offset(late, period, 1.0)
+        self.assertAlmostEqual(offset, 1.0)
+        shifted, _ = pff_labels(late, 20, 1.0, home_id=1, offset=offset)
+        np.testing.assert_array_equal(shifted, aligned)
+        unshifted, _ = pff_labels(late, 20, 1.0, home_id=1)
+        self.assertFalse(np.array_equal(unshifted, aligned))
+
+    def test_halves_that_disagree_raise_and_boundaries_hold(self):
+        from tempolens.opendata import pff_offset
+        period = np.zeros(20, dtype=np.int8)
+        period[2:10], period[12:20] = 1, 2
+        drift = self.events(0.0)
+        drift[4] = dict(drift[4], startTime=12.5)           # exactly 0.5 s: still accepted
+        self.assertAlmostEqual(pff_offset(drift, period, 1.0), 0.0)
+        drift[4] = dict(drift[4], startTime=12.51)
+        with self.assertRaises(ValueError):
+            pff_offset(drift, period, 1.0)
+        self.assertAlmostEqual(pff_offset(self.events(0.0)[:4], period, 1.0), 0.0)  # no 2nd half
+        with self.assertRaises(ValueError):
+            pff_offset(self.events(0.0)[1:], period, 1.0)    # no first kickoff
+
+    def test_the_pff_table_cache_name_carries_its_version(self):
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        import tempolens.opendata as od
+        with tempfile.TemporaryDirectory() as folder:
+            labelled = SimulatorTests()._labelled(3000)       # the loaders label their tables
+            with patch.object(od, "pff_game", lambda game_id: labelled), \
+                    patch.dict(od.LOADERS, {"dfl_x": lambda: labelled}):
+                od.load_open_match("pff_9", cache_dir=folder)
+                od.load_open_match("dfl_x", cache_dir=folder)
+            self.assertEqual(sorted(p.name for p in Path(folder).iterdir()),
+                             ["dfl_x_l{}.npz".format(od.LOADER_VERSION),
+                              "pff_9_l{}_p{}.npz".format(od.LOADER_VERSION, od.PFF_VERSION)])
+
 if __name__ == "__main__":
     unittest.main()
