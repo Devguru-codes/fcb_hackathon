@@ -936,5 +936,35 @@ class LoaderVersionTests(unittest.TestCase):
         sample.name, sample.seed, sample.keeper, sample.repair = "x", None, False, None
         self.assertIn("_clean_l{}_".format(od.LOADER_VERSION), sample._path(False).name)
 
+
+class TrackerBallTests(unittest.TestCase):
+    def test_smoothing_handles_runs_shorter_than_the_kernel(self):
+        from tempolens.simulate import AtdNoise, _tracker_ball
+        table = _table(n=40)
+        table.period[:] = 0
+        table.period[5:15] = 1                         # a 10-frame run, kernel is 25 frames
+        table.period[20:40] = 2
+        table.ball[8] = np.nan
+        noise = AtdNoise(ball_noise_m=0.0)
+        out = _tracker_ball(table, noise, np.random.default_rng(0))
+        self.assertEqual(out.shape, table.ball.shape)
+        self.assertTrue(np.isnan(out[8, 0]))
+        seg, ok = table.ball[5:15].astype(np.float64), np.isfinite(table.ball[5:15, 0])
+        half = int(4 * noise.ball_smooth_sd)
+        kernel = np.exp(-0.5 * (np.arange(-half, half + 1) / noise.ball_smooth_sd) ** 2)
+        for i in np.flatnonzero(ok):                  # each frame: the weighted mean of its run
+            w = kernel[half - i:half - i + 10][ok]
+            np.testing.assert_allclose(out[5 + i], (w[:, None] * seg[ok]).sum(0) / w.sum(),
+                                       rtol=1e-5)
+
+    def test_full_slice_equals_same_on_runs_of_the_kernel_length_or_more(self):
+        rng = np.random.default_rng(3)
+        half = 12
+        kernel = np.exp(-0.5 * (np.arange(-half, half + 1) / 3.0) ** 2)
+        for n in (25, 26, 27, 50, 333, 4000):
+            x = rng.normal(size=n)
+            np.testing.assert_array_equal(np.convolve(x, kernel, mode="full")[half:half + n],
+                                          np.convolve(x, kernel, mode="same"))
+
 if __name__ == "__main__":
     unittest.main()

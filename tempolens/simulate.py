@@ -208,9 +208,12 @@ def _tracker_ball(table, noise, rng):
         for start, stop in table.runs():
             seg = ball[start:stop]
             ok = np.isfinite(seg[:, 0])
-            weight = np.convolve(ok.astype(np.float64), kernel, mode="same")
+            # "full" then the centred slice: "same" returns the kernel's length on runs shorter
+            # than the kernel; on longer runs the two are identical
+            weight = np.convolve(ok.astype(np.float64), kernel, mode="full")[half:half + len(seg)]
             for axis in (0, 1):
-                smooth = np.convolve(np.where(ok, seg[:, axis], 0.0), kernel, mode="same")
+                smooth = np.convolve(np.where(ok, seg[:, axis], 0.0), kernel,
+                                     mode="full")[half:half + len(seg)]
                 seg[ok, axis] = (smooth / np.maximum(weight, 1e-9))[ok]
     return ball.astype(np.float32)
 
