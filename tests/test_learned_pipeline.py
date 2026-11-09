@@ -1585,5 +1585,23 @@ class CandidateTests(unittest.TestCase):
             candidate.stop("x")
         self.assertEqual(stop.exception.code, 3)
 
+
+class LearningCurveTests(unittest.TestCase):
+    def test_subsets_are_fixed_nested_and_exclude_the_held_out(self):
+        from tempolens import adaptcv, lcurve
+        from tempolens.opendata import LOADERS
+        first, again = lcurve.subsets(), lcurve.subsets()
+        self.assertEqual(first, again)                          # fixed order
+        self.assertEqual(len(first), 5)
+        held, chosen = first[0]
+        self.assertEqual(chosen[4], ["dfl_J03WOY", "dfl_J03WPY", "metrica1", "metrica3"])
+        for held, chosen in first:
+            self.assertEqual(chosen[6][:4], chosen[4])            # nested
+            self.assertEqual(sorted(chosen[8]), sorted(set(LOADERS) - set(held)))
+            self.assertFalse(set(chosen[8]) & set(held))
+        self.assertEqual(lcurve.model_path(held, 8),
+                         adaptcv.OUT / "models" / "{}_m0.pt".format("-".join(held)))
+        self.assertNotEqual(lcurve.model_path(held, 6).parent, adaptcv.OUT / "models")
+
 if __name__ == "__main__":
     unittest.main()
