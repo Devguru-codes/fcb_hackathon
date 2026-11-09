@@ -78,6 +78,8 @@ def train_once(path, command, wait_s=30, timeout_s=4 * 3600):
             os.close(handle)
             if not path.exists():      # its own process: training arrays never pile up here
                 subprocess.run(command, check=True)
+                if not path.exists():
+                    raise RuntimeError("{} exited 0 but did not write {}".format(command[:4], path))
         finally:
             os.unlink(str(lock))
     return path
