@@ -109,9 +109,15 @@ def build(name, overrides, data_root):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("row", choices=("ts", "b2", "combo", "tta2v"))
+    parser.add_argument("row", choices=("ts", "b2", "combo", "tta2v", "lcb_ms50", "lcb_mix"))
     parser.add_argument("--data-root", required=True)
     args = parser.parse_args(argv)
+    if args.row.startswith("lcb_"):          # plan row LCB: report only, no rule
+        from .lcb import members_for
+        members = members_for(args.row)
+        if members is None:
+            stop("LCB's ms50 finals are missing")
+        return build(args.row, {"members": members}, args.data_root)
     if args.row == "tta2v":
         from .twoview import settings
         two = settings()

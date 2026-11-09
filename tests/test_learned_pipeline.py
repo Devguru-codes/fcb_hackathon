@@ -1721,5 +1721,84 @@ class TwoViewTests(unittest.TestCase):
                                        atol=2e-4)
         self.assertFalse(np.allclose(grid[False][(0.5, 0)][0], grid[True][(0.5, 0)][0]))
 
+
+class LcbTests(unittest.TestCase):
+    def test_a_finished_model_is_skipped_and_a_killed_one_left_absent(self):
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        from tempolens import adaptcv, lcb
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            with patch.object(lcb, "FINAL_DIR", root), patch.object(lcb, "FOLD_DIR", root):
+                calls = []
+
+                def killed(cmd, check):
+                    calls.append(cmd)
+                    out = Path(cmd[cmd.index("--out") + 1])
+                    out.with_name(out.name + ".123.tmp").write_bytes(b"half")   # then killed
+                    raise KeyboardInterrupt
+                with patch.object(adaptcv.subprocess, "run", side_effect=killed):
+                    with self.assertRaises(KeyboardInterrupt):
+                        lcb.train("final", 0)
+                self.assertFalse(lcb.final_path(0).exists())          # no final file
+                self.assertFalse(Path(str(lcb.final_path(0)) + ".lock").exists())
+                cmd = calls[0]
+                self.assertIn("--min-spell", cmd)
+                self.assertEqual(cmd[cmd.index("--min-spell") + 1], "50")
+                self.assertNotIn("--matches", cmd)
+                lcb.final_path(0).write_bytes(b"done")                # finished by a rerun
+                with patch.object(adaptcv.subprocess, "run", side_effect=AssertionError("ran")):
+                    self.assertEqual(lcb.train("final", 0), lcb.final_path(0))
+                def trains(c, check):
+                    calls.append(c)
+                    Path(c[c.index("--out") + 1]).write_bytes(b"w")
+                with patch.object(adaptcv.subprocess, "run", side_effect=trains):
+                    lcb.train("fold", 2, 1)
+                fold_cmd = calls[-1]
+                held = __import__("tempolens.experiments", fromlist=["folds"]).folds(
+                    sorted(__import__("tempolens.opendata", fromlist=["LOADERS"]).LOADERS))[1]
+                matches = fold_cmd[fold_cmd.index("--matches") + 1:fold_cmd.index("--out")]
+                self.assertFalse(set(matches) & set(held))
+                self.assertEqual(len(matches), 8)
+                self.assertTrue(fold_cmd[fold_cmd.index("--out") + 1].endswith(
+                    "{}_m2.pt".format("-".join(held))))
+
+    def test_missing_inputs_stop_with_their_name(self):
+        from pathlib import Path
+        from tempolens import lcb
+        with self.assertRaises(SystemExit) as stop:
+            lcb.require([Path(__file__), Path("no/such/model.pt")])
+        self.assertEqual(stop.exception.code, 3)
+        lcb.require([Path(__file__)])
+        self.assertEqual(len(lcb.model_paths()), 30)
+        self.assertEqual(len(set(lcb.model_paths())), 30)
+
+    def test_the_table_keeps_sets_settings_conditions_and_conventions_apart(self):
+        from tempolens import lcb
+        results = {("sim", "m1"): {("ENS5", "s", 10): 0.6, ("mix", "s", 50): 0.8},
+                   ("sim", "m2"): {("ENS5", "s", 10): 0.7, ("mix", "s", 50): 0.9},
+                   ("pff", "g"): {("ENS5", "s", 10): 0.5}}
+        t = lcb.table_of(results)
+        self.assertAlmostEqual(t[("ENS5", "s", "sim", 10)], 0.65)
+        self.assertAlmostEqual(t[("mix", "s", "sim", 50)], 0.85)
+        self.assertAlmostEqual(t[("ENS5", "s", "pff", 10)], 0.5)
+        self.assertEqual(len(t), 3)
+
+
+class TrainOnceNoFileTests(unittest.TestCase):
+    def test_a_command_that_writes_nothing_raises_instead_of_looping(self):
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        from tempolens import adaptcv
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "x.pt"
+            with patch.object(adaptcv.subprocess, "run") as run:
+                with self.assertRaises(RuntimeError):
+                    adaptcv.train_once(path, ["train"])
+            self.assertEqual(run.call_count, 1)
+            self.assertEqual(list(Path(folder).iterdir()), [])          # lock released
+
 if __name__ == "__main__":
     unittest.main()
