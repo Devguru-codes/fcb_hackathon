@@ -429,6 +429,19 @@ pick, TTA alone, is kept as a validated, reproduced file (`554fcb55…`). On 202
 review's recommendation to switch to that pick and kept TTA + EATA, for its larger real-tracking gain
 and its larger smallest per-member gain, accepting the disclosed post-hoc tie-break.
 
+**Noise floor of the sim condition (DRAW2, 2026-11-10, report only).** Every sim number above uses one simulated test draw per held-out match. The same fold models scored on two more draws (`python -m tempolens.draw2`; seeds 1000, 1001, 1002), ensemble, 10-match mean:
+
+| setting (costs) | per draw | mean (sd) | vs none (sd) |
+|---|---|---|---|
+| no adaptation (4/8/8/1.0) | 0.7727 / 0.7723 / 0.7770 | 0.7740 (0.0026) | — |
+| `tta_alpha` 0.5 (4/8/8/1.0) | 0.7721 / 0.7770 / 0.7776 | 0.7756 (0.0030) | +0.0016 (0.0028) |
+| **`tta_alpha` 0.5, EATA 10 (4/8/8/1.0), submitted** | 0.7698 / 0.7760 / 0.7779 | 0.7746 (0.0043) | +0.0006 (0.0034) |
+| no adaptation (2/8/8/0.5) | 0.7760 / 0.7718 / 0.7813 | 0.7764 (0.0048) | — |
+| `tta_alpha` 0.5 (2/8/8/0.5) | 0.7730 / 0.7764 / 0.7806 | 0.7767 (0.0038) | +0.0003 (0.0039) |
+| `tta_alpha` 0.5, EATA 10 (2/8/8/0.5) | 0.7725 / 0.7765 / 0.7791 | 0.7760 (0.0033) | −0.0003 (0.0044) |
+
+The draw-to-draw sd of a setting's difference from no adaptation is 0.003–0.004 for the ensemble (members: mean 0.0026–0.0031, max 0.0049), larger than every sim difference the adaptation studies acted on. On the first draw adaptation lost on sim (−0.0029 for the submission); averaged over three draws it is about neutral (+0.0006). EATA on top of TTA was not better than TTA alone for the ensemble on 2 of the 3 draws at each cost set (−0.0023 / −0.0010 / +0.0004 at 4/8/8/1.0), and was in 12 of 15 member × draw cases at 4/8/8/1.0 (11 of 15 at 2/8/8/0.5). Sim differences under about 0.004 between adaptation settings are within the noise of one draw.
+
 ## 6b. Video ball detector (built, tested on the real video, not used)
 
 A TrackNet-style heatmap network (3 stacked frames in, ball probability per pixel out) trained
