@@ -80,6 +80,28 @@ def score_match(members, game_id):
     return out
 
 
+def candidate_scores(game_ids, folder, finals, alpha, steps, costs, suffix, both_views=False):
+    """{convention: [spellF1 per match]} of the `finals` ensemble at one adaptation setting and
+    `costs`; each match's member outputs cached as folder/pff_<id><suffix>.npz (members checked)."""
+    check_members(folder, finals)
+    members = None
+    got = {c: [] for c in CONVENTIONS}
+    for game_id in game_ids:
+        sample = CachedSample("pff_{}".format(game_id))
+        store = folder / "pff_{}{}.npz".format(game_id, suffix)
+        if not store.exists():
+            members = members or [temporal.load(p) for p in finals]
+            grid = adaptcv.member_grid(members, sample, alphas=(alpha,),
+                                       steps=tuple(sorted({0, steps})), both_views=both_views)
+            savez_atomic(store, out=np.stack(grid[(alpha, steps)]).astype(np.float32))
+        logp = temporal.combine(list(np.load(store)["out"].astype(np.float64)))
+        pred = decode_table(sample, logp, transition_matrix(*costs[:3]), costs[3])
+        for c, y in labels_by_convention(sample).items():
+            got[c].append(score(y, pred)["spellF1"])
+        print("scored pff_{}".format(game_id), flush=True)
+    return got
+
+
 def submitted_scores(game_ids):
     """[score_match rows] of the submitted ENS5 outputs, checked against their members."""
     check_members(_cache(), adaptcv.ens5_paths())

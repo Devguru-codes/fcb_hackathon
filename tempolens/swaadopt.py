@@ -11,19 +11,13 @@ Aggregates only.
 """
 
 import argparse
-import hashlib
 import json
-import os
-import subprocess
 import sys
 
 import numpy as np
 
-from . import adaptcv, adaptseeds, pffstudy, temporal
-from .decoder import transition_matrix
-from .experiments import CachedSample, check_members, decode_table, savez_atomic, score, \
-    write_atomic
-from .predict import DEFAULT_DECODER
+from . import adaptcv, adaptseeds, pffstudy
+from .experiments import stop, write_atomic
 
 SWA, MEMBERS = 4, 5
 DIR = adaptcv.ROOT / "models" / "exp" / "swa4"
@@ -47,11 +41,6 @@ def veto_passes(mean10, submission10):
 def beats(candidate, reference):
     """Rule (d): strictly above the submission's three-condition mean, unrounded, no margin."""
     return candidate > reference
-
-
-def stop(message):
-    print("STOPPED: " + message, flush=True)
-    sys.exit(3)
 
 
 def verdict(step):
@@ -157,23 +146,8 @@ def pff():
     for r in pffstudy.submitted_scores(ids):     # ENS5's pff-16 scores, on today's labels
         for c in ref:
             ref[c].append(r[SUBMITTED_PFF][str(c)])
-    members = [temporal.load(p) for p in FINALS]
-    folder = pffstudy._cache() / "swa4"
-    check_members(folder, FINALS)
-    key = "a{}_s{}".format(alpha, steps)
-    got = {c: [] for c in pffstudy.CONVENTIONS}
-    for game_id in ids:
-        sample = CachedSample("pff_{}".format(game_id))
-        store = folder / "pff_{}_{}.npz".format(game_id, key)
-        if not store.exists():
-            grid = adaptcv.member_grid(members, sample, alphas=(alpha,),
-                                       steps=tuple(sorted({0, steps})))
-            savez_atomic(store, out=np.stack(grid[(alpha, steps)]).astype(np.float32))
-        logp = temporal.combine(list(np.load(store)["out"].astype(np.float64)))
-        pred = decode_table(sample, logp, transition_matrix(*costs[:3]), costs[3])
-        for c, y in pffstudy.labels_by_convention(sample).items():
-            got[c].append(score(y, pred)["spellF1"])
-        print("scored pff_{}".format(game_id), flush=True)
+    got = pffstudy.candidate_scores(ids, pffstudy._cache() / "swa4", FINALS, alpha, steps, costs,
+                                    "_a{}_s{}".format(alpha, steps))
     mean = {c: float(np.mean(got[c])) for c in got}
     base = {c: float(np.mean(ref[c])) for c in ref}
     ok = veto_passes(mean[10], base[10])
@@ -186,10 +160,6 @@ def pff():
         stop("(c) pff-16 veto failed")
 
 
-def sha(path):
-    return hashlib.sha256(path.read_bytes()).hexdigest()
-
-
 def build(data_root):
     s, c = verdict("study"), verdict("pff")
     if not c["pass"]:
@@ -200,40 +170,16 @@ def build(data_root):
     if not s["beats"]:
         save("build", {"d": False})
         stop("(d) the candidate does not beat the current submission")
-    config = json.loads(DEFAULT_DECODER.read_text(encoding="utf-8"))
-    config.update({
-        "_provenance": "TEMPORARY candidate of plan row B3c-adopt, not the submission: the 5 SWA "
-                       "finals with the setting from swaadopt study. models/decoder.json is "
-                       "unchanged.",
+    from .candidate import build as candidate_build
+    overrides = {
         "members": [p.relative_to(adaptcv.ROOT / "models").as_posix() for p in FINALS],
         "tta_alpha": s["alpha"], "eata_steps": s["steps"],
         "switch": s["costs"][0], "alive_to_dead": s["costs"][1], "dead_to_alive": s["costs"][2],
-        "change_weight": s["costs"][3]})
-    out = adaptcv.ROOT / "derived" / "swa4"          # git-ignored
-    out.mkdir(parents=True, exist_ok=True)
-    decoder = out / "decoder_swa4.json"
-    write_atomic(decoder, json.dumps(config, indent=2) + "\n")
-    files = []
-    for i in (1, 2):
-        csv = out / "candidate_{}.csv".format(i)
-        with open(out / "predict_{}.log".format(i), "w", encoding="utf-8") as log:
-            subprocess.run([sys.executable, "-m", "tempolens.predict", "--data-root", data_root,
-                            "--decoder", str(decoder), "--output", str(csv)],
-                           check=True, stdout=log, stderr=subprocess.STDOUT)
-        files.append(csv)
-    valid = subprocess.run([sys.executable, str(adaptcv.ROOT / "evaluation" /
-                                                "validate_submission.py"), str(files[0])],
-                           capture_output=True, text=True).returncode == 0
-    same = sha(files[0]) == sha(files[1])
-    tests = subprocess.run([sys.executable, "-m", "pytest", "-q", "tests"], cwd=adaptcv.ROOT,
-                           capture_output=True, text=True, env=dict(os.environ, MTAH_E2E="1"))
-    summary = (tests.stdout.strip().splitlines() or ["(no output)"])[-1]
-    print("(e) candidate {}: valid {}, byte-identical on a second run {}; tests: {} (exit {})"
-          .format(sha(files[0])[:16], valid, same, summary, tests.returncode), flush=True)
-    print("submission unchanged: models/decoder.json sha {}".format(sha(DEFAULT_DECODER)[:16]))
-    save("build", {"d": True, "sha": sha(files[0]), "valid": valid, "identical": same,
-                   "tests": summary, "tests_exit": tests.returncode})
-    if not (valid and same and tests.returncode == 0):
+        "change_weight": s["costs"][3]}
+    code = candidate_build("swa4", overrides, data_root)    # predict twice, validate, tests
+    report = json.loads((adaptcv.ROOT / "derived" / "swa4" / "report.json").read_text("utf-8"))
+    save("build", dict(report, d=True))
+    if code:
         stop("(e) the candidate build did not pass its checks")
 
 

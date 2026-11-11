@@ -19,7 +19,7 @@ import numpy as np
 from . import adaptcv, hedgestudy, pffstudy, temporal
 from .decoder import transition_matrix
 from .experiments import CachedSample, check_members, decode_table, folds, open_data_dir, \
-    savez_atomic, score
+    savez_atomic, score, stop
 from .opendata import LOADERS
 
 MEMBERS, MIN_SPELL = 5, 50
@@ -30,11 +30,6 @@ SETTINGS = (("no adaptation", (0.0, 0), (4.0, 8.0, 8.0, 1.0)),
             ("no adaptation, CV argmax", (0.0, 0), (2.0, 8.0, 8.0, 0.5)),
             ("submitted: TTA 0.5 + EATA 10", (0.5, 10), (4.0, 8.0, 8.0, 1.0)))
 CONDITIONS = ("sim", "shift", "sc", "pff")
-
-
-def stop(message):
-    print("STOPPED: " + message, flush=True)
-    sys.exit(3)
 
 
 def final_path(k):

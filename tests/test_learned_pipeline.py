@@ -1966,5 +1966,27 @@ class LockWaitMessageTests(unittest.TestCase):
         self.assertIn("m.pt.lock", out.getvalue())
         self.assertIn("4242", out.getvalue())
 
+
+class PffVetoScoresTests(unittest.TestCase):
+    def test_candidate_scores_cache_each_match_and_score_both_conventions(self):
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        from tempolens import pffstudy
+        calls = []
+
+        def grid(members, sample, alphas, steps, both_views=False):
+            calls.append((alphas, steps, both_views))
+            return {(alphas[0], steps[-1]): [np.zeros((5, 4)), np.zeros((5, 4))]}
+        with tempfile.TemporaryDirectory() as folder,                 patch.object(pffstudy, "check_members"),                 patch.object(pffstudy, "CachedSample"),                 patch.object(pffstudy.temporal, "load", return_value=None),                 patch.object(pffstudy.adaptcv, "member_grid", side_effect=grid),                 patch.object(pffstudy, "decode_table"),                 patch.object(pffstudy, "labels_by_convention", return_value={10: 0, 50: 0}),                 patch.object(pffstudy, "score", return_value={"spellF1": 0.4}):
+            args = (["a", "b"], Path(folder), ["m0", "m1"], 0.5, 10, (4, 8, 8, 1), "_s10")
+            first = pffstudy.candidate_scores(*args, both_views=True)
+            again = pffstudy.candidate_scores(*args, both_views=True)
+            names = sorted(p.name for p in Path(folder).iterdir())
+        self.assertEqual(first, {10: [0.4, 0.4], 50: [0.4, 0.4]})
+        self.assertEqual(again, first)
+        self.assertEqual(calls, [((0.5,), (0, 10), True)] * 2)    # computed once per match
+        self.assertEqual(names, ["pff_a_s10.npz", "pff_b_s10.npz"])  # the old cache names
+
 if __name__ == "__main__":
     unittest.main()

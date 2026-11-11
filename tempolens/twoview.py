@@ -9,14 +9,11 @@ A step whose earlier step is missing or failed stops with exit 3 and computes no
 
 import argparse
 import json
-import sys
 
 import numpy as np
 
-from . import adaptcv, adaptseeds, pffstudy, swaadopt, temporal
-from .decoder import transition_matrix
-from .experiments import (CachedSample, check_members, decode_table, savez_atomic, score,
-                          write_atomic)
+from . import adaptcv, adaptseeds, pffstudy, swaadopt
+from .experiments import stop, write_atomic
 
 MEMBERS = 5
 STEPS = (10, 0)                                    # the tie order of the row
@@ -29,11 +26,6 @@ CONDITIONS = ("sim", "shift", "sc")
 
 def finals():
     return adaptcv.ens5_paths()
-
-
-def stop(message):
-    print("STOPPED: " + message, flush=True)
-    sys.exit(3)
 
 
 def verdict(step):
@@ -96,21 +88,8 @@ def pff():
     ids = pffstudy.test_ids(pffstudy.pff_ids())
     assert len(ids) == 16 and ids[0] == "3812", "expected pff-16"
     ref = [r[swaadopt.SUBMITTED_PFF]["10"] for r in pffstudy.submitted_scores(ids)]
-    folder = pffstudy._cache() / "twoview"
-    check_members(folder, finals())
-    members = [temporal.load(p) for p in finals()]
-    got = []
-    for game_id in ids:
-        sample = CachedSample("pff_{}".format(game_id))
-        store = folder / "pff_{}_s{}.npz".format(game_id, steps)
-        if not store.exists():
-            grid = adaptcv.member_grid(members, sample, alphas=(0.5,),
-                                       steps=tuple(sorted({0, steps})), both_views=True)
-            savez_atomic(store, out=np.stack(grid[(0.5, steps)]).astype(np.float32))
-        logp = temporal.combine(list(np.load(store)["out"].astype(np.float64)))
-        pred = decode_table(sample, logp, transition_matrix(*costs[:3]), costs[3])
-        got.append(score(pffstudy.labels_by_convention(sample)[10], pred)["spellF1"])
-        print("scored pff_{}".format(game_id), flush=True)
+    got = pffstudy.candidate_scores(ids, pffstudy._cache() / "twoview", finals(), 0.5, steps,
+                                    costs, "_s{}".format(steps), both_views=True)[10]
     mean, base = float(np.mean(got)), float(np.mean(ref))
     ok = swaadopt.veto_passes(mean, base)
     print("(iii) pff-16 two-view: 10 frames {:.4f} vs submission {:.4f} ({:+.4f}) -> {}".format(

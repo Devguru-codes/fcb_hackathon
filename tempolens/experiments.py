@@ -79,6 +79,12 @@ def baseline_codes(table, window=50):
     return out
 
 
+def stop(message):
+    """End a lane job with exit 3: a rule said stop (final, never retried)."""
+    print("STOPPED: " + message, flush=True)
+    sys.exit(3)
+
+
 def decode_table(table, logp, transition, change_weight=0.0):
     """Viterbi inside each period; X outside.
 

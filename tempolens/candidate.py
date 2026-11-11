@@ -19,7 +19,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .experiments import write_atomic
+from .experiments import stop, write_atomic
 from .predict import DEFAULT_DECODER
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -27,11 +27,6 @@ LOGS = ROOT / "experiments" / "logs" / "nov07"      # the lanes' logs
 TS_VERDICT = ROOT / "models" / "exp" / "ts" / "verdict.json"
 B2_LINE = re.compile(r"^B2: passes: (blend tta\+eata|blend tta) at \(([^)]*)\)")
 BLEND = {"blend tta": (0.5, 0), "blend tta+eata": (0.5, 10)}
-
-
-def stop(message):
-    print("STOPPED: " + message, flush=True)
-    sys.exit(3)
 
 
 def ts_settings(path=TS_VERDICT):
