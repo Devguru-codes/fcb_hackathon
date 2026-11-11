@@ -936,7 +936,8 @@ class LoaderVersionTests(unittest.TestCase):
             self.assertEqual([p.name for p in Path(folder).iterdir()], ["fake_l7.npz"])
         sample = CachedSample.__new__(CachedSample)
         sample.name, sample.seed, sample.keeper, sample.repair = "x", None, False, None
-        self.assertIn("_clean_l{}_".format(od.LOADER_VERSION), sample._path(False).name)
+        with patch("tempolens.experiments.open_data_dir", return_value=Path(".")):  # fresh clone
+            self.assertIn("_clean_l{}_".format(od.LOADER_VERSION), sample._path(False).name)
 
 
 class TrackerBallTests(unittest.TestCase):
@@ -1111,9 +1112,10 @@ class NoisyCacheNameTests(unittest.TestCase):
     def test_noisy_feature_names_carry_a_bumped_loader_version(self):
         from unittest.mock import patch
         import tempolens.experiments as ex
+        from pathlib import Path
         names = {}
         for version in (1, 2):
-            with patch.object(ex, "LOADER_VERSION", version):
+            with patch.object(ex, "LOADER_VERSION", version),                     patch.object(ex, "open_data_dir", return_value=Path(".")):    # fresh clone
                 for kind in ("sim", "rnd", "rnf", "clean"):
                     s = ex.CachedSample.__new__(ex.CachedSample)
                     s.name, s.keeper, s.repair = "x", False, None
@@ -1422,6 +1424,10 @@ class OneRecipeTests(unittest.TestCase):
 
         def record(name, seed=None, randomised=False, faults=False, keeper=False, repair=None):
             return (name, seed, randomised, faults, keeper, repair)
+        if not EXTRA_LOADERS:           # a fresh clone has no SkillCorner download
+            patcher = patch.dict(EXTRA_LOADERS, {"sc_0": None})
+            patcher.start()
+            self.addCleanup(patcher.stop)
         names, sc = sorted(LOADERS), sorted(EXTRA_LOADERS)[0]
         old = {"sim": (names[3], SIM_TEST_SEED, False, False, False, None),
                "shift": (names[3], adaptcv.SHIFT_SEED + 3, True, True, False, None),
