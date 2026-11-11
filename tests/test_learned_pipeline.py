@@ -2007,5 +2007,19 @@ class GridFileTests(unittest.TestCase):
             np.testing.assert_array_equal(np.stack(back[k]), np.stack(grid[k]))
             self.assertEqual(back[k][0].dtype, np.float64)
 
+
+class GameConstantsTests(unittest.TestCase):
+    def test_each_match_constant_lives_once_in_games(self):
+        from games import GAME, GAMES, half_video_blocks, source_frames
+        from tempolens.kickoffs import HALF_KICKOFFS
+        from tempolens.predict import SECOND_HALF_KICKOFF
+        kickoff = GAMES[GAME]["kickoff_frames"]
+        self.assertEqual(kickoff[1], half_video_blocks(GAME)[0][1])   # first graded frame
+        self.assertEqual(SECOND_HALF_KICKOFF[GAME], kickoff[2])
+        self.assertEqual(HALF_KICKOFFS, (kickoff[1], kickoff[2]))
+        self.assertGreater(kickoff[2], half_video_blocks(GAME)[1][1])
+        self.assertNotIn("n_video_frames", GAMES[GAME])            # SOURCES holds the count
+        self.assertEqual(source_frames(), 199319)
+
 if __name__ == "__main__":
     unittest.main()

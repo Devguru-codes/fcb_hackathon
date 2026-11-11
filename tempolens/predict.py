@@ -14,13 +14,13 @@ from pathlib import Path
 
 import numpy as np
 
-from games import GAME, half_video_blocks, source_frames
+from games import GAME, GAMES, half_video_blocks, source_frames
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DECODER = ROOT / "models" / "decoder.json"
 # First alive frame of the second half. FAQ.md: grading starts at 110,808 but the kickoff is
 # 113,742, and every graded frame before it is D. The model cannot see a whistle, so it is set here.
-SECOND_HALF_KICKOFF = {"BAR-ATH": 113742}
+SECOND_HALF_KICKOFF = {game: entry["kickoff_frames"][2] for game, entry in GAMES.items()}
 
 
 def write_submission(path, labels):
