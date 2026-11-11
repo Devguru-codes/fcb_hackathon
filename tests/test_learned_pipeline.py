@@ -1867,5 +1867,35 @@ class Ens5AfterAdoptTests(unittest.TestCase):
         self.assertEqual(b2["switch"], 4.0)
         self.assertEqual(mix["members"], self.TEN["members"])
 
+
+class RecipeProvenanceTests(unittest.TestCase):
+    def test_train_records_draws_and_min_spell_in_the_weights(self):
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        from tempolens import temporal, train
+        saved = {}
+
+        def fake_save(model, normaliser, path, recipe=None):
+            saved.update(path=path, recipe=recipe)
+        with tempfile.TemporaryDirectory() as folder,                 patch.object(train, "training_samples", return_value=[]),                 patch.object(temporal, "train", return_value=(None, None)),                 patch.object(temporal, "save", side_effect=fake_save):
+            train.main(["--out", str(Path(folder) / "x.pt"), "--draws", "4", "--min-spell", "50",
+                        "--matches", "metrica1"])
+        self.assertEqual(saved["recipe"], {"draws": 4, "min_spell": 50, "matches": ["metrica1"]})
+
+    def test_the_recipe_is_stored_and_load_ignores_it(self):
+        import tempfile
+        from pathlib import Path
+        import torch
+        from tempolens import temporal
+        model = temporal.build_model(5, temporal.TemporalConfig(hidden=8))
+        normaliser = temporal.Normaliser(np.random.default_rng(0).normal(size=(50, 5)))
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "m.pt"
+            temporal.save(model, normaliser, path, recipe={"draws": 4, "min_spell": 50})
+            blob = torch.load(path, map_location="cpu", weights_only=False)
+            self.assertEqual(blob["recipe"], {"draws": 4, "min_spell": 50})
+            temporal.load(path)
+
 if __name__ == "__main__":
     unittest.main()

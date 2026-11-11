@@ -675,9 +675,10 @@ def predict_ensemble(members, sample):
     return combine([predict(model, normaliser, sample) for model, normaliser in members])
 
 
-def save(model, normaliser, path):
+def save(model, normaliser, path, recipe=None):
     """Write the weights through a per-process temporary file, then replace: an interrupted save
-    never leaves a truncated file under the final name for another job to load."""
+    never leaves a truncated file under the final name for another job to load. `recipe` (e.g.
+    draws, min_spell) is stored as provenance; `load` does not read it."""
     import os
     from pathlib import Path
     from .experiments import _replace_retry      # lazy: experiments imports this module
@@ -690,7 +691,8 @@ def save(model, normaliser, path):
     try:
         torch.save({"state_dict": model.state_dict(), "normaliser": normaliser.state(),
                     "n_inputs": n_inputs, "n_token_fields": n_fields,
-                    "config": asdict(model.config), "feature_version": FEATURE_VERSION}, tmp)
+                    "config": asdict(model.config), "feature_version": FEATURE_VERSION,
+                    "recipe": dict(recipe or {})}, tmp)
         _replace_retry(tmp, path)
     finally:
         if tmp.exists():

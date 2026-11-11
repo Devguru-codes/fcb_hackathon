@@ -60,7 +60,8 @@ def main(argv=None):
                                      touch=args.touch, drop=drop_names(args.drop), swa=args.swa)
     model, normaliser = temporal.train(samples, seed=temporal.SEED + args.member, config=config)
     Path(out).parent.mkdir(parents=True, exist_ok=True)
-    temporal.save(model, normaliser, out)
+    temporal.save(model, normaliser, out, recipe={"draws": args.draws, "min_spell": args.min_spell,
+                                                  "matches": list(args.matches)})
     print("saved {} (member {}, trained on {}, {})".format(
         out, args.member, ", ".join(args.matches),
         "{} randomised draws each".format(args.draws) if args.draws else "fixed noise draws"))
