@@ -1800,5 +1800,28 @@ class TrainOnceNoFileTests(unittest.TestCase):
             self.assertEqual(run.call_count, 1)
             self.assertEqual(list(Path(folder).iterdir()), [])          # lock released
 
+
+class LcbMixMembersTests(unittest.TestCase):
+    def test_the_mix_is_ens5_plus_ms50_whatever_decoder_json_lists(self):
+        import tempfile
+        from unittest.mock import patch
+        from tempolens import adaptcv, lcb
+        exp = adaptcv.ROOT / "models" / "exp"
+        exp.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=exp) as folder:
+            with patch.object(lcb, "FINAL_DIR", type(exp)(folder)):
+                for k in range(lcb.MEMBERS):
+                    lcb.final_path(k).write_bytes(b"w")
+                ms50 = [lcb.final_path(k).relative_to(adaptcv.ROOT / "models").as_posix()
+                        for k in range(lcb.MEMBERS)]
+                ten = {"members": lcb.ENS5 + ms50}      # decoder.json after the switch
+                with patch("tempolens.predict.load_decoder", return_value=ten):
+                    mix = lcb.members_for("lcb_mix")
+                    self.assertEqual(mix, lcb.ENS5 + ms50)
+                    self.assertEqual(len(set(mix)), 10)
+                    self.assertEqual(lcb.members_for("lcb_ms50"), ms50)
+                lcb.final_path(4).unlink()
+                self.assertIsNone(lcb.members_for("lcb_mix"))
+
 if __name__ == "__main__":
     unittest.main()
