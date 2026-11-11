@@ -3,10 +3,11 @@
     python -m tempolens.train                 # member 0 -> models/retrained_m0.pt
     python -m tempolens.train --member 1      # member 1 -> models/retrained_m1.pt
 
-The default is the submitted recipe (models/tempolens_rnd4_m0..4.pt): 4 randomised noise draws
-per match (domain randomisation), both team perspectives, all 10 open matches; `--draws 0` gives
-the older two fixed-noise draws. Training uses only open data (no competition asset), so the
-weights may be committed. GPU training is not bit-reproducible, which is why the weights are
+The default is the recipe of the first five submitted members (models/tempolens_rnd4_m0..4.pt): 4
+randomised noise draws per match (domain randomisation), both team perspectives, all 10 open
+matches; `--draws 0` gives the older two fixed-noise draws. The other five submitted members
+(models/tempolens_ms50_m0..4.pt, plan row LCB-ADOPT) add `--min-spell 50`. Training uses only
+open data (no competition asset), so the weights may be committed. GPU training is not bit-reproducible, which is why the weights are
 committed: the submission is regenerated from them by CPU inference, which is.
 """
 
@@ -31,7 +32,7 @@ def main(argv=None):
     parser.add_argument("--chunk", type=int, default=temporal.CHUNK,
                         help="training sequence length in frames")
     parser.add_argument("--draws", type=int, default=4,
-                        help="randomised-noise draws per match (default 4, the submitted recipe; "
+                        help="randomised-noise draws per match (default 4, the submitted members'; "
                              "0 = the two fixed-noise draws)")
     parser.add_argument("--faults", action="store_true",
                         help="with --draws: add tracker faults to the training draws")
@@ -47,7 +48,9 @@ def main(argv=None):
     args = parser.parse_args(argv)
     opendata.DFL_MIN_SPELL = args.min_spell
     out = args.out or "models/retrained_m{}.pt".format(args.member)
-    if Path(out).name.startswith("tempolens_rnd4_m"):
+    from .predict import load_decoder
+    submitted = {Path(m).name for m in load_decoder()["members"]}     # every submitted member
+    if Path(out).name in submitted or Path(out).name.startswith("tempolens_rnd4_m"):
         parser.error("never overwrite the submitted weights ({})".format(out))
     samples = training_samples(args.matches, args.member, args.draws, args.faults)
     if args.extra_train:     # as in the cross-validation: real broadcast noise, one draw each

@@ -788,10 +788,11 @@ class SwaAdoptTests(unittest.TestCase):
         import tempfile
         from pathlib import Path
         with tempfile.TemporaryDirectory() as folder:      # the guard's name, never the tracked file
-            out = Path(folder) / "tempolens_rnd4_m0.pt"
-            with self.assertRaises(SystemExit):
-                train.main(["--out", str(out)])
-            self.assertFalse(out.exists())
+            for name in ("tempolens_rnd4_m0.pt", "tempolens_ms50_m3.pt"):   # both halves of the mix
+                out = Path(folder) / name
+                with self.assertRaises(SystemExit):
+                    train.main(["--out", str(out)])
+                self.assertFalse(out.exists())
 
     def test_dead_weight_refuses_the_losses_that_would_drop_it(self):
         from tempolens import temporal

@@ -54,7 +54,7 @@ python -m tempolens.experiments --model gbm
 python -m tempolens.experiments --model temporal
 python -m tempolens.train --member 0 --draws 4 --out models/retrained_m0.pt   # members 1-4 likewise
 python -m tempolens.predict --data-root data --output retrained.csv --model models/retrained_m0.pt models/retrained_m1.pt models/retrained_m2.pt models/retrained_m3.pt models/retrained_m4.pt
-# Never write retrained weights over models/tempolens_rnd4_m*.pt: GPU training is not bit-reproducible.
+# Never write retrained weights over the submitted members (models/tempolens_rnd4_m*.pt, models/tempolens_ms50_m*.pt): GPU training is not bit-reproducible.
 ```
 
 `predict` uses the ensemble members listed in `models/decoder.json` (the costs there were tuned for
