@@ -1897,5 +1897,24 @@ class RecipeProvenanceTests(unittest.TestCase):
             self.assertEqual(blob["recipe"], {"draws": 4, "min_spell": 50})
             temporal.load(path)
 
+
+class OofTagTests(unittest.TestCase):
+    def test_every_training_input_names_the_cache_for_both_kinds(self):
+        from unittest.mock import patch
+        import tempolens.experiments as ex
+        from tempolens.temporal import DEFAULT_CONFIG
+        for kind in ("gbm", "temporal"):
+            plain = ex.oof_tag(kind)
+            variants = [ex.oof_tag(kind, draws=4), ex.oof_tag(kind, draws=4, faults=True),
+                        ex.oof_tag(kind, min_spell=50), ex.oof_tag(kind, sc_visible=True)]
+            self.assertEqual(len({plain, *variants}), 5, kind)
+            with patch.object(ex, "LOADER_VERSION", 2):
+                self.assertNotEqual(ex.oof_tag(kind), plain)
+        # today's names, so no existing cache is recomputed
+        self.assertEqual(ex.oof_tag("gbm"), "gbm")
+        self.assertEqual(ex.oof_tag("temporal", draws=4, min_spell=50),
+                         DEFAULT_CONFIG.tag() + ("" if ex.TRAIN_VERSION == 1 else "_t{}".format(
+                             ex.TRAIN_VERSION)) + "_rnd4v{}_ms50".format(ex.RANDOM_VERSION))
+
 if __name__ == "__main__":
     unittest.main()

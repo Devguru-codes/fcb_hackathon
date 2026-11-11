@@ -315,6 +315,29 @@ def training_samples(names, member, draws=0, faults=False):
     return [CachedSample(n, s) for n in sorted(names) for s in member_noise_seeds(member)]
 
 
+def oof_tag(kind, config=None, draws=0, faults=False, min_spell=None, sc_visible=False):
+    """The out-of-fold cache name's model part: every training input of either model kind
+    (the GBM trains on the same samples, so draws / min_spell / sc_visible name it too)."""
+    if kind == "temporal":
+        from .temporal import DEFAULT_CONFIG
+        config = config or DEFAULT_CONFIG
+        tag = config.tag() + ("" if TRAIN_VERSION == 1 else "_t{}".format(TRAIN_VERSION))
+    else:
+        tag = kind
+    if draws:
+        tag += "_rnd{}v{}{}".format(draws, RANDOM_VERSION, "f" if faults else "")
+    if kind == "temporal" and config.touch:     # the touch targets' recipe is part of what was trained
+        from .touches import TOUCH_VERSION
+        tag += "_tv{}".format(TOUCH_VERSION)
+    if min_spell is not None:
+        tag += "_ms{}".format(min_spell)
+    if sc_visible:
+        tag += "_scvis"
+    if LOADER_VERSION > 1:                       # version 1 keeps today's names
+        tag += "_l{}".format(LOADER_VERSION)
+    return tag
+
+
 def oof_logp(names, kind="gbm", protocol="sim", refresh=False, member=0,
              members=ENSEMBLE_MEMBERS, config=None, extra_train=(), draws=0, faults=False,
              min_spell=None, sc_visible=False):
@@ -339,21 +362,7 @@ def oof_logp(names, kind="gbm", protocol="sim", refresh=False, member=0,
                             min_spell=min_spell, sc_visible=sc_visible)
                    for k in (range(members) if isinstance(members, int) else members)]
         return {n: combine([out[n] for out in outputs]) for n in names}
-    if kind == "temporal":
-        from .temporal import DEFAULT_CONFIG
-        config = config or DEFAULT_CONFIG
-        kind_tag = config.tag() + ("" if TRAIN_VERSION == 1 else "_t{}".format(TRAIN_VERSION))
-        if draws:
-            kind_tag += "_rnd{}v{}{}".format(draws, RANDOM_VERSION, "f" if faults else "")
-        if config.touch:                # the touch targets' recipe is part of what was trained
-            from .touches import TOUCH_VERSION
-            kind_tag += "_tv{}".format(TOUCH_VERSION)
-        if min_spell is not None:
-            kind_tag += "_ms{}".format(min_spell)
-        if sc_visible:
-            kind_tag += "_scvis"
-    else:
-        kind_tag = kind
+    kind_tag = oof_tag(kind, config, draws, faults, min_spell, sc_visible)
     cache = open_data_dir() / "cache" / "oof"
     cache.mkdir(parents=True, exist_ok=True)
     noise = NOISE_TAG if protocol == "sim" else "clean"
