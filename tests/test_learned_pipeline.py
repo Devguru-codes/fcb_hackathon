@@ -1823,14 +1823,49 @@ class LcbMixMembersTests(unittest.TestCase):
                     lcb.final_path(k).write_bytes(b"w")
                 ms50 = [lcb.final_path(k).relative_to(adaptcv.ROOT / "models").as_posix()
                         for k in range(lcb.MEMBERS)]
-                ten = {"members": lcb.ENS5 + ms50}      # decoder.json after the switch
+                ens5 = list(adaptcv.ENS5)
+                ten = {"members": ens5 + ms50}      # decoder.json after the switch
                 with patch("tempolens.predict.load_decoder", return_value=ten):
                     mix = lcb.members_for("lcb_mix")
-                    self.assertEqual(mix, lcb.ENS5 + ms50)
+                    self.assertEqual(mix, ens5 + ms50)
                     self.assertEqual(len(set(mix)), 10)
                     self.assertEqual(lcb.members_for("lcb_ms50"), ms50)
                 lcb.final_path(4).unlink()
                 self.assertIsNone(lcb.members_for("lcb_mix"))
+
+
+class Ens5AfterAdoptTests(unittest.TestCase):
+    TEN = {"members": ["tempolens_rnd4_m{}.pt".format(k) for k in range(5)]
+           + ["tempolens_ms50_m{}.pt".format(k) for k in range(5)]}
+
+    def test_adaptseeds_members_5_resolves_the_five_rnd4_files(self):
+        import tempfile
+        from unittest.mock import patch
+        from tempolens import adaptcv
+
+        class Seen(Exception):
+            pass
+
+        def stop_at_check(folder, paths):
+            raise Seen([p.name for p in paths])
+        with tempfile.TemporaryDirectory() as folder,                 patch("tempolens.predict.load_decoder", return_value=self.TEN),                 patch.object(adaptcv, "check_members", side_effect=stop_at_check):
+            with self.assertRaises(Seen) as seen:        # adaptseeds: collect(5, folder, scorer)
+                adaptcv.collect(5, folder, lambda *a: None)
+        self.assertEqual(seen.exception.args[0], ["tempolens_rnd4_m{}.pt".format(k) for k in range(5)])
+        for p in adaptcv.ens5_paths():
+            self.assertTrue(p.exists(), p)               # committed, so a fresh clone has them
+
+    def test_candidates_start_from_ens5_and_lcb_rows_keep_their_members(self):
+        from tempolens import adaptcv, candidate
+        with __import__("unittest.mock").mock.patch.object(
+                candidate.DEFAULT_DECODER.__class__, "read_text",
+                return_value=__import__("json").dumps({"switch": 4.0, **self.TEN})):
+            b2 = candidate.config_for("b2", {"blend": True})
+            mix = candidate.config_for("lcb_mix", {"members": self.TEN["members"]})
+        self.assertEqual(b2["members"], list(adaptcv.ENS5))
+        self.assertTrue(b2["blend"])
+        self.assertEqual(b2["switch"], 4.0)
+        self.assertEqual(mix["members"], self.TEN["members"])
 
 if __name__ == "__main__":
     unittest.main()

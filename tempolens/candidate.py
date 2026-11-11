@@ -72,13 +72,22 @@ def possessions(path):
     return int((alive & np.concatenate(([True], codes[1:] != codes[:-1]))).sum())
 
 
-def build(name, overrides, data_root):
-    out = ROOT / "derived" / name                     # git-ignored
-    out.mkdir(parents=True, exist_ok=True)
+def config_for(name, overrides):
+    """The candidate's decoder settings: decoder.json's, on ENS5 (the members every study row
+    was validated with; decoder.json lists the mix since LCB-ADOPT), then the row's overrides."""
+    from .adaptcv import ENS5
     config = json.loads(DEFAULT_DECODER.read_text(encoding="utf-8"))
+    config["members"] = list(ENS5)
     config.update(overrides)
     config["_provenance"] = ("TEMPORARY candidate {} ({}), not the submission; models/decoder.json "
                              "is unchanged.".format(name, json.dumps(overrides)))
+    return config
+
+
+def build(name, overrides, data_root):
+    out = ROOT / "derived" / name                     # git-ignored
+    out.mkdir(parents=True, exist_ok=True)
+    config = config_for(name, overrides)
     decoder = out / "decoder_{}.json".format(name)
     write_atomic(decoder, json.dumps(config, indent=2) + "\n")
     files = []

@@ -42,7 +42,7 @@ from .experiments import SIM_TEST_SEED, CachedSample, check_members, decode_tabl
     write_atomic
 from .match import A, D, H
 from .opendata import EXTRA_LOADERS, LOADERS
-from .predict import DEFAULT_DECODER, gate_team_evidence, load_decoder
+from .predict import gate_team_evidence
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "models" / "exp" / "adaptcv"
@@ -52,6 +52,9 @@ GATES = (False, True)
 COSTS = ((2.0, 2.0, 2.0, 0.5), (2.0, 8.0, 8.0, 0.5), (4.0, 8.0, 8.0, 1.0))
 SHIFT_SEED = 7000
 MEMBERS, DRAWS = 3, 4
+# The 5 members every study's references were computed with. decoder.json lists the 10-member
+# mix since plan row LCB-ADOPT, so studies name these here instead of reading it.
+ENS5 = tuple("tempolens_rnd4_m{}.pt".format(k) for k in range(5))
 NOISE = 0.005
 
 
@@ -178,6 +181,10 @@ def condition_sample(condition, name):
     raise ValueError("unknown condition {!r}".format(condition))
 
 
+def ens5_paths():
+    return [ROOT / "models" / p for p in ENS5]
+
+
 def cached(folder, condition, name, compute):
     path = folder / "{}_{}.json".format(condition, name)
     if path.exists():
@@ -189,14 +196,13 @@ def cached(folder, condition, name, compute):
 
 
 def collect(count=MEMBERS, folder=None, scorer=score_match, final_paths=None, swa=0):
-    """`final_paths` (default: decoder.json's members) score sc; `swa` picks the fold models."""
+    """`final_paths` (default: ENS5) score sc; `swa` picks the fold models."""
     folder = folder or (OUT / "m{}_swa{}".format(count, swa) if swa
                         else OUT if count == MEMBERS else OUT / "m{}".format(count))
-    final_paths = final_paths or [ROOT / "models" / p
-                                  for p in load_decoder(DEFAULT_DECODER)["members"]]
+    final_paths = final_paths or ens5_paths()
     check_members(folder, final_paths)      # the sc rows are these members' outputs
     final = [temporal.load(p) for p in final_paths]
-    assert len(final) == count, "decoder.json lists {} members, not {}".format(len(final), count)
+    assert len(final) == count, "{} final members, not {}".format(len(final), count)
     results = {"sim": {}, "shift": {}, "sc": {}}
     names = sorted(LOADERS)
     for held in folds(names):

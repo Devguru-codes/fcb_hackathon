@@ -17,7 +17,6 @@ from . import adaptcv, adaptseeds, pffstudy, swaadopt, temporal
 from .decoder import transition_matrix
 from .experiments import (CachedSample, check_members, decode_table, savez_atomic, score,
                           write_atomic)
-from .predict import DEFAULT_DECODER, load_decoder
 
 MEMBERS = 5
 STEPS = (10, 0)                                    # the tie order of the row
@@ -29,7 +28,7 @@ CONDITIONS = ("sim", "shift", "sc")
 
 
 def finals():
-    return [adaptcv.ROOT / "models" / p for p in load_decoder(DEFAULT_DECODER)["members"]]
+    return adaptcv.ens5_paths()
 
 
 def stop(message):

@@ -23,7 +23,6 @@ from .decoder import transition_matrix
 from .experiments import CachedSample, check_members, decode_table, open_data_dir, savez_atomic, \
     score, write_atomic
 from .opendata import _pff_dir, pff_ids, remove_flicker
-from .predict import DEFAULT_DECODER, load_decoder
 
 KEYS = ((0.0, 0), (0.5, 0), (0.5, 10))
 ROWS = (("submitted: TTA 0.5 + EATA 10", (0.5, 10), (4.0, 8.0, 8.0, 1.0)),
@@ -188,7 +187,7 @@ def main(argv=None):
     assert not missing, "pff-16 files missing: {}".format(missing)
     if args.step == "gate":
         return gate(ids)
-    paths = [adaptcv.ROOT / "models" / p for p in load_decoder(DEFAULT_DECODER)["members"]]
+    paths = adaptcv.ens5_paths()
     check_members(_cache(), paths)          # pff_<id>.json and the outputs are these members'
     members = [temporal.load(p) for p in paths]
     results, skipped = {}, {}

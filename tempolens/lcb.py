@@ -23,15 +23,13 @@ from .experiments import CachedSample, check_members, decode_table, folds, open_
 from .opendata import LOADERS
 
 MEMBERS, MIN_SPELL = 5, 50
-FINAL_DIR = adaptcv.ROOT / "models" / "exp" / "ms50"
+FINAL_DIR = adaptcv.ROOT / "models"        # the committed ms50 finals (LCB-ADOPT)
 FOLD_DIR = adaptcv.OUT / "models_ms50"
 KEYS = ((0.0, 0), (0.5, 10))
 SETTINGS = (("no adaptation", (0.0, 0), (4.0, 8.0, 8.0, 1.0)),
             ("no adaptation, CV argmax", (0.0, 0), (2.0, 8.0, 8.0, 0.5)),
             ("submitted: TTA 0.5 + EATA 10", (0.5, 10), (4.0, 8.0, 8.0, 1.0)))
 CONDITIONS = ("sim", "shift", "sc", "pff")
-# the submitted ENS5, named here: decoder.json may list the mix itself once LCB-ADOPT switches it
-ENS5 = ["tempolens_rnd4_m{}.pt".format(k) for k in range(MEMBERS)]
 
 
 def stop(message):
@@ -191,7 +189,7 @@ def members_for(row):
     if not all(p.exists() for p in ms50):
         return None
     rel = [p.relative_to(adaptcv.ROOT / "models").as_posix() for p in ms50]
-    return rel if row == "lcb_ms50" else ENS5 + rel
+    return rel if row == "lcb_ms50" else list(adaptcv.ENS5) + rel
 
 
 def main(argv=None):

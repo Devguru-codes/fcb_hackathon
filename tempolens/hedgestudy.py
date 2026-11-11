@@ -24,7 +24,6 @@ from .decoder import transition_matrix
 from .experiments import check_members, decode_table, folds, open_data_dir, savez_atomic, \
     score
 from .opendata import EXTRA_LOADERS, LOADERS
-from .predict import DEFAULT_DECODER, load_decoder
 
 CONDITIONS = ("sim", "shift", "sc")
 KEYS = ((0.0, 0), (0.5, 0), (0.5, 10))
@@ -56,7 +55,7 @@ def matches():
 def compute(until=None):
     """Cache each member's outputs for KEYS on every match; False if stopped by `until`."""
     names = sorted(LOADERS)
-    paths = [adaptcv.ROOT / "models" / p for p in load_decoder(DEFAULT_DECODER)["members"]]
+    paths = adaptcv.ens5_paths()
     check_members(_cache(), paths)          # the sc outputs are these members'
     final = [temporal.load(p) for p in paths]
     members_of = {}
