@@ -19,7 +19,7 @@ import numpy as np
 from . import adaptcv, hedgestudy, pffstudy, temporal
 from .decoder import transition_matrix
 from .experiments import CachedSample, check_members, decode_table, folds, open_data_dir, \
-    savez_atomic, score, stop
+    score, stop
 from .opendata import LOADERS
 
 MEMBERS, MIN_SPELL = 5, 50
@@ -104,23 +104,20 @@ def outputs():
                 loaded = {key: [temporal.load(fold_path(held, k)) for k in range(MEMBERS)]}
             members = loaded[key]
         grid = adaptcv.member_grid(members, make(), alphas=(0.0, 0.5), steps=(0, 10))
-        savez_atomic(path, **{"a{}_s{}".format(*k): np.stack(grid[k]).astype(np.float32)
-                              for k in KEYS})
+        adaptcv.save_grid(path, grid, KEYS)
         print("outputs {} {}".format(condition, name), flush=True)
 
 
 def ens5_outputs(condition, name):
     """{key: [member outputs]} of the submitted members (hedge cache, pff-16 cache)."""
     if condition == "pff":
-        z = np.load(pffstudy._cache() / "pff_{}_outputs.npz".format(name))
-        return {k: list(z["a{}_s{}".format(*k)].astype(np.float64)) for k in KEYS}
+        return adaptcv.load_grid(pffstudy._cache() / "pff_{}_outputs.npz".format(name), KEYS)
     out = hedgestudy.load(condition, name)
     return {k: out[k] for k in KEYS}
 
 
 def ms50_outputs(condition, name):
-    z = np.load(store_path(condition, name))
-    return {k: list(z["a{}_s{}".format(*k)].astype(np.float64)) for k in KEYS}
+    return adaptcv.load_grid(store_path(condition, name), KEYS)
 
 
 def needed_files():

@@ -39,7 +39,7 @@ import numpy as np
 from . import temporal
 from .decoder import transition_matrix
 from .experiments import SIM_TEST_SEED, CachedSample, check_members, decode_table, folds, score, \
-    write_atomic
+    savez_atomic, write_atomic
 from .match import A, D, H
 from .opendata import EXTRA_LOADERS, LOADERS
 from .predict import gate_team_evidence
@@ -186,6 +186,17 @@ def condition_sample(condition, name):
         return CachedSample(name, SHIFT_SEED + sorted(LOADERS).index(name), randomised=True,
                             faults=True)
     raise ValueError("unknown condition {!r}".format(condition))
+
+
+def save_grid(path, grid, keys):
+    """Per-member outputs of member_grid, one float32 array per (tta_alpha, eata_steps) key: the
+    file format the hedge, pff and LCB caches share (read back with load_grid)."""
+    savez_atomic(path, **{"a{}_s{}".format(*k): np.stack(grid[k]).astype(np.float32) for k in keys})
+
+
+def load_grid(path, keys):
+    z = np.load(path)
+    return {k: list(z["a{}_s{}".format(*k)].astype(np.float64)) for k in keys}
 
 
 def ens5_paths():

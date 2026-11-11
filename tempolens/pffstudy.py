@@ -67,10 +67,8 @@ def score_match(members, game_id):
     sample = CachedSample("pff_{}".format(game_id))
     if not store.exists():
         grid = adaptcv.member_grid(members, sample, alphas=(0.0, 0.5), steps=(0, 10))
-        savez_atomic(store, **{"a{}_s{}".format(*k): np.stack(grid[k]).astype(np.float32)
-                           for k in KEYS})
-    z = np.load(store)      # always score the stored values, so a re-score is identical
-    grid = {k: list(z["a{}_s{}".format(*k)].astype(np.float64)) for k in KEYS}
+        adaptcv.save_grid(store, grid, KEYS)
+    grid = adaptcv.load_grid(store, KEYS)   # always score the stored values: re-scores agree
     labels = labels_by_convention(sample)
     out = {}
     for label, key, costs in ROWS:

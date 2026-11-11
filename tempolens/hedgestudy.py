@@ -21,8 +21,7 @@ import numpy as np
 
 from . import adaptcv, temporal
 from .decoder import transition_matrix
-from .experiments import check_members, decode_table, folds, open_data_dir, savez_atomic, \
-    score
+from .experiments import check_members, decode_table, folds, open_data_dir, score
 from .opendata import EXTRA_LOADERS, LOADERS
 
 CONDITIONS = ("sim", "shift", "sc")
@@ -74,15 +73,13 @@ def compute(until=None):
                 members_of = {key: adaptcv.fold_members(held, sorted(set(names) - set(held)), 5)}
             members = members_of[key]
         grid = adaptcv.member_grid(members, make(), alphas=(0.0, 0.5), steps=(0, 10))
-        savez_atomic(path, **{"a{}_s{}".format(*k): np.stack(grid[k]).astype(np.float32)
-                          for k in KEYS})
+        adaptcv.save_grid(path, grid, KEYS)
         print("cached {} {}".format(condition, name), flush=True)
     return True
 
 
 def load(condition, name):
-    z = np.load(_cache() / "{}_{}.npz".format(condition, name))
-    return {k: [m.astype(np.float64) for m in z["a{}_s{}".format(*k)]] for k in KEYS}
+    return adaptcv.load_grid(_cache() / "{}_{}.npz".format(condition, name), KEYS)
 
 
 def variants(out):

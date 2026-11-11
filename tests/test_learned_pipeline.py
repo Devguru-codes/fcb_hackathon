@@ -1988,5 +1988,24 @@ class PffVetoScoresTests(unittest.TestCase):
         self.assertEqual(calls, [((0.5,), (0, 10), True)] * 2)    # computed once per match
         self.assertEqual(names, ["pff_a_s10.npz", "pff_b_s10.npz"])  # the old cache names
 
+
+class GridFileTests(unittest.TestCase):
+    def test_save_and_load_grid_round_trip_in_the_shared_format(self):
+        import tempfile
+        from pathlib import Path
+        from tempolens import adaptcv
+        keys = ((0.0, 0), (0.5, 10))
+        grid = {k: [np.full((3, 4), i + j, dtype=np.float64) for j in range(2)]
+                for i, k in enumerate(keys)}
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "g.npz"
+            adaptcv.save_grid(path, grid, keys)
+            self.assertEqual(sorted(np.load(path).files), ["a0.0_s0", "a0.5_s10"])  # old names
+            back = adaptcv.load_grid(path, keys)
+        for k in keys:
+            self.assertEqual(len(back[k]), 2)
+            np.testing.assert_array_equal(np.stack(back[k]), np.stack(grid[k]))
+            self.assertEqual(back[k][0].dtype, np.float64)
+
 if __name__ == "__main__":
     unittest.main()
