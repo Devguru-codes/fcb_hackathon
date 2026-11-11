@@ -1949,5 +1949,22 @@ class ScoreCacheVersionTests(unittest.TestCase):
                 with self.assertRaises(RuntimeError):
                     adaptcv.cached(folder, "sim", "m", lambda: {"r": 3})
 
+
+class LockWaitMessageTests(unittest.TestCase):
+    def test_a_waiter_names_the_lock_and_its_holder_at_once(self):
+        import contextlib
+        import io
+        import tempfile
+        from pathlib import Path
+        from tempolens import adaptcv
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "m.pt"
+            Path(folder, "m.pt.lock").write_text("4242")
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out), self.assertRaises(RuntimeError):
+                adaptcv.train_once(path, ["never-run"], wait_s=0, timeout_s=0)
+        self.assertIn("m.pt.lock", out.getvalue())
+        self.assertIn("4242", out.getvalue())
+
 if __name__ == "__main__":
     unittest.main()

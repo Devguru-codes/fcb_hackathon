@@ -70,6 +70,13 @@ def train_once(path, command, wait_s=30, timeout_s=4 * 3600):
         try:
             handle = os.open(str(lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
         except FileExistsError:
+            if not waited:        # said once, so a lock left by a killed job is visible at once
+                try:
+                    holder = lock.read_text(encoding="utf-8").strip() or "?"
+                except OSError:
+                    holder = "?"
+                print("waiting for {}: {} is held by process {}; delete it if that job died".format(
+                    path.name, lock, holder), flush=True)
             if waited >= timeout_s:
                 raise RuntimeError("{} is locked by another job and still missing after {:.0f} s; "
                                    "delete the lock if that job died".format(path, waited))
