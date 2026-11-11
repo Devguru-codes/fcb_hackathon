@@ -521,8 +521,10 @@ class TemporalVariantTests(unittest.TestCase):
     def test_submitted_members_load_as_default_gru(self):
         from tempolens import temporal
         from tempolens.predict import default_models
-        paths = default_models()
-        self.assertEqual(len(paths), 5)
+        paths = default_models()      # LCB-ADOPT: ENS5 then the 5 ms50 finals
+        self.assertEqual([p.name for p in paths],
+                         ["tempolens_{}_m{}.pt".format(kind, k) for kind in ("rnd4", "ms50")
+                          for k in range(5)])
         for path in paths:      # committed, current feature version, no feature masked
             model, normaliser = temporal.load(path)
             self.assertEqual(model.config, temporal.DEFAULT_CONFIG)
