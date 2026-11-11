@@ -95,10 +95,7 @@ def pff():
     steps, costs = v["steps"], tuple(v["costs"])
     ids = pffstudy.test_ids(pffstudy.pff_ids())
     assert len(ids) == 16 and ids[0] == "3812", "expected pff-16"
-    ref = []
-    for game_id in ids:
-        r = json.loads((pffstudy._cache() / "pff_{}.json".format(game_id)).read_text("utf-8"))
-        ref.append(r[swaadopt.SUBMITTED_PFF]["10"])
+    ref = [r[swaadopt.SUBMITTED_PFF]["10"] for r in pffstudy.submitted_scores(ids)]
     folder = pffstudy._cache() / "twoview"
     check_members(folder, finals())
     members = [temporal.load(p) for p in finals()]

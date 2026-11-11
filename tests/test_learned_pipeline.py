@@ -1916,5 +1916,38 @@ class OofTagTests(unittest.TestCase):
                          DEFAULT_CONFIG.tag() + ("" if ex.TRAIN_VERSION == 1 else "_t{}".format(
                              ex.TRAIN_VERSION)) + "_rnd4v{}_ms50".format(ex.RANDOM_VERSION))
 
+
+class ScoreCacheVersionTests(unittest.TestCase):
+    def test_pff_scores_ignore_a_stale_json_and_need_the_outputs(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        from tempolens import pffstudy
+        with tempfile.TemporaryDirectory() as folder:
+            folder = Path(folder)
+            (folder / "pff_g.json").write_text(json.dumps({"old labels": 1}))
+            np.savez(folder / "pff_g_outputs.npz",
+                     **{"a{}_s{}".format(*k): np.zeros((2, 5, 4)) for k in pffstudy.KEYS})
+            with patch.object(pffstudy, "_cache", return_value=folder),                     patch.object(pffstudy, "CachedSample"),                     patch.object(pffstudy, "labels_by_convention", return_value={10: 0, 50: 0}),                     patch.object(pffstudy, "decode_table"),                     patch.object(pffstudy, "score", return_value={"spellF1": 0.5}):
+                rows = pffstudy.score_match(None, "g")
+                with self.assertRaises(FileNotFoundError):
+                    pffstudy.score_match(None, "missing")
+        self.assertEqual(set(rows), {label for label, _, _ in pffstudy.ROWS})
+        self.assertEqual(rows[pffstudy.ROWS[0][0]], {"10": 0.5, "50": 0.5})
+
+    def test_study_rows_refuse_another_loader_version(self):
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        from tempolens import adaptcv, opendata
+        with tempfile.TemporaryDirectory() as folder:
+            folder = Path(folder)
+            self.assertEqual(adaptcv.cached(folder, "sim", "m", lambda: {"r": 1}), {"r": 1})
+            self.assertEqual(adaptcv.cached(folder, "sim", "m", lambda: {"r": 2}), {"r": 1})
+            with patch.object(opendata, "LOADER_VERSION", opendata.LOADER_VERSION + 1):
+                with self.assertRaises(RuntimeError):
+                    adaptcv.cached(folder, "sim", "m", lambda: {"r": 3})
+
 if __name__ == "__main__":
     unittest.main()

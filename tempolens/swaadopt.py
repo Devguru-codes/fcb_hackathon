@@ -154,8 +154,7 @@ def pff():
     ids = pffstudy.test_ids(pffstudy.pff_ids())
     assert len(ids) == 16 and ids[0] == "3812", "expected pff-16"
     ref = {c: [] for c in pffstudy.CONVENTIONS}
-    for game_id in ids:     # the submission's cached pff-16 scores (row PFF)
-        r = json.loads((pffstudy._cache() / "pff_{}.json".format(game_id)).read_text("utf-8"))
+    for r in pffstudy.submitted_scores(ids):     # ENS5's pff-16 scores, on today's labels
         for c in ref:
             ref[c].append(r[SUBMITTED_PFF][str(c)])
     members = [temporal.load(p) for p in FINALS]

@@ -12,7 +12,6 @@ label conventions. A match whose events and tracking disagree is skipped and log
 """
 
 import argparse
-import json
 import time
 from datetime import datetime
 
@@ -21,7 +20,7 @@ import numpy as np
 from . import adaptcv, temporal
 from .decoder import transition_matrix
 from .experiments import CachedSample, check_members, decode_table, open_data_dir, savez_atomic, \
-    score, write_atomic
+    score
 from .opendata import _pff_dir, pff_ids, remove_flicker
 
 KEYS = ((0.0, 0), (0.5, 0), (0.5, 10))
@@ -59,12 +58,13 @@ def labels_by_convention(sample, conventions=CONVENTIONS, provider=10):
 
 
 def score_match(members, game_id):
-    """{row label: {convention: spellF1}} for one match (cached)."""
-    path = _cache() / "pff_{}.json".format(game_id)
-    if path.exists():
-        return json.loads(path.read_text(encoding="utf-8"))
-    sample = CachedSample("pff_{}".format(game_id))
+    """{row label: {convention: spellF1}} for one match. The members' outputs are cached; the
+    scores are not, so they always use today's labels (PFF_VERSION) and loader. `members` None:
+    the outputs must exist already (the swaadopt / twoview vetoes' reference)."""
     store = _cache() / "pff_{}_outputs.npz".format(game_id)     # labels never enter these
+    if members is None and not store.exists():
+        raise FileNotFoundError("{} is missing: run pffstudy first".format(store))
+    sample = CachedSample("pff_{}".format(game_id))
     if not store.exists():
         grid = adaptcv.member_grid(members, sample, alphas=(0.0, 0.5), steps=(0, 10))
         savez_atomic(store, **{"a{}_s{}".format(*k): np.stack(grid[k]).astype(np.float32)
@@ -77,8 +77,13 @@ def score_match(members, game_id):
         pred = decode_table(sample, temporal.combine(grid[key]), transition_matrix(*costs[:3]),
                             costs[3])
         out[label] = {str(c): score(y, pred)["spellF1"] for c, y in labels.items()}
-    write_atomic(path, json.dumps(out))
     return out
+
+
+def submitted_scores(game_ids):
+    """[score_match rows] of the submitted ENS5 outputs, checked against their members."""
+    check_members(_cache(), adaptcv.ens5_paths())
+    return [score_match(None, g) for g in game_ids]
 
 
 def reversal(diffs):

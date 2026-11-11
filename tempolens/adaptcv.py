@@ -185,7 +185,24 @@ def ens5_paths():
     return [ROOT / "models" / p for p in ENS5]
 
 
+def stamp_loader(folder):
+    """Tie a result folder to the open-data loader version its labels came from: written on
+    first use, a later use under another LOADER_VERSION raises instead of mixing old and new rows."""
+    from . import opendata
+    path = Path(folder) / "loader.json"
+    record = {"loader_version": opendata.LOADER_VERSION}
+    if path.exists():
+        saved = json.loads(path.read_text(encoding="utf-8"))
+        if saved != record:
+            raise RuntimeError("{} holds rows from loader {}, the code is at {}".format(
+                folder, saved, record))
+    else:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        write_atomic(path, json.dumps(record))
+
+
 def cached(folder, condition, name, compute):
+    stamp_loader(folder)
     path = folder / "{}_{}.json".format(condition, name)
     if path.exists():
         return json.loads(path.read_text(encoding="utf-8"))
