@@ -45,7 +45,7 @@ def write_constant(name, label, n_frames, results_dir):
     pd.DataFrame({
         "frame": np.arange(n_frames, dtype=np.int64),
         "label": np.full(n_frames, label, dtype="<U1"),
-    }).to_csv(path, index=False)
+    }).to_csv(path, index=False, lineterminator="\n")     # LF on every OS
     return path
 
 

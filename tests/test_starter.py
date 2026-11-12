@@ -12,6 +12,19 @@ import load_atd  # noqa: E402
 import load_smart_tagging as lst  # noqa: E402
 
 
+class SubmissionBytesTests(unittest.TestCase):
+    def test_starter_writers_use_lf_on_every_os(self):
+        import baseline
+        import make_dummy_submission
+        with tempfile.TemporaryDirectory() as folder:
+            a = Path(baseline.write_submission(str(Path(folder) / "a.csv"), ["H", "A", "D"]))
+            b = Path(make_dummy_submission.write_constant("b", "D", 3, folder))
+            for path in (a, b):
+                data = path.read_bytes()
+                self.assertNotIn(b"\r", data, path.name)
+                self.assertTrue(data.startswith(b"frame,label\n"), path.name)
+
+
 class KickoffTagTests(unittest.TestCase):
     def test_a_tag_ending_on_the_kickoff_frame_does_not_contain_it(self):
         truth = lst.KICKOFF_VIDEO_FRAMES["1st Half"]

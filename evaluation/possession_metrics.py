@@ -322,6 +322,15 @@ def transitions(codes, runs):
     return out
 
 
+def _key(transition, typed):
+    """What two transitions must share to be matched: the (from, to) pair, nothing, or 'to'."""
+    if typed == "pair":
+        return (transition[1], transition[2])
+    if typed == "none":
+        return 0
+    return transition[2]
+
+
 def match_transitions(gt_trans, pred_trans, tol, typed="to"):
     """One-to-one match of predicted transitions to ground-truth ones within +/- tol frames.
 
@@ -343,19 +352,12 @@ def match_transitions(gt_trans, pred_trans, tol, typed="to"):
     handful of ground-truth segments are shorter than the loose tolerance, so at tol=25 the
     windows really can overlap. That is what n_ambiguous in transition_scores is for.
     """
-    def key(transition):
-        if typed == "pair":
-            return (transition[1], transition[2])
-        if typed == "none":
-            return 0
-        return transition[2]
-
     pairs, missed, spurious = [], [], []
     gt_by_key, pred_by_key = {}, {}
     for transition in gt_trans:
-        gt_by_key.setdefault(key(transition), []).append(transition)
+        gt_by_key.setdefault(_key(transition, typed), []).append(transition)
     for transition in pred_trans:
-        pred_by_key.setdefault(key(transition), []).append(transition)
+        pred_by_key.setdefault(_key(transition, typed), []).append(transition)
 
     for group in sorted(set(gt_by_key) | set(pred_by_key)):
         gts = gt_by_key.get(group, [])
@@ -420,22 +422,15 @@ def _count_ambiguous(gt_trans, pred_trans, tol, typed):
 
     When this is 0 the latency figures are exact; when it is large they are indicative only.
     """
-    def key(transition):
-        if typed == "pair":
-            return (transition[1], transition[2])
-        if typed == "none":
-            return 0
-        return transition[2]
-
     by_key = {}
     for transition in pred_trans:
-        by_key.setdefault(key(transition), []).append(transition[0])
+        by_key.setdefault(_key(transition, typed), []).append(transition[0])
     for group in by_key:
         by_key[group] = np.array(sorted(by_key[group]))
 
     count = 0
     for transition in gt_trans:
-        frames = by_key.get(key(transition))
+        frames = by_key.get(_key(transition, typed))
         if frames is None:
             continue
         if int(np.sum(np.abs(frames - transition[0]) <= tol)) > 1:
