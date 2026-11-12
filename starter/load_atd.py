@@ -92,15 +92,20 @@ def check_alignment_raw(game=GAME, data_dir=None, source=DEFAULT_SOURCE):
 
     first = last = None
     count = 0
+    stepped = True          # every id is the previous one plus 1 (a count alone misses 1,2,2,4)
     with open(raw_path) as handle:
         for line in handle:
+            if not line.strip():
+                continue    # a trailing empty line is not a record
             frame_id = int(line[:line.index(FIELD_SEP)])
             if first is None:
                 first = frame_id
+            elif frame_id != last + 1:
+                stepped = False
             last = frame_id
             count += 1
 
-    contiguous = count > 0 and last - first + 1 == count
+    contiguous = count > 0 and stepped
     return {
         "n_records": count,
         "n_video_frames": expected,
