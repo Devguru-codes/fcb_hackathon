@@ -9,6 +9,7 @@ with the committed decoder settings, so the same data always gives the same file
 
 import argparse
 import csv
+import io
 import json
 from pathlib import Path
 
@@ -24,12 +25,16 @@ SECOND_HALF_KICKOFF = {game: entry["kickoff_frames"][2] for game, entry in GAMES
 
 
 def write_submission(path, labels):
+    """frame,label CSV, LF line ends, through a temporary file: a crash never leaves a truncated
+    file under the submission's name."""
+    from .experiments import write_atomic
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.writer(handle, lineterminator="\n")
-        writer.writerow(["frame", "label"])
-        writer.writerows(enumerate(labels))
+    buffer = io.StringIO()
+    writer = csv.writer(buffer, lineterminator="\n")
+    writer.writerow(["frame", "label"])
+    writer.writerows(enumerate(labels))
+    write_atomic(path, buffer.getvalue().encode("utf-8"))      # bytes: no newline translation
 
 
 def load_decoder(path=DEFAULT_DECODER):

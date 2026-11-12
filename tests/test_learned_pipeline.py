@@ -2021,5 +2021,25 @@ class GameConstantsTests(unittest.TestCase):
         self.assertNotIn("n_video_frames", GAMES[GAME])            # SOURCES holds the count
         self.assertEqual(source_frames(), 199319)
 
+
+class SubmissionWriteTests(unittest.TestCase):
+    def test_the_submission_bytes_and_no_partial_file(self):
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        from tempolens import experiments
+        from tempolens.predict import write_submission
+        labels = np.array(["X", "H", "A", "D"] * 3)
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "Coding United.csv"
+            write_submission(path, labels)
+            rows = "".join("{},{}\n".format(i, label) for i, label in enumerate(labels))
+            self.assertEqual(path.read_bytes(), ("frame,label\n" + rows).encode("utf-8"))  # LF
+            again = Path(folder) / "again.csv"
+            with patch.object(experiments, "_replace_retry", side_effect=OSError("disk full")):
+                with self.assertRaises(OSError):
+                    write_submission(again, labels)
+            self.assertFalse(again.exists())                    # nothing under the final name
+
 if __name__ == "__main__":
     unittest.main()
