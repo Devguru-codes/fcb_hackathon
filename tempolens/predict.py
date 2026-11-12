@@ -27,10 +27,15 @@ SECOND_HALF_KICKOFF = {"BAR-ATH": 113742}
 def write_submission(path, labels):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.writer(handle, lineterminator="\n")
-        writer.writerow(["frame", "label"])
-        writer.writerows(enumerate(labels))
+    tmp = path.with_name(path.name + ".tmp")   # same folder, so the replace is atomic
+    try:
+        with tmp.open("w", newline="", encoding="utf-8") as handle:
+            writer = csv.writer(handle, lineterminator="\n")
+            writer.writerow(["frame", "label"])
+            writer.writerows(enumerate(labels))
+        tmp.replace(path)          # a crash never leaves a half-written submission behind
+    finally:
+        tmp.unlink(missing_ok=True)
 
 
 def load_decoder(path=DEFAULT_DECODER):

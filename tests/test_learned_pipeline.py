@@ -2020,5 +2020,25 @@ class GameConstantsTests(unittest.TestCase):
         self.assertEqual(source_frames(), 199319)
         self.assertEqual(GAMES[GAME]["n_video_frames"], 199319)
 
+
+class SubmissionWriteTests(unittest.TestCase):
+    def test_written_atomically_with_the_same_bytes(self):
+        import tempfile
+        from pathlib import Path
+        from tempolens.predict import write_submission
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "Coding United.csv"
+            write_submission(path, np.array(["X", "H", "A", "D"]))
+            self.assertEqual(path.read_bytes(), b"frame,label\n0,X\n1,H\n2,A\n3,D\n")
+
+            def crash():                    # labels that fail halfway through the write
+                yield "H"
+                raise RuntimeError("killed")
+            with self.assertRaises(RuntimeError):
+                write_submission(path, crash())
+            self.assertEqual(path.read_bytes(), b"frame,label\n0,X\n1,H\n2,A\n3,D\n")  # untouched
+            self.assertEqual([p.name for p in Path(folder).iterdir()], [path.name])   # no .tmp
+
+
 if __name__ == "__main__":
     unittest.main()
