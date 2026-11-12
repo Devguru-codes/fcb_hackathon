@@ -2,7 +2,6 @@
 
 import contextlib
 import io
-import os
 import sys
 import tempfile
 import unittest
@@ -57,6 +56,15 @@ class RunEvaluationTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertTrue((Path(self.folder.name) / "scoreboard.csv").exists())
         self.assertIn("gt.csv", printed)
+
+    def test_a_skipped_submission_loses_its_old_reports(self):
+        reports = Path(self.folder.name) / "reports"
+        reports.mkdir()
+        (reports / "bad.json").write_text("{}")                     # from when bad.csv scored
+        (reports / "bad_transitions.csv").write_text("x")
+        self.run_scorer(self.folder.name)
+        self.assertEqual(sorted(p.name for p in reports.iterdir()),
+                         ["good.json", "good_transitions.csv"])
 
 
 if __name__ == "__main__":

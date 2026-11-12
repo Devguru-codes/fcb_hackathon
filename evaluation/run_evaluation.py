@@ -580,6 +580,11 @@ def main():
         write_transitions_csv(
             os.path.join(reports_dir, entry["name"] + "_transitions.csv"),
             entry["result"], loose_tau)
+    for entry in skipped:       # an old score must not outlive the file it came from
+        for suffix in (".json", "_transitions.csv"):
+            stale = os.path.join(reports_dir, entry["name"] + suffix)
+            if os.path.exists(stale):
+                os.remove(stale)
 
     print("\nWrote {}".format(scoreboard_path))
     print("Wrote {} per-submission reports to {}".format(len(scored), reports_dir))
