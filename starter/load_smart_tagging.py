@@ -88,7 +88,7 @@ def check_time_base(events):
         truth = KICKOFF_VIDEO_FRAMES[half]
         tagged = [event for event in kickoffs if event["tags"].get("Half") == half]
         hit = next((event for event in tagged
-                    if event["start_frame"] <= truth <= event["end_frame"]), None)
+                    if event["start_frame"] <= truth < event["end_frame"]), None)  # end exclusive
         rows.append({
             "half": half,
             "true_kickoff_frame": truth,

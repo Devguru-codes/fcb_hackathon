@@ -9,6 +9,20 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "starter"))
 import load_atd  # noqa: E402
+import load_smart_tagging as lst  # noqa: E402
+
+
+class KickoffTagTests(unittest.TestCase):
+    def test_a_tag_ending_on_the_kickoff_frame_does_not_contain_it(self):
+        truth = lst.KICKOFF_VIDEO_FRAMES["1st Half"]
+
+        def tag(start, end):
+            return {"code": lst.KICKOFF_CODE, "start_frame": start, "end_frame": end,
+                    "tags": {"Type": lst.KICKOFF_TYPE, "Half": "1st Half"}}
+        rows = lst.check_time_base([tag(truth - 100, truth)])["halves"]       # end is exclusive
+        self.assertFalse(rows[0]["contains_kickoff"])
+        rows = lst.check_time_base([tag(truth - 100, truth + 1)])["halves"]
+        self.assertTrue(rows[0]["contains_kickoff"])
 
 
 class AlignmentRawTests(unittest.TestCase):
