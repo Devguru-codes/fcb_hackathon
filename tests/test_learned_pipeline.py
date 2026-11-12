@@ -1384,10 +1384,15 @@ class QuotedRuleTests(unittest.TestCase):
             with tempfile.TemporaryDirectory() as folder:
                 with patch.object(sa, "DIR", Path(folder)), \
                         patch.object(sa, "verdict", lambda step: study if step == "study" else pff), \
-                        patch.object(sa, "write_atomic", side_effect=Reached):
+                        patch.object(sa, "write_atomic", side_effect=Reached), \
+                        patch("tempolens.candidate.build", side_effect=Reached) as build:
                     if code is None:
-                        with self.assertRaises(Reached):          # the temporary decoder
+                        with self.assertRaises(Reached):          # hands over to candidate.build
                             sa.build("bundle")
+                        name, overrides, root = build.call_args[0]
+                        self.assertEqual((name, root), ("swa4", "bundle"))
+                        self.assertEqual(len(overrides["members"]), 5)
+                        self.assertEqual(overrides["switch"], 2.0)
                         continue
                     with patch.object(sa, "save") as save, self.assertRaises(SystemExit) as stop:
                         sa.build("bundle")
@@ -1655,7 +1660,7 @@ class Draw2Tests(unittest.TestCase):
             self.assertEqual(adaptcv.cached(Path(folder), "sim1001", "m",
                                             lambda: self.fail("recomputed")), [1])
             self.assertEqual(sorted(p.name for p in Path(folder).iterdir()),
-                             ["sim1001_m.json", "sim1002_m.json"])
+                             ["loader.json", "sim1001_m.json", "sim1002_m.json"])  # + the stamp
 
 
 class TwoViewTests(unittest.TestCase):
