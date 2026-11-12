@@ -589,7 +589,7 @@ its feature version and refuses to load against another. Inference runs on the C
 a fixed order and outputs are rounded to 4 decimals; the end-to-end test checks that a run with
 the tag prior and with adaptation reproduces byte for byte. The submission was regenerated
 identically from a fresh clone of the submitted commit: sha256
-`33ad45598f4790d7f6fd2193c4bd9ed825c2e6a77882f90724b94df07b0581a6`. A full run takes about 14 minutes on a laptop CPU (Intel Core i7-12700H, 14 cores, 16 GB RAM; 822 s in a fresh clone), with the 10 members, TTA and EATA. Retraining
+`33ad45598f4790d7f6fd2193c4bd9ed825c2e6a77882f90724b94df07b0581a6`. A full run takes 14–24 minutes on a laptop CPU (Intel Core i7-12700H, 14 cores, 16 GB RAM) with the 10 members, TTA and EATA. The three measurements (822, 1356 and 1409 s, two of them from fresh clones) all had another job sharing the CPU, so an idle machine should be faster. Retraining
 from open data (`requirements-tempolens.txt` adds lightgbm and kloppy):
 `python -m tempolens.train --member k --draws 4 --out models/retrained_m<k>.pt` for k = 0–4 (ENS5)
 and the same with `--min-spell 50` (ms50), then `predict --model <the ten files>`. GPU training is

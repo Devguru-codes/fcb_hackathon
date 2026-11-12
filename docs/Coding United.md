@@ -240,7 +240,7 @@ python evaluation/validate_submission.py "Coding United.csv"
 
 Everything needed is committed: the 10 weight files, and `models/decoder.json`, which lists the
 members and every setting. Inference runs on the CPU in float64 in a fixed order, so the same data
-gives the same file byte for byte (sha256 above). A full run takes about 14 minutes on a laptop CPU (Intel Core i7-12700H, 14 cores, 16 GB RAM; 822 s in a fresh clone), with the 10 members, TTA and EATA. A fresh clone of the
+gives the same file byte for byte (sha256 above). A full run takes 14–24 minutes on a laptop CPU (Intel Core i7-12700H, 14 cores, 16 GB RAM) with the 10 members, TTA and EATA. The three measurements (822, 1356 and 1409 s, two of them from fresh clones) all had another job sharing the CPU, so an idle machine should be faster. A fresh clone of the
 submitted commit rebuilt the file byte for byte and validated, and its 151 tests pass (`MTAH_E2E=1`, including the end-to-end test). Retraining
 needs the open data and a GPU (`python -m tempolens.train --member k --draws 4 [--min-spell 50]`);
 GPU training is not bit-reproducible, which is why the weights are committed.

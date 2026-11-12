@@ -26,7 +26,7 @@ python evaluation/validate_submission.py "Coding United.csv"
 
 - **Expected output:** 199,319 rows plus the header. sha256
   `33ad45598f4790d7f6fd2193c4bd9ed825c2e6a77882f90724b94df07b0581a6`.
-- **Runtime:** about 14 minutes on a laptop CPU (Intel Core i7-12700H, 14 cores, 16 GB RAM; 822 s in a fresh clone), with the 10 members, TTA and EATA.
+- **Runtime:** 14–24 minutes on a laptop CPU (Intel Core i7-12700H, 14 cores, 16 GB RAM) with the 10 members, TTA and EATA. The three measurements (822, 1356 and 1409 s, two of them from fresh clones) all had another job sharing the CPU, so an idle machine should be faster.
 - **Environment:** Python 3.11 (tested on 3.11.3), the pinned versions in the requirements file.
   Only CPU is needed: inference runs in float64 in a fixed order, so the same data gives the same
   file byte for byte. A GPU is not used even if one is present. Byte identity was verified from

@@ -67,7 +67,7 @@ The same file sets the tag prior and the test-time adaptation (`tag_prior`, `tta
 Every setting there is chosen on open data only, as the organisers' rules of 2026-11-03 require
 (technical document §7c). Everything runs on the
 CPU in float64 with a fixed order, so the same data gives the same file byte for byte; a full run
-takes about 14 minutes on a laptop CPU with the 10 members (EATA adds the head inputs of both team views).
+takes 14–24 minutes on a laptop CPU with the 10 members (EATA adds the head inputs of both team views).
 
 ## Open data
 
