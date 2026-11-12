@@ -180,6 +180,15 @@ def rank_key(entry, loose_tau):
             entry["name"])
 
 
+def shown(path, start):
+    """`path` relative to `start` for display, or as given when it is on another drive (Windows'
+    relpath raises there, which used to lose the whole run after scoring)."""
+    try:
+        return os.path.relpath(path, start)
+    except ValueError:
+        return path
+
+
 def print_scoreboard(entries, skipped, gt_path, meta, loose_tau):
     """The ranked table. 93 columns wide, so it survives a 100-column terminal.
 
@@ -191,7 +200,7 @@ def print_scoreboard(entries, skipped, gt_path, meta, loose_tau):
     n_segments = meta.get("n_segments")
     reference = entries[0]["result"] if entries else None
     print("scoreboard  {}  {} frames  {} graded{}".format(
-        os.path.relpath(gt_path, HERE),
+        shown(gt_path, HERE),
         meta.get("n_video_frames", "?"), meta.get("n_graded_frames", "?"),
         "  {} gt segments".format(n_segments) if n_segments else ""))
     if reference is not None:

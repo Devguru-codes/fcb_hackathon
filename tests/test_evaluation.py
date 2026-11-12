@@ -47,8 +47,16 @@ class RunEvaluationTests(unittest.TestCase):
         self.assertEqual(code, 1)                                   # something was skipped
         board = pd.read_csv(Path(self.folder.name) / "scoreboard.csv")
         self.assertEqual(sorted(board["status"]), ["scored", "skipped"])
-        self.assertIn(",", board.loc[board["status"] == "skipped"].iloc[0].to_string() + ",")
         self.assertTrue((Path(self.folder.name) / "reports" / "good.json").exists())
+
+    def test_a_ground_truth_on_another_drive_still_writes_the_scoreboard(self):
+        def other_drive(path, start=None):
+            raise ValueError("path is on mount 'D:', start on mount 'C:'")
+        with patch.object(run_evaluation.os.path, "relpath", side_effect=other_drive):
+            code, printed = self.run_scorer(self.folder.name)
+        self.assertEqual(code, 1)
+        self.assertTrue((Path(self.folder.name) / "scoreboard.csv").exists())
+        self.assertIn("gt.csv", printed)
 
 
 if __name__ == "__main__":
