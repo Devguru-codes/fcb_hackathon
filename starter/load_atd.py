@@ -142,7 +142,7 @@ if __name__ == '__main__':
         dataset.metadata.pitch_dimensions.pitch_width,
         *GAMES[GAME]["pitch"]))
     print("video: {} frames at {} fps".format(
-        source_frames(), GAMES[GAME]["fps"]))
+        GAMES[GAME]["n_video_frames"], GAMES[GAME]["fps"]))
 
     report = check_alignment(dataset)
     print("\nalignment check")
@@ -157,11 +157,10 @@ if __name__ == '__main__':
         print("  Do not invent a correction. Report it, so every team gets the same alignment.")
 
     print("\nsome landmarks, as video frames:")
-    kickoff = GAMES[GAME]["kickoff_frames"]
-    for video_frame, what in ((kickoff[1], "1st half kickoff, first graded frame"),
+    for video_frame, what in ((11185, "1st half kickoff, first graded frame"),
                               (18684, "end of the public 5-minute window"),
                               (100000, "halftime -- no play"),
-                              (kickoff[2], "2nd half kickoff"),
+                              (113742, "2nd half kickoff"),
                               (190197, "last graded frame")):
         print("  video {:>6}  = ATD frame_id {:>6}   {}".format(
             video_frame, frame_id_of(video_frame), what))

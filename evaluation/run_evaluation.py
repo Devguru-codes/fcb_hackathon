@@ -27,7 +27,6 @@ Usage:
 """
 
 import argparse
-import csv
 import glob
 import json
 import os
@@ -456,11 +455,11 @@ def format_value(value):
 
 
 def write_csv(path, header, rows):
-    # csv quotes a value with a comma in it (a skip reason, a file name); joining did not
-    with open(path, "w", newline="") as handle:
-        writer = csv.writer(handle, lineterminator="\n")
-        writer.writerow(header)
-        writer.writerows([format_value(row.get(col)) for col in header] for row in rows)
+    lines = [",".join(header) + "\n"]
+    for row in rows:
+        lines.append(",".join(format_value(row.get(col)) for col in header) + "\n")
+    with open(path, "w") as handle:
+        handle.writelines(lines)
 
 
 def write_transitions_csv(path, result, loose_tau):

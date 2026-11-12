@@ -38,8 +38,9 @@ GAMES = {
         # authority for this challenge: row i of a submission is frame i of that file. The
         # broadcast recording is an optional extra input and is NOT aligned to it.
         #
-        # fps and pitch describe the TACTICAL source, because that is the submission contract;
-        # per-source frame counts live in SOURCES (source_frames()).
+        # n_video_frames, fps and pitch describe the TACTICAL source, because that is the
+        # submission contract; per-source counts live in SOURCES.
+        "n_video_frames": 199319,
         "fps": 25,
         # id_frame = video_frame + offsets[half], measured frame by frame against the video.
         #
@@ -52,14 +53,20 @@ GAMES = {
         # only gap is halftime). These are what decide which offset applies to a frame, so they
         # are data, not decoration.
         "halves": {1: (1713242, 1792708), 2: (1812866, 1892255)},
-        # Video frame of each half's kickoff, published in DATA.md and FAQ.md: the first is the
-        # first graded frame of the match; grading of the second half starts 2,934 frames before
-        # its kickoff, and every graded frame in between is D.
-        "kickoff_frames": {1: 11185, 2: 113742},
+        # Kickoff anchors, kept as convenient playback start positions. They are observations
+        # about the video -- "the ball is struck on this frame" -- so they do not move when the
+        # offsets are corrected, and they do not feed the offsets.
+        "kickoff": {"minute": 7, "second": 27, "frame": 11},
+        "kickoff_2nd": {"minute": 75, "second": 49, "frame": 16},
         # Real pitch size in metres.
         "pitch": (105.3, 68.0),
     },
 }
+
+# The anchors above are expressed as (minute, second, frame) at 25 fps, which is the rate the
+# burned-in clock and the tracking counter both run at. This is a property of the anchor notation,
+# not of the video file, so it stays a literal here rather than being read from the game entry.
+ANCHOR_FPS = 25
 
 # The two recordings of the match, each in its own folder with its own stem. Splitting the bundle
 # by source rather than by asset type is what keeps "which timeline is this file on?" answerable
@@ -141,6 +148,12 @@ def source_frames(source=DEFAULT_SOURCE, game=GAME):
     return _source(game, source)["n_video_frames"]
 
 
+def video_path(game=GAME, data_dir=None, source=DEFAULT_SOURCE):
+    """Absolute path to a source's video. May not exist; that is only a problem for tooling
+    that actually decodes video."""
+    return asset_paths(game, data_dir, source)["video"]
+
+
 def require(names, game=GAME, data_dir=None, source=DEFAULT_SOURCE):
     """Paths for the named assets, or one readable error naming every missing file.
 
@@ -164,25 +177,56 @@ def require(names, game=GAME, data_dir=None, source=DEFAULT_SOURCE):
     return [path for _, path in wanted]
 
 
+def anchor_video_frame(anchor):
+    """Video frame of a (minute, second, frame) anchor, at 25 fps."""
+    return (anchor["minute"] * 60 * ANCHOR_FPS + anchor["second"] * ANCHOR_FPS
+            + anchor["frame"])
+
+
 def halves(game):
     """[(half, first_id_frame, last_id_frame)] in play order."""
     table = GAMES[game]["halves"]
     return [(half, table[half][0], table[half][1]) for half in sorted(table)]
 
 
-def frame_offset(game, half):
+def frame_offset(game, half, adjust=0):
     """Offset such that id_frame = video_frame + offset, for one half."""
-    return GAMES[game]["offsets"][half]
+    return GAMES[game]["offsets"][half] + adjust
 
 
-def half_video_blocks(game):
+def half_video_blocks(game, adjust=0):
     """[(half, first_video_frame, last_video_frame)], each half mapped by its own offset.
 
     For BAR-ATH: half 1 covers video 11185..90651 and half 2 covers 110808..190197, leaving
-    20156 video frames of halftime between them.
+    20156 video frames of halftime between them. The blocks are far apart, so a video frame
+    belongs to at most one of them and video_to_id needs no tie-breaking.
     """
     blocks = []
     for half, first_id, last_id in halves(game):
-        offset = frame_offset(game, half)
+        offset = frame_offset(game, half, adjust)
         blocks.append((half, first_id - offset, last_id - offset))
     return blocks
+
+
+def half_of_video_frame(game, video_frame, adjust=0):
+    """Which half a video frame falls in, or None for halftime and outside the match."""
+    for half, first, last in half_video_blocks(game, adjust):
+        if first <= video_frame <= last:
+            return half
+    return None
+
+
+def video_to_id(game, video_frame, adjust=0):
+    """IdFrame shown at a video frame, or None where the tracking data does not reach."""
+    half = half_of_video_frame(game, video_frame, adjust)
+    if half is None:
+        return None
+    return video_frame + frame_offset(game, half, adjust)
+
+
+def id_to_video(game, id_frame, adjust=0):
+    """Video frame an IdFrame belongs to, or None if it is in neither half."""
+    for half, first_id, last_id in halves(game):
+        if first_id <= id_frame <= last_id:
+            return id_frame - frame_offset(game, half, adjust)
+    return None

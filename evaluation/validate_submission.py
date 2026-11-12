@@ -25,7 +25,7 @@ sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.dirname(HERE))
 
 import possession_metrics as pm  # noqa: E402  (needs the path above)
-from games import GAME, GAMES, source_frames  # noqa: E402
+from games import GAME, GAMES  # noqa: E402
 
 
 def describe(codes, fps):
@@ -46,7 +46,7 @@ def describe(codes, fps):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("submission", help="the frame,label CSV to check")
-    parser.add_argument("--rows", type=int, default=source_frames(),
+    parser.add_argument("--rows", type=int, default=GAMES[GAME]["n_video_frames"],
                         help="expected row count (default: this match's video length)")
     args = parser.parse_args()
 

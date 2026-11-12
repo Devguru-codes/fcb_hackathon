@@ -37,8 +37,7 @@ KICKOFF_TYPE = "kick off (start)"
 # Where each half actually starts. Both numbers are published, in DATA.md and FAQ.md: the first is
 # the first graded frame of the match, the second is the second-half kickoff. The tagging marks a ~5 s window around the restart rather than the instant, so the
 # check below is containment, not equality.
-KICKOFF_VIDEO_FRAMES = {"1st Half": GAMES[GAME]["kickoff_frames"][1],
-                        "2nd Half": GAMES[GAME]["kickoff_frames"][2]}
+KICKOFF_VIDEO_FRAMES = {"1st Half": 11185, "2nd Half": 113742}
 
 
 def pattern_path(game=GAME, data_dir=None):

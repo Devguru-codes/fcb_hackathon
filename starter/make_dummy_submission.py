@@ -32,7 +32,7 @@ import pandas as pd
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, ROOT)
-from games import source_frames  # noqa: E402  (needs the path above)
+from games import GAME, GAMES  # noqa: E402  (needs the path above)
 
 # Params
 RESULTS_DIR = os.path.join(ROOT, "evaluation", "results")
@@ -58,7 +58,7 @@ if __name__ == '__main__':
     parser.add_argument("--out", default=RESULTS_DIR, help="where to write")
     args = parser.parse_args()
 
-    n_frames = source_frames()
+    n_frames = GAMES[GAME]["n_video_frames"]
     if not os.path.isdir(args.out):
         os.makedirs(args.out)
 

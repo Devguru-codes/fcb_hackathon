@@ -22,12 +22,12 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "evaluation"))
 sys.path.insert(0, str(ROOT / "starter"))
 
-from games import GAME, GAMES  # noqa: E402
+from games import GAME, half_video_blocks  # noqa: E402
 from .match import A, H  # noqa: E402
 from .predict import SECOND_HALF_KICKOFF  # noqa: E402
 from .tags import _normalise, resolve_side  # noqa: E402
 
-HALF_KICKOFFS = (GAMES[GAME]["kickoff_frames"][1], SECOND_HALF_KICKOFF[GAME])    # FAQ.md
+HALF_KICKOFFS = (half_video_blocks(GAME)[0][1], SECOND_HALF_KICKOFF[GAME])    # FAQ.md: 11185, 113742
 WINDOW_S, SEARCH_S, CENTRE_M, MOVE_M = 2.0, 15.0, 3.0, 2.0
 
 
