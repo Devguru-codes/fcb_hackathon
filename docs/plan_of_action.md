@@ -27,11 +27,26 @@ This mail takes precedence over the documentation, earlier emails and individual
 - **Training and tuning:** use only external data. Parameters that need tuning are tuned on
   external data, never on the ground-truth possession data or the video.
 
-**Re-sent to this team by the organisers on 2026-11-14** (a reply to our question, with no
-case-specific answer). Fragments quoted exactly; the full paragraph is not reproduced here because
-only these fragments were in hand when this record was written:
-- "If you need to train (or retrain), you MUST use only external data."
-- "As a reference, anything that is not explicitly allowed is not permitted."
+**Re-sent to this team by the organisers (Talent Arena Team) on 2026-11-14, in reply to our
+question about test-time adaptation.** The mail says all the information they can share is
+already in the clarification email, the challenge details and the terms and conditions, and
+re-sends the clarification email. Its "What is not allowed" / "What is allowed" lists match the
+summary above. The two relevant paragraphs, verbatim:
+
+> Training and tuning
+> If you need to train (or retrain), you MUST use only external data. If your algorithm has parameters that need to be tuned, you MUST tune them on external data, never on the ground-truth possession data or on the provided video.
+
+> Each team is responsible for making sure that its particular project, tool, platform or dataset complies with the competition rules. As a reference, anything that is not explicitly allowed is not permitted.
+
+The lists, verbatim. **Not allowed:** "Checking your output against the video." / "Hand labels,
+human-produced data or any other data created manually on the provided game." / "Uploading the
+provided data to AI services." / "Training, fitting or calibrating your algorithm on the
+ground-truth possession data or on the provided video." **Allowed:** "Running automatic checks
+using only the provided data." / "Inspecting the provided data and the video to better understand
+what counts as possession." / "Using as input the video, the automatic tracking data, the smart
+tagging or any other generated data, as long as your algorithm was not trained on the ground truth
+or on the provided video." / "Providing files of intermediate steps." / "Using any dataset you have
+the rights to use. Please check the license of any dataset before using it."
 
 The 3 Nov summary above left out the words "(or retrain)" and the last sentence. Consequence:
 EATA, which takes gradient steps on the output layer on the provided match, was removed on
