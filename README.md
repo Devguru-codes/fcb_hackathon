@@ -5,7 +5,8 @@ TempoLens labels every frame of FC Barcelona vs Athletic Club with who has the b
 automatic tracking. Its members were trained only on open football data (Metrica's 3 sample games
 and 7 DFL/Sportec matches), with tracking noise simulated to match the competition's. Viterbi then
 decodes the ensemble's output into whole possessions, the unit that `spellF1` scores. Test-time
-adaptation and a self-calibrated Smart Tagging prior adjust it to the match without labels. Every
+feature normalisation and a Smart Tagging prior adjust it to the match without labels; no weight
+is trained or updated on the match. Every
 setting was chosen on open data only: no hand labels, no checks against the video, nothing tuned
 on the provided match.
 
@@ -25,8 +26,8 @@ python evaluation/validate_submission.py "Coding United.csv"
 ```
 
 - **Expected output:** 199,319 rows plus the header. sha256
-  `33ad45598f4790d7f6fd2193c4bd9ed825c2e6a77882f90724b94df07b0581a6`.
-- **Runtime:** 14–24 minutes on a laptop CPU (Intel Core i7-12700H, 14 cores, 16 GB RAM) with the 10 members, TTA and EATA. The three measurements (822, 1356 and 1409 s, two of them from fresh clones) all had another job sharing the CPU, so an idle machine should be faster.
+  `9cc22752a2e280cb782823134b1209fa44be8a81228d607f8799b95e7878a61c` (TTA-only, `eata_steps` 0).
+- **Runtime:** about 7 minutes (432 s) on a laptop CPU (Intel Core i7-12700H, 14 cores, 16 GB RAM) with the 10 members and TTA, measured while another job was using the machine. With EATA it took 14–24 minutes.
 - **Environment:** Python 3.11 (tested on 3.11.3), the pinned versions in the requirements file.
   Only CPU is needed: inference runs in float64 in a fixed order, so the same data gives the same
   file byte for byte. A GPU is not used even if one is present. Byte identity was verified from

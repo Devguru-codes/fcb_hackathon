@@ -4,7 +4,7 @@ A learned possession-reconstruction pipeline for **More than a Hack 2027**: a te
 trained on open football data under realistic simulated tracking noise, decoded for whole
 possessions (`spellF1`), not for single frames.
 
-The submission is `Coding United.csv` (sha256 `33ad4559…`); the short technical document is
+The submission is `Coding United.csv` (sha256 `9cc22752…`, TTA-only); the short technical document is
 [docs/Coding United.md](docs/Coding%20United.md). Method and results in full: [docs/technical_document.md](docs/technical_document.md). Every experiment
 tried, running and planned, with its measured result and the decision rules:
 [docs/plan_of_action.md](docs/plan_of_action.md).
@@ -33,7 +33,7 @@ with a **simulator calibrated so the official baseline reproduces its published 
 | noise | `simulate.py` | stoppage-aligned and long log-normal ball gaps, player dropout (no position jitter: the real tracking is smooth) |
 | features | `features.py` | ~140 identity-free, team-symmetric features: control geometry, ball state, formation, memory across ball gaps, context windows |
 | model | `temporal.py` | bidirectional GRU: P(H/A/D) per frame plus a possession-change head, **ten members** trained with domain randomisation (each noise draw its own simulator settings): five on the provider labels with the 10-frame fold (ENS5, `tempolens_rnd4_m*.pt`) and five with DFL labels folded at 50 frames, Metrica's unchanged (ms50, `tempolens_ms50_m*.pt`; the "controlled possession" hedge, plan row LCB-ADOPT); LightGBM in `experiments.py` as a comparison |
-| adaptation | `temporal.py`, `adaptcv.py`, `adaptseeds.py` | test-time adaptation, **on** in the submission: feature re-scaling halfway to the match's own statistics (`tta_alpha` 0.5) and 10 EATA steps on the output layer, gate off. Chosen on open data only (`python -m tempolens.adaptseeds --members 5`) by a rule fixed before the run: beat no adaptation for the 5-member ensemble and for each member alone. Two settings passed and tied within 0.0001 (TTA alone 0.6476, TTA + EATA 10 0.6475); the rule's tie-break picks TTA alone, and the team chose TTA + EATA 10 after seeing the results, for its larger smallest per-member gain and its larger gain on real tracking (technical document §7c). Chosen on ENS5 and kept unchanged for the 10-member mix |
+| adaptation | `temporal.py`, `adaptcv.py`, `adaptseeds.py` | test-time normalisation (TTA), **on** in the submission: feature re-scaling halfway to the match's own statistics (`tta_alpha` 0.5); no weight changes; EATA (10 steps on the output layer) off since 2026-11-14 (`eata_steps` 0, plan row TTA-ONLY), gate off. Chosen on open data only (`python -m tempolens.adaptseeds --members 5`) by a rule fixed before the run: beat no adaptation for the 5-member ensemble and for each member alone. Two settings passed and tied within 0.0001 (TTA alone 0.6476, TTA + EATA 10 0.6475); the rule's tie-break picks TTA alone. The team chose TTA + EATA 10 on 2026-11-07 and removed EATA on 2026-11-14 after the organisers restated that training or retraining must use only external data, so the submission is now the rule's own pick (technical document §7c, §7e). Chosen on ENS5 and kept unchanged for the 10-member mix |
 | decoding | `decoder.py` | Viterbi with switch/stoppage costs (4, 8, 8) and a possession-change bonus (1.0), chosen with the adaptation on open data (the cross-validated argmax without adaptation is (2, 8, 8, 0.5)); dead ball before the second-half kickoff (FAQ) |
 | tags | `tags.py`, `tagprior.py` | Smart Tagging as a prior on the side in possession, **on** in the submission, weighted without labels by how often the tags agree with confident frames; defensive codes point at the other team |
 
@@ -66,7 +66,7 @@ The same file sets the tag prior and the test-time adaptation (`tag_prior`, `tta
 Every setting there is chosen on open data only, as the organisers' rules of 2026-11-03 require
 (technical document §7c). Everything runs on the
 CPU in float64 with a fixed order, so the same data gives the same file byte for byte; a full run
-takes 14–24 minutes on a laptop CPU with the 10 members (EATA adds the head inputs of both team views).
+takes about 7 minutes on a laptop CPU with the 10 members.
 
 ## Open data
 

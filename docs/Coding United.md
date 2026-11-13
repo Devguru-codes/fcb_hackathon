@@ -6,8 +6,8 @@ subtitle: "More than a Hack 2027, Phase 1: ball possession. Short technical docu
 | | |
 |---|---|
 | team | Coding United |
-| possession file | `Coding United.csv`: 199,319 rows, passes `evaluation/validate_submission.py`, sha256 `33ad45598f4790d7f6fd2193c4bd9ed825c2e6a77882f90724b94df07b0581a6` |
-| method | TempoLens: 10 bidirectional GRUs trained on open data under simulated tracking noise, test-time adaptation, a Smart Tagging prior, Viterbi decoding |
+| possession file | `Coding United.csv`: 199,319 rows, passes `evaluation/validate_submission.py`, sha256 `9cc22752a2e280cb782823134b1209fa44be8a81228d607f8799b95e7878a61c` |
+| method | TempoLens: 10 bidirectional GRUs trained on open data under simulated tracking noise, test-time feature normalisation, a Smart Tagging prior, Viterbi decoding; no weight is trained or updated on the provided match (section 6) |
 | reproduction | `python -m tempolens.predict --data-root data --output "Coding United.csv"` (section 8) |
 | long appendix | `docs/technical_document.md`; every experiment and its decision rule: `docs/plan_of_action.md` |
 
@@ -43,14 +43,14 @@ match, each with its own simulator settings (domain randomisation).
      `tempolens_rnd4_m0..4.pt`);
    - five with the same recipe whose DFL labels fold spells under 50 frames, about 2 s ("ms50",
      `tempolens_ms50_m0..4.pt`). Section 5 says why.
-3. **Test-time adaptation** without labels: each member's feature scaling moves halfway toward the
-   match's own statistics (`tta_alpha` 0.5). Then its output layer takes 10 entropy-minimisation
-   steps on the match (EATA 10).
+3. **Test-time normalisation (TTA)** without labels: each member's feature scaling moves halfway
+   toward the match's own statistics (`tta_alpha` 0.5). No weight changes (section 6).
 4. **Smart Tagging prior** (`tagprior.py`): each tag votes for the side in possession over its
    interval. Defensive codes name the side without the ball, so they are inverted. Each tag family
    is weighted by how often it agrees with the ensemble on frames where the ensemble is over 90%
-   sure. This is self-calibration on the match, with no labels. On the submission the attacking
-   family gets weight 0.729 and the defensive family 1.219.
+   sure, through a fixed formula: no label and no learned weight. The two weights come out near
+   0.73 (attacking) and 1.22 (defensive): 0.736 / 1.217 measured without adaptation and 0.729 /
+   1.219 with the earlier TTA + EATA setting.
 5. **Decoder** (`decoder.py`): Viterbi over home/away/dead with a switch cost of 4, alive→dead and
    dead→alive costs of 8, and a bonus of 1.0 × the change head's logit. Then `X` is written outside
    the halves, and `D` on the second half's graded frames before its kickoff (frame 113,742, from
@@ -128,21 +128,32 @@ unchanged labels on the 3 Metrica games. The models were not retrained to change
 
 ## 5. Results on open data, and the label convention
 
-Mean spellF1 at the submitted setting (TTA 0.5 + EATA 10, costs 4/8/8/1.0; plan rows LCB and
-LCB-ADOPT). Each row is scored against two versions of the same open labels: the provider's
+Mean spellF1 at the submitted setting (TTA 0.5, costs 4/8/8/1.0; plan rows LCB, LCB-ADOPT and
+TTA-ONLY). Each row is scored against two versions of the same open labels: the provider's
 10-frame fold, and the same labels refolded at 50 frames.
 
 | ensemble | labels | sim | shift | sc | pff-16 | mean3 |
 |---|---|---|---|---|---|---|
-| **submitted: 10 members (ENS5 + ms50)** | **10-frame** | **0.7493** | **0.7476** | **0.4177** | **0.5717** | **0.6382** |
-| **submitted: 10 members (ENS5 + ms50)** | **50-frame** | **0.7832** | **0.7870** | **0.4594** | **0.6417** | **0.6765** |
+| **submitted: 10 members, TTA 0.5** | **10-frame** | **0.7505** | **0.7472** | **0.4164** | **0.5656** | **0.6380** |
+| **submitted: 10 members, TTA 0.5** | **50-frame** | **0.7830** | **0.7876** | **0.4571** | **0.6357** | **0.6759** |
+| 10 members, TTA 0.5 + EATA 10 (until 14 Nov) | 10-frame | 0.7493 | 0.7476 | 0.4177 | 0.5717 | 0.6382 |
+| 10 members, TTA 0.5 + EATA 10 (until 14 Nov) | 50-frame | 0.7832 | 0.7870 | 0.4594 | 0.6417 | 0.6765 |
+| 10 members, no adaptation | 10-frame | 0.7472 | 0.7455 | 0.4089 | 0.5701 | 0.6339 |
+| 10 members, no adaptation | 50-frame | 0.7834 | 0.7876 | 0.4490 | 0.6264 | 0.6733 |
+
+The label-convention comparison below was made with TTA + EATA, as rows LCB / LCB-ADOPT ran it:
+
+| ensemble (TTA 0.5 + EATA 10) | labels | sim | shift | sc | pff-16 | mean3 |
+|---|---|---|---|---|---|---|
+| 10 members (ENS5 + ms50) | 10-frame | 0.7493 | 0.7476 | 0.4177 | 0.5717 | 0.6382 |
+| 10 members (ENS5 + ms50) | 50-frame | 0.7832 | 0.7870 | 0.4594 | 0.6417 | 0.6765 |
 | ENS5 only (the earlier 5-member file) | 10-frame | 0.7698 | 0.7694 | 0.4033 | 0.5748 | 0.6475 |
 | ENS5 only | 50-frame | 0.7610 | 0.7658 | 0.4344 | 0.6365 | 0.6537 |
 | ms50 only | 10-frame | 0.7120 | 0.7192 | 0.4260 | 0.5647 | 0.6191 |
 | ms50 only | 50-frame | 0.7871 | 0.7964 | 0.4749 | 0.6391 | 0.6861 |
 
 For scale, the official `baseline_smooth50` scored 0.291 under the first simulator. On the real
-match the submission predicts 262 possessions, of mean length 13.5 s.
+match the submission predicts 263 possessions, of mean length 13.7 s.
 
 **Label convention.** CHALLENGE.md defines a change of possession as the opponent gaining
 *controlled* possession. A touch, a deflection, or an aerial duel without control does not count,
@@ -186,11 +197,14 @@ data. Appendix §7b records that history.
 
 **Post-hoc choices, disclosed:**
 
-- **The EATA tie-break (2026-11-07).** Two adaptation settings passed the pre-registered every-seed
-  rule and tied within 0.0001 on mean3: TTA 0.5 alone (0.6476) and TTA 0.5 + EATA 10 (0.6475). The
-  rule's tie-break picks TTA alone. The team chose TTA + EATA after seeing the results, for its
-  larger smallest per-member gain (+0.0022 against +0.0001) and its larger real-tracking gain
-  (SkillCorner +0.0122 against +0.0108).
+- **EATA, used 7–13 Nov and removed on 14 Nov.** Two adaptation settings passed the
+  pre-registered every-seed rule and tied within 0.0001 on mean3: TTA 0.5 alone (0.6476) and
+  TTA 0.5 + EATA 10 (0.6475). The rule's tie-break picks TTA alone; on 7 Nov the team chose TTA +
+  EATA after seeing the results. EATA takes 10 gradient steps on each member's output layer on the
+  provided match. The organisers' reply of 14 Nov restated that training or retraining must use only
+  external data and that anything not explicitly allowed is not permitted, so EATA was removed. The
+  submission is now the rule's own pick, TTA alone, on the 10 members (−0.0002 / −0.0006 on mean3
+  against TTA + EATA, inside the noise floor).
 - **The rule change before that study.** The earlier rule's +0.005 bar was dropped after a one-off
   sanity check of the 5-member ensemble on the public window. That check decided nothing.
 - **LCB-ADOPT (2026-11-11).** The study that built the 10-member mix (row LCB) was registered as
@@ -200,6 +214,22 @@ data. Appendix §7b records that history.
 - **Restart-spot features.** They were designed after inspecting which real-match stoppages the
   model missed, which the rules allow. Their weights are learned on open data, and keeping them was
   re-decided on open data: 0.7716 against 0.7674 without them.
+
+## 6b. What runs on the match at inference
+
+- **No weight is trained, fitted or updated on the provided match.** The ten members' weights come
+  from open data only and are committed.
+- **TTA:** at inference, two statistics per feature (median and spread) are computed from the
+  automatic tracking and blended 50/50 with the training statistics before the features are scaled.
+  This is per-input normalisation, a deterministic function of the input.
+- **Smart Tagging prior:** its two family weights are a fixed formula of how often the tags agree
+  with the model's own confident output.
+- **Constants:** every one of them (`tta_alpha` 0.5; tag shrink 0.5, clip 2, confidence 0.9,
+  500-frame minimum; the decoder costs) was fixed on open data (plan rows ADseeds, TS, TPcv5).
+- No label, no video, no gradient.
+- **History:** EATA, which did take gradient steps on the output layer, was used in the candidates
+  of 7–13 Nov and removed on 14 Nov (section 6). The earlier public-window and video-review history
+  is in appendix §7b.
 
 ## 7. Limitations, and what we would do with more time
 
@@ -240,7 +270,7 @@ python evaluation/validate_submission.py "Coding United.csv"
 
 Everything needed is committed: the 10 weight files, and `models/decoder.json`, which lists the
 members and every setting. Inference runs on the CPU in float64 in a fixed order, so the same data
-gives the same file byte for byte (sha256 above). A full run takes 14–24 minutes on a laptop CPU (Intel Core i7-12700H, 14 cores, 16 GB RAM) with the 10 members, TTA and EATA. The three measurements (822, 1356 and 1409 s, two of them from fresh clones) all had another job sharing the CPU, so an idle machine should be faster. A fresh clone of the
-submitted commit rebuilt the file byte for byte and validated, and its 151 tests pass (`MTAH_E2E=1`, including the end-to-end test). Retraining
+gives the same file byte for byte (sha256 above). A full run takes about 7 minutes (432 s) on a laptop CPU (Intel Core i7-12700H, 14 cores, 16 GB RAM) with the 10 members and TTA, measured while another job was using the machine. With EATA it took 14–24 minutes. A fresh clone of the
+submitted commit rebuilt the file byte for byte and validated, and its 150 tests pass (`MTAH_E2E=1`, including the end-to-end test). Retraining
 needs the open data and a GPU (`python -m tempolens.train --member k --draws 4 [--min-spell 50]`);
 GPU training is not bit-reproducible, which is why the weights are committed.
