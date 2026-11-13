@@ -36,7 +36,6 @@ with a **simulator calibrated so the official baseline reproduces its published 
 | adaptation | `temporal.py`, `adaptcv.py`, `adaptseeds.py` | test-time adaptation, **on** in the submission: feature re-scaling halfway to the match's own statistics (`tta_alpha` 0.5) and 10 EATA steps on the output layer, gate off. Chosen on open data only (`python -m tempolens.adaptseeds --members 5`) by a rule fixed before the run: beat no adaptation for the 5-member ensemble and for each member alone. Two settings passed and tied within 0.0001 (TTA alone 0.6476, TTA + EATA 10 0.6475); the rule's tie-break picks TTA alone, and the team chose TTA + EATA 10 after seeing the results, for its larger smallest per-member gain and its larger gain on real tracking (technical document §7c). Chosen on ENS5 and kept unchanged for the 10-member mix |
 | decoding | `decoder.py` | Viterbi with switch/stoppage costs (4, 8, 8) and a possession-change bonus (1.0), chosen with the adaptation on open data (the cross-validated argmax without adaptation is (2, 8, 8, 0.5)); dead ball before the second-half kickoff (FAQ) |
 | tags | `tags.py`, `tagprior.py` | Smart Tagging as a prior on the side in possession, **on** in the submission, weighted without labels by how often the tags agree with confident frames; defensive codes point at the other team |
-| checks | `realcheck.py` | automatic real-match checks that print aggregates only (format, label shares) |
 
 ## Run
 
