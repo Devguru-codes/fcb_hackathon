@@ -1,7 +1,7 @@
 """Restart-side diagnostic (plan of action row RSD). Counts only.
 
-    python -m tempolens.restartside match --data-root <bundle> --labels <full-match csv>
-    python -m tempolens.restartside open
+    python -m tempolens.studies.restartside match --data-root <bundle> --labels <full-match csv>
+    python -m tempolens.studies.restartside open
 
 By the laws a corner restarts with the attacking side and a goal kick with the defending side.
 Restarts come from the ball track alone (ball still at a corner point or in a goal area, then
@@ -15,7 +15,7 @@ import warnings
 
 import numpy as np
 
-from .match import A, H, X
+from ..match import A, H, X
 
 CORNER_M, STILL_M, MOVE_M = 2.0, 1.0, 2.0
 STILL_S, SKIP_S, WINDOW_S, START_S = 0.5, 10.0, 2.0, 2.0
@@ -135,9 +135,9 @@ def _print_tally(label, t):
 
 def match(data_root, labels_path):
     from games import GAME
-    from .experiments import pm          # puts evaluation/ on the path
-    from .match import competition_table
-    from .kickoffs import HALF_KICKOFFS
+    from ..experiments import pm          # puts evaluation/ on the path
+    from ..match import competition_table
+    from ..kickoffs import HALF_KICKOFFS
     table = competition_table(GAME, data_root)
     codes = pm.label_codes(pm.read_label_csv(labels_path))
     rows = restarts_with_sides(table, dict(zip((1, 2), HALF_KICKOFFS)))     # the FAQ's kickoffs
@@ -147,9 +147,9 @@ def match(data_root, labels_path):
 
 
 def open_study():
-    from .decoder import transition_matrix
-    from .experiments import SIM_TEST_SEED, CachedSample, decode_table, oof_logp, score
-    from .opendata import LOADERS
+    from ..decoder import transition_matrix
+    from ..experiments import SIM_TEST_SEED, CachedSample, decode_table, oof_logp, score
+    from ..opendata import LOADERS
     names = sorted(LOADERS)
     logps = oof_logp(names, "ensemble", members=5, draws=4)
     dec = {k: [0, 0, 0, 0] for k in ("corner", "goal kick", "all")}

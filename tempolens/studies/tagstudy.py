@@ -2,7 +2,7 @@
 they are bad? Tested on open matches with synthetic tags, since real tags exist only for the
 competition match.
 
-    python -m tempolens.tagstudy
+    python -m tempolens.studies.tagstudy
 
 Synthetic tags imitate Smart Tagging's shape rather than its exact error profile, which is
 unknown: phases attached to possessions, sloppy boundaries, phases that run on over the next
@@ -15,13 +15,13 @@ import argparse
 
 import numpy as np
 
-from .decoder import transition_matrix
-from .experiments import (CachedSample, ENSEMBLE_MEMBERS, SIM_TEST_SEED, _summary,
+from ..decoder import transition_matrix
+from ..experiments import (CachedSample, ENSEMBLE_MEMBERS, SIM_TEST_SEED, _summary,
                           decode_table, oof_logp, pm, score)
-from .match import A, H
-from .opendata import LOADERS
-from .predict import load_decoder
-from .tagprior import FAMILIES, GROUPS, SHRINK, group_of, self_calibrated
+from ..match import A, H
+from ..opendata import LOADERS
+from ..predict import load_decoder
+from ..tagprior import FAMILIES, GROUPS, SHRINK, group_of, self_calibrated
 
 COVER = 0.6          # share of possessions that get a phase tag
 MERGE = 0.3          # share of tags that run on over the following possession
@@ -177,8 +177,8 @@ def shrink_rule(scores, base=SHRINK):
 def shrink_study(shrinks, errors, draws, seeds, members):
     """Each shrink on the same tag draws, the rule, and the verdict file for the candidate."""
     import json
-    from .experiments import write_atomic
-    from .adaptcv import ROOT
+    from ..experiments import write_atomic
+    from ..adaptcv import ROOT
     assert SHRINK in shrinks and all(e in errors for e in (0.1, 0.2, 0.35, 0.5))
     scores = {}
     for s in shrinks:

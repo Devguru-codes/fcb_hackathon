@@ -1,6 +1,6 @@
 """Model soups of the 5 members (plan of action row E8; open data, aggregates only).
 
-    python -m tempolens.soup
+    python -m tempolens.studies.soup
 
 A soup is one network whose weights are the average of several members'. The members scale their
 inputs differently and flag different missing columns, so each member's first layer is first
@@ -19,12 +19,12 @@ from pathlib import Path
 
 import numpy as np
 
-from . import adaptcv, cvrescore, temporal
-from .decoder import transition_matrix
-from .experiments import SIM_TEST_SEED, CachedSample, decode_table, folds, score
-from .opendata import LOADERS
+from .. import adaptcv, cvrescore, temporal
+from ..decoder import transition_matrix
+from ..experiments import SIM_TEST_SEED, CachedSample, decode_table, folds, score
+from ..opendata import LOADERS
 
-OUT = Path(__file__).resolve().parents[1] / "models" / "exp" / "soup"
+OUT = Path(__file__).resolve().parents[2] / "models" / "exp" / "soup"
 
 
 def soup(members):

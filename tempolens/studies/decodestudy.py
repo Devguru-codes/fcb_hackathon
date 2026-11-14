@@ -1,7 +1,7 @@
 """Compare decoders on the cross-validated ensemble output: fixed Viterbi, minimum-duration
 Viterbi, and minimum-Bayes-risk selection. Scored by the official spellF1 against open labels.
 
-    python -m tempolens.decodestudy
+    python -m tempolens.studies.decodestudy
 """
 
 import argparse
@@ -9,11 +9,11 @@ import itertools
 
 import numpy as np
 
-from .decoder import transition_matrix
-from .experiments import CachedSample, SIM_TEST_SEED, _summary, decode_table, oof_logp, score
-from .mbr import decode_min_duration, mbr_decode
-from .opendata import LOADERS
-from .predict import load_decoder
+from ..decoder import transition_matrix
+from ..experiments import CachedSample, SIM_TEST_SEED, _summary, decode_table, oof_logp, score
+from ..mbr import decode_min_duration, mbr_decode
+from ..opendata import LOADERS
+from ..predict import load_decoder
 
 _SETTINGS = load_decoder()   # the submitted decoder is the baseline every alternative must beat
 BASE = tuple(_SETTINGS[k] for k in ("switch", "alive_to_dead", "dead_to_alive"))

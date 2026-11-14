@@ -192,7 +192,7 @@ s against the other and s/2 against dead ball.
 Tested on the open matches with synthetic tags (phases on 60% of possessions, ±1 s boundaries,
 30% running on over the next possession, team error swept), on the 5-member ensemble's
 cross-validated outputs without adaptation at the CV-argmax costs 2/8/8/0.5, averaged over 3 tag
-draws per match (`python -m tempolens.tagstudy --draws 4 --seeds 3 --members 5`). Re-run at the
+draws per match (`python -m tempolens.studies.tagstudy --draws 4 --seeds 3 --members 5`). Re-run at the
 submitted costs 4/8/8/1.0 (still without adaptation): no prior 0.7727; 0% 0.7820 (+0.0093), 20%
 0.7763, 50% 0.7730 (+0.0003).
 
@@ -272,7 +272,7 @@ ensemble 0.730. Tried and not adopted there (DFL mean spellF1 of the model alone
 | MS-TCN++ truncated smoothing loss, weight 0.15 (simulator v2; base 0.746 DFL / 0.754 all) | 0.750 DFL / 0.754 all | — | tie: the decoder's switch cost already does this job |
 
 Decoding alternatives, on the cross-validated ensemble output under the first simulator
-(`python -m tempolens.decodestudy`):
+(`python -m tempolens.studies.decodestudy`):
 
 | decoder | DFL | all |
 |---|---|---|
@@ -285,7 +285,7 @@ Decoding is not the bottleneck: even the hindsight-optimal per-match decoder gai
 picked the lowest switch cost everywhere, because chain-CRF samples over per-frame probabilities
 are more fragmented than real possession sequences.
 
-Robustness to tracker faults absent from training (`python -m tempolens.robustness`): one
+Robustness to tracker faults absent from training (`python -m tempolens.studies.robustness`): one
 cross-validation fold, held-out matches re-scored after adding identity swaps between nearby
 team-mates, duplicate tracks and phantom (non-player) tracks near the ball — 70–80 extra slots,
 up to 24 tracked objects per frame as in the real ATD. spellF1 0.7087 → 0.7114 and
@@ -429,7 +429,7 @@ team dropped the +0.005 bar: a gain smaller than the noise floor is acceptable o
 consistent, not if it is large. The new rule, written down before its run: score every adaptation
 setting (`tta_alpha` × `eata_steps` × gate, at costs (2, 8, 8, 0.5) and (4, 8, 8, 1.0)) on the
 same three conditions, for the 5-member ensemble **and for each member alone**
-(`python -m tempolens.adaptseeds --members 5`); accept a setting only if it beats no adaptation at
+(`python -m tempolens.studies.adaptseeds --members 5`); accept a setting only if it beats no adaptation at
 the same costs for the ensemble and for every member, and take the highest ensemble mean among
 those. Only open data is used; the choice of conditions and grid was not revisited.
 
@@ -454,7 +454,7 @@ pick, TTA alone, is kept as a validated, reproduced file (`554fcb55…`). On 202
 review's recommendation to switch to that pick and kept TTA + EATA, for its larger real-tracking gain
 and its larger smallest per-member gain, accepting the disclosed post-hoc tie-break.
 
-**Noise floor of the sim condition (DRAW2, 2026-11-10, report only).** Every sim number above uses one simulated test draw per held-out match. The same fold models scored on two more draws (`python -m tempolens.draw2`; seeds 1000, 1001, 1002), ensemble, 10-match mean:
+**Noise floor of the sim condition (DRAW2, 2026-11-10, report only).** Every sim number above uses one simulated test draw per held-out match. The same fold models scored on two more draws (`python -m tempolens.studies.draw2`; seeds 1000, 1001, 1002), ensemble, 10-match mean:
 
 | setting (costs) | per draw | mean (sd) | vs none (sd) |
 |---|---|---|---|

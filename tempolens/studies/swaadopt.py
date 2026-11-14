@@ -1,9 +1,9 @@
 """B3c adoption pipeline (plan of action row B3c-adopt, pre-registered 2026-11-07 in c9110af).
 
-    python -m tempolens.swaadopt final K   # (a) SWA final member K -> models/exp/swa4/
-    python -m tempolens.swaadopt study     # (b) SWA fold models + restricted adaptation study
-    python -m tempolens.swaadopt pff       # (c) pff-16 veto with the SWA finals
-    python -m tempolens.swaadopt build --data-root <bundle>   # (d) check, then (e) candidate
+    python -m tempolens.studies.swaadopt final K   # (a) SWA final member K -> models/exp/swa4/
+    python -m tempolens.studies.swaadopt study     # (b) SWA fold models + restricted adaptation study
+    python -m tempolens.studies.swaadopt pff       # (c) pff-16 veto with the SWA finals
+    python -m tempolens.studies.swaadopt build --data-root <bundle>   # (d) check, then (e) candidate
 
 Each step needs the previous one's result and stops (exit 3) when it is missing or failed, so
 a failure stops the chain there. Never touches models/decoder.json or tempolens_rnd4_m*.pt.
@@ -16,8 +16,9 @@ import sys
 
 import numpy as np
 
-from . import adaptcv, adaptseeds, pffstudy
-from .experiments import stop, write_atomic
+from .. import adaptcv, pffstudy
+from . import adaptseeds
+from ..experiments import stop, write_atomic
 
 SWA, MEMBERS = 4, 5
 DIR = adaptcv.ROOT / "models" / "exp" / "swa4"
@@ -170,7 +171,7 @@ def build(data_root):
     if not s["beats"]:
         save("build", {"d": False})
         stop("(d) the candidate does not beat the current submission")
-    from .candidate import build as candidate_build
+    from ..candidate import build as candidate_build
     overrides = {
         "members": [p.relative_to(adaptcv.ROOT / "models").as_posix() for p in FINALS],
         "tta_alpha": s["alpha"], "eata_steps": s["steps"],

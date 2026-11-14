@@ -12,7 +12,8 @@ import json
 
 import numpy as np
 
-from . import adaptcv, adaptseeds, pffstudy, swaadopt
+from . import adaptcv, pffstudy
+from .studies import adaptseeds, swaadopt
 from .experiments import stop, write_atomic
 
 MEMBERS = 5

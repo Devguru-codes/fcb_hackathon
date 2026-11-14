@@ -16,7 +16,8 @@ import sys
 
 import numpy as np
 
-from . import adaptcv, hedgestudy, pffstudy, temporal
+from . import adaptcv, pffstudy, temporal
+from .studies import hedgestudy
 from .decoder import transition_matrix
 from .experiments import CachedSample, check_members, decode_table, folds, open_data_dir, \
     score, stop

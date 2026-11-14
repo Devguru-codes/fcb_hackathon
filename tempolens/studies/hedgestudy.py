@@ -1,8 +1,8 @@
 """Blend of adapted and un-adapted members, and a wider cost grid with adaptation on (plan of
 action rows B2, E10; open data, aggregates only).
 
-    python -m tempolens.hedgestudy b2  [--until "2026-11-08 09:00"]
-    python -m tempolens.hedgestudy e10 [--until ...]
+    python -m tempolens.studies.hedgestudy b2  [--until "2026-11-08 09:00"]
+    python -m tempolens.studies.hedgestudy e10 [--until ...]
 
 B2 runs the ADseeds conditions (sim / shift / sc; the adaptation study's fold members, the final
 members on SkillCorner; float32) for tta_alpha {0, 0.5} x eata_steps {0, 10} and caches every
@@ -19,10 +19,10 @@ from multiprocessing import Pool
 
 import numpy as np
 
-from . import adaptcv, temporal
-from .decoder import transition_matrix
-from .experiments import check_members, decode_table, folds, open_data_dir, score
-from .opendata import EXTRA_LOADERS, LOADERS
+from .. import adaptcv, temporal
+from ..decoder import transition_matrix
+from ..experiments import check_members, decode_table, folds, open_data_dir, score
+from ..opendata import EXTRA_LOADERS, LOADERS
 
 CONDITIONS = ("sim", "shift", "sc")
 KEYS = ((0.0, 0), (0.5, 0), (0.5, 10))

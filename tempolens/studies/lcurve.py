@@ -1,6 +1,6 @@
 """Learning curve (plan of action row LCURVE). Report only, decides nothing.
 
-    python -m tempolens.lcurve
+    python -m tempolens.studies.lcurve
 
 One member (member 0, the submitted recipe) per CV fold, trained on the first 4 / 6 / 8 of the fold's
 other matches in a fixed order (sorted, then permuted by default_rng(2027)); the 8-match models are
@@ -12,10 +12,10 @@ import sys
 
 import numpy as np
 
-from . import adaptcv, temporal
-from .decoder import transition_matrix
-from .experiments import SIM_TEST_SEED, CachedSample, decode_table, folds, score
-from .opendata import LOADERS
+from .. import adaptcv, temporal
+from ..decoder import transition_matrix
+from ..experiments import SIM_TEST_SEED, CachedSample, decode_table, folds, score
+from ..opendata import LOADERS
 
 SIZES = (4, 6, 8)
 SEED = 2027

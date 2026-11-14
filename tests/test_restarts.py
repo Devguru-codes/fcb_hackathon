@@ -2,7 +2,8 @@ import unittest
 
 import numpy as np
 
-from tempolens import kickoffs, restarts
+from tempolens import kickoffs
+from tempolens.studies import restarts
 from tempolens.match import A, D, H, X, MatchTable
 
 

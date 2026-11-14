@@ -2,18 +2,18 @@
 phantom tracks) cost the model? One cross-validation fold, held-out matches scored with and
 without the faults.
 
-    python -m tempolens.robustness
+    python -m tempolens.studies.robustness
 """
 
 import numpy as np
 
-from . import temporal
-from .decoder import transition_matrix
-from .experiments import (CachedSample, SIM_TEST_SEED, SIM_TRAIN_SEEDS, baseline_codes,
+from .. import temporal
+from ..decoder import transition_matrix
+from ..experiments import (CachedSample, SIM_TEST_SEED, SIM_TRAIN_SEEDS, baseline_codes,
                           decode_table, folds, score)
-from .features import TableSample
-from .opendata import LOADERS, load_open_match
-from .simulate import add_tracker_faults, simulate_atd
+from ..features import TableSample
+from ..opendata import LOADERS, load_open_match
+from ..simulate import add_tracker_faults, simulate_atd
 
 COSTS = (4.0, 8.0, 8.0)   # the single-GRU optimum (one model, not the submitted ensemble)
 

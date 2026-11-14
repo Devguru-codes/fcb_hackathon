@@ -1,6 +1,6 @@
 """Test-time adaptation per seed, on external data only (plan of action row ADseeds, 2026-11-07).
 
-    python -m tempolens.adaptseeds --members 5
+    python -m tempolens.studies.adaptseeds --members 5
 
 The same grid, conditions and fold models as `adaptcv` (sim / shift / sc), scored for the ensemble
 (seed -1) and for each member alone (seed k: fold member k on sim and shift, final member k on sc).
@@ -17,7 +17,7 @@ import json
 
 import numpy as np
 
-from . import adaptcv
+from .. import adaptcv
 
 COSTS = ((2.0, 8.0, 8.0, 0.5), (4.0, 8.0, 8.0, 1.0))
 CONDITIONS = ("sim", "shift", "sc")

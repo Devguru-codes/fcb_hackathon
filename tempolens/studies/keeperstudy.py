@@ -1,6 +1,6 @@
 """Goalkeeper-swap fault and repair on open data (plan of action row E1; aggregates only).
 
-    python -m tempolens.keeperstudy
+    python -m tempolens.studies.keeperstudy
 
 1. Thresholds, on positions only: every open match's test noise draw with KEEPER_SWAPS keeper
    swaps (1-5 min each) is repaired with each (window, occupancy) setting; the share of swapped
@@ -16,13 +16,13 @@ from pathlib import Path
 
 import numpy as np
 
-from . import adaptcv, temporal
-from .decoder import transition_matrix
-from .experiments import SIM_TEST_SEED, CachedSample, decode_table, folds, score, write_atomic
-from .match import repair_keepers
-from .opendata import LOADERS
+from .. import adaptcv, temporal
+from ..decoder import transition_matrix
+from ..experiments import SIM_TEST_SEED, CachedSample, decode_table, folds, score, write_atomic
+from ..match import repair_keepers
+from ..opendata import LOADERS
 
-OUT = Path(__file__).resolve().parents[1] / "models" / "exp" / "keeper"
+OUT = Path(__file__).resolve().parents[2] / "models" / "exp" / "keeper"
 WINDOWS, OCCUPANCIES, PRESENT = (60.0, 30.0, 120.0), (0.8, 0.6, 0.7, 0.9), 0.5
 COSTS = (2.0, 8.0, 8.0, 0.5)
 VERSIONS = ("clean", "fault", "fault+repair", "clean+repair")

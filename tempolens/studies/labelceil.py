@@ -1,6 +1,6 @@
 """Label-noise ceiling (plan of action row LCEIL). Report only, decides nothing.
 
-    python -m tempolens.labelceil
+    python -m tempolens.studies.labelceil
 
 On the 7 DFL matches: the Sportec ball-owner / status flag labels we train on (10-frame fold)
 against labels made from DFL's own events with the Metrica event rules (opendata.labels_from_events),
@@ -15,7 +15,7 @@ import xml.etree.ElementTree as ET
 import numpy as np
 import pandas as pd
 
-from .match import A, H, X
+from ..match import A, H, X
 
 SET_PIECES = ("KickOff", "ThrowIn", "FreeKick", "CornerKick", "GoalKick", "Penalty")
 FOLD = 10
@@ -62,8 +62,8 @@ def event_rows(raw):
 
 def dfl_raw(match_id):
     """[(table frame, tag, team, child tags)] of one DFL match's events inside its halves."""
-    from .opendata import _dfl_file
-    from .touches import _dfl_halves, _time
+    from ..opendata import _dfl_file
+    from ..touches import _dfl_halves, _time
     info = _dfl_file("matchinformation", match_id).read_text(encoding="utf-8")
     general = dict(re.findall(r'(\w+)="([^"]*)"', re.search(r"<General [^>]*>", info).group(0)))
     team_of = {general["HomeTeamId"]: H, general["GuestTeamId"]: A}
@@ -86,7 +86,7 @@ def dfl_raw(match_id):
 def compare(flag, events, period):
     """Agreement of two label arrays on graded frames (both not X): frame agreement, alive-vs-dead
     agreement, and spellF1 / macroF1 of `events` scored against `flag`."""
-    from .experiments import score
+    from ..experiments import score
     graded = (period > 0) & (flag != X) & (events != X)
     alive_f, alive_e = np.isin(flag, (H, A)), np.isin(events, (H, A))
     s = score(np.where(graded, flag, X), np.where(graded, events, X))
@@ -96,7 +96,7 @@ def compare(flag, events, period):
 
 
 def main():
-    from .opendata import LOADERS, labels_from_events, load_open_match, remove_flicker
+    from ..opendata import LOADERS, labels_from_events, load_open_match, remove_flicker
     rows = []
     for name in sorted(n for n in LOADERS if n.startswith("dfl_")):
         table = load_open_match(name)        # flag labels, folded at opendata.DFL_MIN_SPELL

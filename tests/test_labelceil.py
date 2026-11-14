@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from tempolens.labelceil import compare, event_rows
+from tempolens.studies.labelceil import compare, event_rows
 from tempolens.match import A, D, H, X
 from tempolens.opendata import labels_from_events
 

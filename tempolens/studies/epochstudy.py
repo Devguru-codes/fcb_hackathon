@@ -1,6 +1,6 @@
 """Held-out spellF1 after every training epoch (plan of action row E5; open data, aggregates only).
 
-    python -m tempolens.epochstudy           # members 0 and 1, v7 recipe, 16 epochs, 5 folds
+    python -m tempolens.studies.epochstudy           # members 0 and 1, v7 recipe, 16 epochs, 5 folds
 
 Each fold trains one 16-epoch v7-recipe member (`--draws 4`) and, after epochs 4..16, decodes
 its held-out matches at costs (2, 8, 8, 0.5). The learning rate follows one cycle over all 16
@@ -15,13 +15,13 @@ from pathlib import Path
 
 import numpy as np
 
-from . import temporal
-from .decoder import transition_matrix
-from .experiments import SIM_TEST_SEED, CachedSample, decode_table, folds, score, \
+from .. import temporal
+from ..decoder import transition_matrix
+from ..experiments import SIM_TEST_SEED, CachedSample, decode_table, folds, score, \
     training_samples, write_atomic
-from .opendata import LOADERS
+from ..opendata import LOADERS
 
-OUT = Path(__file__).resolve().parents[1] / "models" / "exp" / "epochstudy"
+OUT = Path(__file__).resolve().parents[2] / "models" / "exp" / "epochstudy"
 EPOCHS, FIRST, COSTS = 16, 4, (2.0, 8.0, 8.0, 0.5)
 
 

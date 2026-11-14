@@ -1,7 +1,7 @@
 """Restart diagnostics (plan of action row RST: Fable round 4, G3-1 and G3-2). Counts only.
 
-    python -m tempolens.restarts match --data-root <bundle> --labels <full-match csv>
-    python -m tempolens.restarts open
+    python -m tempolens.studies.restarts match --data-root <bundle> --labels <full-match csv>
+    python -m tempolens.studies.restarts open
 
 G3-1: how long after each kickoff the decoded labels stay D, and what back-filling a short leading
 D run with the team the laws name (second half: the team that did not kick off the first; after a
@@ -16,8 +16,8 @@ import xml.etree.ElementTree as ET
 
 import numpy as np
 
-from . import kickoffs
-from .match import A, D, H
+from .. import kickoffs
+from ..match import A, D, H
 
 WINDOW = 75                  # 3 s at 25 fps: the longest leading D run a back-fill may fill
 POST_M = 3.66 + 0.5          # half the goal mouth plus a margin for the ball track
@@ -76,7 +76,7 @@ def alive_share(codes):
 def match(data_root, labels_path):
     import possession_metrics as pm
     from games import GAME, GAMES, require
-    from .match import competition_table
+    from ..match import competition_table
     table = competition_table(GAME, data_root)
     codes = pm.label_codes(pm.read_label_csv(labels_path))
     fps = GAMES[GAME]["fps"]
@@ -113,8 +113,8 @@ def match(data_root, labels_path):
 
 def _dfl_kickoffs(match_id):
     import re
-    from .opendata import _dfl_file
-    from .touches import _dfl_halves, _time
+    from ..opendata import _dfl_file
+    from ..touches import _dfl_halves, _time
     info = _dfl_file("matchinformation", match_id).read_text(encoding="utf-8")
     general = dict(re.findall(r'(\w+)="([^"]*)"', re.search(r"<General [^>]*>", info).group(0)))
     team_of = {general["HomeTeamId"]: H, general["GuestTeamId"]: A}
@@ -135,7 +135,7 @@ def _dfl_kickoffs(match_id):
 
 
 def _metrica_kickoffs(game, n_frames):
-    from .opendata import _metrica_csv_events, _metrica_dir
+    from ..opendata import _metrica_csv_events, _metrica_dir
     folder = _metrica_dir(game)
     if game in (1, 2):
         events = _metrica_csv_events(folder / "Sample_Game_{}_RawEventsData.csv".format(game),
@@ -143,7 +143,7 @@ def _metrica_kickoffs(game, n_frames):
         keep = ((events.type == "SET PIECE") & events.subtype.str.contains("KICK OFF")
                 & events.team.isin([H, A]))
         return list(zip(events.start[keep].astype(int), events.team[keep].astype(int)))
-    from .match import teams_from_epts_metadata
+    from ..match import teams_from_epts_metadata
     _, home, _ = teams_from_epts_metadata(folder / "Sample_Game_3_metadata.xml")
     with open(folder / "Sample_Game_3_tracking.txt", encoding="utf-8") as handle:
         offset = int(handle.readline().split(":", 1)[0])
@@ -183,9 +183,9 @@ def open_kickoffs(name, table):
 
 
 def open_study():
-    from .decoder import transition_matrix
-    from .experiments import SIM_TEST_SEED, CachedSample, decode_table, oof_logp, score
-    from .opendata import LOADERS
+    from ..decoder import transition_matrix
+    from ..experiments import SIM_TEST_SEED, CachedSample, decode_table, oof_logp, score
+    from ..opendata import LOADERS
     names = sorted(LOADERS)
     logps = oof_logp(names, "ensemble", members=5, draws=4)
     delays = {"half": [], "goal": []}

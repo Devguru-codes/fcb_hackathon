@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from tempolens import restartside as rs
+from tempolens.studies import restartside as rs
 from tempolens.match import A, D, H, X, MatchTable
 
 PITCH = (105.0, 68.0)

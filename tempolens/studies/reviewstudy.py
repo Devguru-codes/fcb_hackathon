@@ -1,7 +1,7 @@
 """Cached-output studies from the independent review (plan of action rows B1, B4; aggregates only).
 
-    python -m tempolens.reviewstudy b1    # member combination: geometric mean, max change logit
-    python -m tempolens.reviewstudy b4    # change bonus split: H<->A switches vs live<->dead
+    python -m tempolens.studies.reviewstudy b1    # member combination: geometric mean, max change logit
+    python -m tempolens.studies.reviewstudy b4    # change bonus split: H<->A switches vs live<->dead
 
 Both read the cached held-out outputs of the 5 ENS5 members (experiments.oof_logp) and decode
 the 10 open matches; nothing is trained. B4's split decoder lives here only; decoder.py is
@@ -13,10 +13,10 @@ from multiprocessing import Pool
 
 import numpy as np
 
-from .cvrescore import COSTS, NAMES, SETTINGS
-from .decoder import transition_matrix
-from .experiments import SIM_TEST_SEED, CachedSample, decode_table, oof_logp, score
-from .match import X
+from ..cvrescore import COSTS, NAMES, SETTINGS
+from ..decoder import transition_matrix
+from ..experiments import SIM_TEST_SEED, CachedSample, decode_table, oof_logp, score
+from ..match import X
 
 ENS5 = (0.7760, 0.7650, 0.8017)        # all / DFL / Metrica at (2, 8, 8, 0.5)
 WEIGHTS = (0.0, 0.5, 1.0, 1.5)

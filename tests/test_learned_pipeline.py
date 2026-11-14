@@ -374,7 +374,8 @@ class EnsembleTests(unittest.TestCase):
                          [("half 1", H, H), ("goal", A, H), ("half 2", A, A)])
 
     def test_soup_of_one_member_and_of_copies_is_that_member(self):
-        from tempolens import soup, temporal
+        from tempolens import temporal
+        from tempolens.studies import soup
         from tempolens.features import TableSample
         table = SimulatorTests()._labelled(3000)
         model, normaliser = temporal.train([table], epochs=1, device="cpu", verbose=False,
@@ -402,7 +403,7 @@ class EnsembleTests(unittest.TestCase):
                                    want, atol=1e-2)
 
     def test_seed_rule_needs_the_ensemble_and_every_seed_to_gain(self):
-        from tempolens.adaptseeds import decide
+        from tempolens.studies.adaptseeds import decide
         c = (2.0, 8.0, 8.0, 0.5)
         base = {"sim": 0.7, "shift": 0.7, "sc": 0.4}
         bump = {   # setting -> spellF1 added on every condition, per seed (-1 = ensemble)
@@ -706,7 +707,7 @@ class PffLoaderTests(unittest.TestCase):
 class ReviewStudyTests(unittest.TestCase):
     def test_split_bonus_with_equal_weights_is_the_plain_decoder(self):
         from tempolens.decoder import transition_matrix
-        from tempolens.reviewstudy import decode_split
+        from tempolens.studies.reviewstudy import decode_split
         table = _table()
         rng = np.random.default_rng(3)
         logp = np.concatenate([np.log(rng.dirichlet([1, 1, 1], len(table.period))),
@@ -718,7 +719,7 @@ class ReviewStudyTests(unittest.TestCase):
                                         decode_split(table, logp, t, 0.0, 3.0)))
 
     def test_geometric_combination(self):
-        from tempolens.reviewstudy import combine
+        from tempolens.studies.reviewstudy import combine
         from tempolens.temporal import combine as plain
         rng = np.random.default_rng(4)
         one = np.concatenate([np.log(rng.dirichlet([1, 1, 1], 50)), rng.normal(size=(50, 1))], 1)
@@ -774,7 +775,7 @@ class SwaAdoptTests(unittest.TestCase):
                 "conditions": {"-1": {"sc": sc}}}
 
     def test_pick_takes_the_highest_accepted_and_breaks_near_ties_by_the_weakest_member(self):
-        from tempolens.swaadopt import pick
+        from tempolens.studies.swaadopt import pick
         a = self.row(0.6476, {"0": 0.0001, "1": 0.003}, 0.010)
         b = self.row(0.6475, {"0": 0.0022, "1": 0.002}, 0.012)
         c = self.row(0.6490, {"0": 0.01, "1": 0.01}, 0.02, ok=False)
@@ -813,7 +814,7 @@ class StudyReferenceTests(unittest.TestCase):
         import io
         import itertools
         from unittest.mock import patch
-        from tempolens import hedgestudy as hs
+        from tempolens.studies import hedgestudy as hs
 
         def table(blend_mean, blend_sim):
             t = {}
@@ -841,7 +842,7 @@ class StudyReferenceTests(unittest.TestCase):
         import contextlib
         import io
         from unittest.mock import patch
-        from tempolens import reviewstudy as rs
+        from tempolens.studies import reviewstudy as rs
         full = np.full(len(rs.SPLIT), 0.7000)
         e = next(i for i, s in enumerate(rs.SPLIT) if s[3] == s[4])
         b = next(i for i, s in enumerate(rs.SPLIT) if s[3] != s[4])
@@ -1162,7 +1163,8 @@ class CompleteRowsTests(unittest.TestCase):
         return [dict(r, seed=seed) for r in out] if seed is not None else out
 
     def test_a_setting_missing_any_match_or_condition_raises(self):
-        from tempolens import adaptcv, adaptseeds
+        from tempolens import adaptcv
+        from tempolens.studies import adaptseeds
         full = {"sim": {"m1": self.rows([0.0, 0.5]), "m2": self.rows([0.0, 0.5])},
                 "sc": {"s1": self.rows([0.0, 0.5])}}
         self.assertEqual(len(adaptcv.table(full)), 2)
@@ -1274,7 +1276,7 @@ class SingleTrainerTests(unittest.TestCase):
     def test_the_queue_sees_any_tempolens_job_but_itself(self):
         from unittest.mock import patch
         from tempolens import autoqueue
-        lines = ["python -m tempolens.autoqueue", "python -u -m tempolens.swaadopt study",
+        lines = ["python -m tempolens.autoqueue", "python -u -m tempolens.studies.swaadopt study",
                  "python -m tempolens.train --member 1", "python -m pytest tests"]
         with patch.object(autoqueue, "python_processes", return_value=lines):
             self.assertEqual(autoqueue.other_runs(), lines[1:3])
@@ -1357,7 +1359,7 @@ class KickoffTallyTests(unittest.TestCase):
 
 class QuotedRuleTests(unittest.TestCase):
     def test_build_gate_c_and_d(self):
-        from tempolens import swaadopt as sa
+        from tempolens.studies import swaadopt as sa
         base = 0.5747761368684252
         for mean10, ok in ((base, True), (base - sa.VETO, True), (base - sa.VETO - 1e-9, False),
                            (base + 0.01, True), (0.0, False)):
@@ -1371,7 +1373,7 @@ class QuotedRuleTests(unittest.TestCase):
         import tempfile
         from pathlib import Path
         from unittest.mock import patch
-        from tempolens import swaadopt as sa
+        from tempolens.studies import swaadopt as sa
 
         class Reached(Exception):
             pass
@@ -1419,7 +1421,8 @@ class QuotedRuleTests(unittest.TestCase):
 class OneRecipeTests(unittest.TestCase):
     def test_condition_sample_is_the_old_recipe_for_each_condition(self):
         from unittest.mock import patch
-        from tempolens import adaptcv, hedgestudy
+        from tempolens import adaptcv
+        from tempolens.studies import hedgestudy
         from tempolens.experiments import SIM_TEST_SEED
         from tempolens.opendata import EXTRA_LOADERS, LOADERS
 
@@ -1500,15 +1503,15 @@ class ShrinkTests(unittest.TestCase):
         self.assertAlmostEqual(full, 2 * half, places=12)
 
     def test_shrink_rule_boundaries(self):
-        from tempolens.tagstudy import shrink_rule
+        from tempolens.studies.tagstudy import shrink_rule
         e = (0.0, 0.1, 0.2, 0.35, 0.5)
         base = dict(zip(e, (0.7820, 0.7772, 0.7763, 0.7733, 0.7730)))
 
         def row(*deltas):
             return {k: base[k] + d for k, d in zip(e, deltas)}
         q = 0.00390625                                       # 2^-8, exact in binary
-        with __import__("unittest.mock").mock.patch("tempolens.tagstudy.GAIN", q), \
-                __import__("unittest.mock").mock.patch("tempolens.tagstudy.LOSS", q):
+        with __import__("unittest.mock").mock.patch("tempolens.studies.tagstudy.GAIN", q), \
+                __import__("unittest.mock").mock.patch("tempolens.studies.tagstudy.LOSS", q):
             b = {k: 0.5 for k in e}                          # exact base for exact boundaries
             for deltas, ok in (((0, q, q, -q, -q), True),            # all exactly at the limits
                                ((0, q, q / 2, 0, 0), False),          # 20% short
@@ -1597,7 +1600,8 @@ class CandidateTests(unittest.TestCase):
 
 class LearningCurveTests(unittest.TestCase):
     def test_subsets_are_fixed_nested_and_exclude_the_held_out(self):
-        from tempolens import adaptcv, lcurve
+        from tempolens import adaptcv
+        from tempolens.studies import lcurve
         from tempolens.opendata import LOADERS
         first, again = lcurve.subsets(), lcurve.subsets()
         self.assertEqual(first, again)                          # fixed order
@@ -1617,7 +1621,7 @@ class Draw2Tests(unittest.TestCase):
     def test_summary_spreads_and_eata_count(self):
         import contextlib
         import io
-        from tempolens import draw2
+        from tempolens.studies import draw2
 
         def rows(shift):
             out = []

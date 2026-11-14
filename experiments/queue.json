@@ -4463,7 +4463,7 @@
     "args": [],
     "cmd": [
       "-m",
-      "tempolens.tagstudy",
+      "tempolens.studies.tagstudy",
       "--draws",
       "4",
       "--seeds",

@@ -1,6 +1,6 @@
 """Extra simulated test draws (plan of action row DRAW2). Report only, decides nothing.
 
-    python -m tempolens.draw2
+    python -m tempolens.studies.draw2
 
 ADseeds' ENS5 fold models on simulated test draws 1001 and 1002 of each held-out open match; draw
 1000 (SIM_TEST_SEED) is ADseeds' cached sim rows (same models, same scorer). Per-match caches in
@@ -9,9 +9,10 @@ models/exp/draw2/, named by seed, so a rerun resumes.
 
 import numpy as np
 
-from . import adaptcv, adaptseeds, swaadopt
-from .experiments import SIM_TEST_SEED, CachedSample, check_members, folds
-from .opendata import LOADERS
+from .. import adaptcv
+from . import adaptseeds, swaadopt
+from ..experiments import SIM_TEST_SEED, CachedSample, check_members, folds
+from ..opendata import LOADERS
 
 SEEDS = (SIM_TEST_SEED, 1001, 1002)
 SETTINGS = {"none": (0.0, 0), "TTA 0.5": (0.5, 0), "TTA 0.5 + EATA 10": (0.5, 10)}
