@@ -63,10 +63,13 @@ python -m tempolens.train --member 0 --draws 4 --min-spell 50 --out models/retra
 
 ```bash
 pip install pytest
-python -m pytest -q tests                  # MTAH_E2E=1 adds the slow end-to-end test
+python -m pytest -q tests                  # skips the one slow end-to-end test
+MTAH_E2E=1 python -m pytest -q tests       # all of them; PowerShell: $env:MTAH_E2E = "1" first
 ```
 
-The tests run on synthetic files: they need neither the match data nor the open data.
+The tests run on synthetic files: they need neither the match data nor the open data. The
+end-to-end test runs `tempolens.predict` on a fake bundle in the real file formats and checks that
+two runs write the same bytes; it is the only test of the path from the tracking files to the CSV.
 
 ## Licence
 
