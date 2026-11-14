@@ -22,7 +22,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .decoder import transition_matrix, viterbi_matrix
+from .decoder import decode_table, transition_matrix  # noqa: F401 (decode_table re-exported for the studies)
 from .features import FEATURE_VERSION, feature_names, frame_features, swap_labels
 from .match import A, D, H, X
 from .opendata import LOADER_VERSION, LOADERS, load_open_match, open_data_dir
@@ -83,21 +83,6 @@ def stop(message):
     """End a lane job with exit 3: a rule said stop (final, never retried)."""
     print("STOPPED: " + message, flush=True)
     sys.exit(3)
-
-
-def decode_table(table, logp, transition, change_weight=0.0):
-    """Viterbi inside each period; X outside.
-
-    `logp` is (n, 3) log-probabilities, or (n, 4) with a change logit in the last column, which
-    then makes a state change `change_weight * logit` cheaper (dearer where it is negative).
-    """
-    out = np.full(table.n_frames, X, dtype=np.int8)
-    for start, stop in table.runs():
-        bonus = None
-        if logp.shape[1] > 3 and change_weight:
-            bonus = change_weight * logp[start:stop, 3]
-        out[start:stop] = viterbi_matrix(logp[start:stop, :3], transition, bonus)
-    return out
 
 
 # -- open matches as cached samples -----------------------------------------------------------

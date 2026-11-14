@@ -2,6 +2,8 @@
 
 import numpy as np
 
+from .match import X
+
 
 def transition_matrix(switch_cost, alive_to_dead, dead_to_alive):
     """Log-transition scores for H/A/D: staying is free, every change pays its cost."""
@@ -80,3 +82,18 @@ try:
     _kernel = njit(cache=True)(_viterbi_loops)
 except ImportError:   # numba is optional; the numpy path gives the same answer, slower
     _kernel = None
+
+
+def decode_table(table, logp, transition, change_weight=0.0):
+    """Viterbi inside each period; X outside.
+
+    `logp` is (n, 3) log-probabilities, or (n, 4) with a change logit in the last column, which
+    then makes a state change `change_weight * logit` cheaper (dearer where it is negative).
+    """
+    out = np.full(table.n_frames, X, dtype=np.int8)
+    for start, stop in table.runs():
+        bonus = None
+        if logp.shape[1] > 3 and change_weight:
+            bonus = change_weight * logp[start:stop, 3]
+        out[start:stop] = viterbi_matrix(logp[start:stop, :3], transition, bonus)
+    return out

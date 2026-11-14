@@ -133,8 +133,7 @@ def decode_learned(table, logp, settings, data_root, game, tag_prior=None):
     `tag_prior` overrides settings["tag_prior"]: "auto" applies the self-calibrated Smart
     Tagging prior (tagprior.py), "off" does not.
     """
-    from .decoder import transition_matrix
-    from .experiments import decode_table
+    from .decoder import decode_table, transition_matrix
 
     mode = tag_prior or settings.get("tag_prior", "off")
     tag_report = None
