@@ -702,7 +702,13 @@ def save(model, normaliser, path, recipe=None):
 def load(path):
     """(model, normaliser). Weights saved before configs existed load as the default GRU."""
     torch = _torch()
-    blob = torch.load(path, map_location="cpu", weights_only=False)
+    # weights_only: a .pt file is a pickle, so a full load can run code. The normaliser is stored
+    # as numpy arrays, which need exactly these types and nothing else.
+    import numpy.dtypes
+    numpy_types = [np.core.multiarray._reconstruct, np.ndarray, np.dtype, bytes,
+                   numpy.dtypes.Float32DType, numpy.dtypes.Float64DType, numpy.dtypes.Int64DType]
+    with torch.serialization.safe_globals(numpy_types):
+        blob = torch.load(path, map_location="cpu", weights_only=True)
     # Weights read features by column: other features give a silently wrong model. Files from
     # before the version was recorded were trained on version 2.
     version = blob.get("feature_version", 2)
