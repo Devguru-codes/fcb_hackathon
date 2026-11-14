@@ -1,3 +1,4 @@
+import ast
 import subprocess
 import sys
 import unittest
@@ -21,6 +22,16 @@ class PredictImportTests(unittest.TestCase):
                              text=True, check=True).stdout.splitlines()
         self.assertEqual(eval(out[0]), sorted(("tempolens",) + PREDICT_PATH))
         self.assertEqual(out[1], "False")
+
+    def test_predict_imports_only_the_listed_modules(self):
+        # predict.py imports inside its functions, which the check above never runs.
+        tree = ast.parse((ROOT / "tempolens" / "predict.py").read_text(encoding="utf-8"))
+        found = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom) and node.level == 1:
+                found.update(["tempolens." + node.module] if node.module
+                             else ["tempolens." + a.name for a in node.names])
+        self.assertLessEqual(found, set(PREDICT_PATH))
 
 
 if __name__ == "__main__":

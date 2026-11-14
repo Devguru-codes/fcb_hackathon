@@ -531,6 +531,23 @@ class TemporalVariantTests(unittest.TestCase):
             self.assertEqual(model.config, temporal.DEFAULT_CONFIG)
             self.assertEqual(len(normaliser.drop), 0)
 
+    def test_load_refuses_a_pickle_that_runs_code(self):
+        import pickle
+        import tempfile
+        from pathlib import Path
+        import torch
+        from tempolens import temporal
+
+        class Payload:      # unpickling this calls print: the weights_only allowlist must refuse it
+            def __reduce__(self):
+                return (print, ("loaded code from a .pt file",))
+
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "m.pt"
+            torch.save({"normaliser": Payload()}, path)
+            with self.assertRaises(pickle.UnpicklingError):
+                temporal.load(path)
+
 
 class DecodeTests(unittest.TestCase):
     def test_numba_and_numpy_viterbi_agree(self):
