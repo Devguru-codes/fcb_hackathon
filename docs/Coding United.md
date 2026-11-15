@@ -8,6 +8,7 @@ subtitle: "More than a Hack 2027, Phase 1: ball possession. Short technical docu
 | team | Coding United |
 | possession file | `Coding United.csv`: 199,319 rows, passes `evaluation/validate_submission.py`, sha256 `9cc22752a2e280cb782823134b1209fa44be8a81228d607f8799b95e7878a61c` |
 | method | TempoLens: 10 bidirectional GRUs trained on open data under simulated tracking noise, test-time feature normalisation, a Smart Tagging prior, Viterbi decoding; no weight is trained or updated on the provided match (section 6) |
+| code | <https://github.com/Devguru-codes/fcb_hackathon> (public; the submission is rebuilt from `main`) |
 | reproduction | `python -m tempolens.predict --data-root data --output "Coding United.csv"` (section 8) |
 | long appendix | `docs/technical_document.md`; every experiment and its decision rule: `docs/plan_of_action.md` |
 
@@ -270,7 +271,8 @@ python evaluation/validate_submission.py "Coding United.csv"
 
 Everything needed is committed: the 10 weight files, and `models/decoder.json`, which lists the
 members and every setting. Inference runs on the CPU in float64 in a fixed order, so the same data
-gives the same file byte for byte (sha256 above). A full run takes about 7 minutes (432 s) on a laptop CPU (Intel Core i7-12700H, 14 cores, 16 GB RAM) with the 10 members and TTA, measured while another job was using the machine. With EATA it took 14–24 minutes. A fresh clone of the
-submitted commit rebuilt the file byte for byte and validated, and its 150 tests pass (`MTAH_E2E=1`, including the end-to-end test). Retraining
+gives the same file byte for byte (sha256 above). A full run takes about 7 minutes (432 s) on a laptop CPU (Intel Core i7-12700H, 14 cores, 16 GB RAM) with the 10 members and TTA, measured while another job was using the machine. With EATA it took 14–24 minutes. Fresh clones rebuilt the file byte
+for byte and validated on Windows 11 and on Linux (Ubuntu 24.04), and the full test suite passes
+(`MTAH_E2E=1`, including the end-to-end test). Retraining
 needs the open data and a GPU (`python -m tempolens.train --member k --draws 4 [--min-spell 50]`);
 GPU training is not bit-reproducible, which is why the weights are committed.

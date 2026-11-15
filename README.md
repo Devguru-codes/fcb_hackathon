@@ -20,6 +20,8 @@ decision rule [docs/plan_of_action.md](docs/plan_of_action.md) · pipeline and c
 
 ```bash
 pip install -r requirements-tempolens.txt      # or requirements-predict.txt: the submission only
+# Linux: add --extra-index-url https://download.pytorch.org/whl/cpu to get the CPU torch wheel
+# instead of the ~2.5 GB CUDA one; the file is the same either way (inference runs on the CPU)
 # unpack the organisers' data bundle into data/ (data/tactical/..., see data/README.md)
 python -m tempolens.predict --data-root data --output "Coding United.csv"
 python evaluation/validate_submission.py "Coding United.csv"
@@ -31,8 +33,9 @@ python evaluation/validate_submission.py "Coding United.csv"
 - **Environment:** Python 3.11 (tested on 3.11.3), the pinned versions in the requirements file.
   Only CPU is needed: inference runs in float64 in a fixed order, so the same data gives the same
   file byte for byte. A GPU is not used even if one is present. Byte identity was verified from
-  fresh clones on Windows 11, x86-64. Other platforms should agree, since float64 and a fixed order
-  leave little room to differ, but that has not been checked.
+  fresh clones in fresh environments on Windows 11 (Python 3.11.3) and on Linux (Ubuntu 24.04
+  under WSL2, Python 3.12.3, the CPU torch wheel, 2 CPUs and 1 GB of memory: 531 s, peak memory
+  0.66 GB), both x86-64. macOS and ARM have not been checked.
 - **Inputs:** the tactical tracking (`data/tactical/BAR-ATH_tactical_atd.*`) and the Smart Tagging
   file. No video, no homography, no broadcast feed, no open data, no network access.
 - The weights (`models/tempolens_rnd4_m*.pt`, `models/tempolens_ms50_m*.pt`) and every decoder
