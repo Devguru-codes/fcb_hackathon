@@ -1,4 +1,4 @@
-# Pinned environment for TempoLens and the official evaluator (tested on Python 3.11).
+# Pinned environment for TempoLens and the official evaluator (tested on Python 3.11; the submission also rebuilt on 3.12).
 numpy==1.26.4
 pandas==2.3.3
 lightgbm==4.6.0

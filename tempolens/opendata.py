@@ -224,7 +224,7 @@ def metrica_epts_game3():
 
 # -- DFL / Sportec open data (Bassek et al., Scientific Data, CC-BY 4.0) -----------------------
 #
-# Seven Bundesliga matches whose 25 Hz positions carry, on every ball frame, the provider's own
+# Seven DFL matches (2 Bundesliga, 5 2. Bundesliga) whose 25 Hz positions carry, on every ball frame, the provider's own
 # BallStatus (alive/dead) and BallPossession (home/guest). That is the same kind of signal the
 # competition's ground truth is derived from -- corrected tracking's dead flag and owning team --
 # so these labels are closer to the target definition than labels derived from events. The ball
@@ -311,7 +311,7 @@ def dfl_game(match_id):
 
 # -- SkillCorner open data (A-League 2024/25, broadcast tracking, MIT licence) ----------------
 #
-# github.com/SkillCorner/opendata: 10 matches tracked from the TV broadcast at 10 fps -- off-screen
+# github.com/SkillCorner/opendata: 20 matches tracked from the TV broadcast at 10 fps -- off-screen
 # players extrapolated, the ball missing when unseen, nothing at all during replays -- so its
 # faults are real ones, closer to the competition ATD than clean DFL. Labels follow the
 # competition's rule: phases of play exist only while the ball is in play (outside them: D);

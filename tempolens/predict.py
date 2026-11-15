@@ -3,7 +3,7 @@
     python -m tempolens.predict --data-root data --output evaluation/results/<team>.csv
 
 It runs the committed temporal ensemble (trained on open data only; the members are listed in
-models/decoder.json, whose costs were tuned for exactly them) on CPU, averages it, and decodes
+models/decoder.json; its costs were tuned on the first five, ENS5, and kept for all ten) on CPU, averages it, and decodes
 with the committed decoder settings, so the same data always gives the same file.
 """
 

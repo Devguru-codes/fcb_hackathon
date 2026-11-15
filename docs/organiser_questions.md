@@ -4,8 +4,9 @@
 now off. The organisers' Q&A answers #2, #10, #11 and #16 (as quoted in 7dracoder's
 `CoreOrigin.md`, lines 506–513) cover questions 2 and 3 below. Question 1, the licence of
 Metrica's sample data, stays open: the data is used with attribution, as its repository asks
-(README_Tempolens.md, "Open data"; technical document §2). The submission uses no component trained on the provided video
-(question 3 and the last section): the video ball detector is built but not used (§6b). The
+(README.md, "Open data"; docs/Coding United.md, section 3). The submission uses no component trained on the provided video
+(question 3 and the last section): the video ball detector was built and tested before the rules mail, never used, and its code
+has been removed (technical document §6b). The
 text below is the original draft, kept as history.
 
 RULES.md asks participants to ask before building on anything near a line. Three questions:

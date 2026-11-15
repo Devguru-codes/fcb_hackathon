@@ -18,8 +18,8 @@ Simulated, per match:
   in-period missing fraction up to `ball_missing`; plus rare short flickers;
 
 Calibration: the official baseline has published full-match scores for four smoothing windows
-(EVALUATION.md). On DFL match J03WMX, dead_cover ~0.67 reproduces their macroF1 within ~0.02
-and their ranking order under both metrics; uniform gaps (dead_cover 0) leave macroF1 ~0.2 too
+(EVALUATION.md). On DFL match J03WMX, dead_cover ~0.67 brings their macroF1 within ~0.03
+in the published order (under spellF1 smooth25 and smooth50 tie and smooth125 falls below them); uniform gaps (dead_cover 0) leave macroF1 ~0.2 too
 low whatever the dead-ball bias. Clean DFL also matches the competition's 78% agreement between
 nearest player's team and owning team, so no extra team noise is added.
 - player dropout as a two-state chain: ~4% per player, which matches the real share of frames
