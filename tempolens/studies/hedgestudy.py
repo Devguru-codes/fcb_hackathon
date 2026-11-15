@@ -59,7 +59,7 @@ def compute(until=None):
     final = [temporal.load(p) for p in paths]
     members_of = {}
     for condition, name, make, held in matches():
-        path = _cache() / "{}_{}.npz".format(condition, name)
+        path = adaptcv.row_file(_cache(), condition, name, "npz")
         if path.exists():
             continue
         if until and datetime.now() >= until:
@@ -79,7 +79,7 @@ def compute(until=None):
 
 
 def load(condition, name):
-    return adaptcv.load_grid(_cache() / "{}_{}.npz".format(condition, name), KEYS)
+    return adaptcv.load_grid(adaptcv.row_file(_cache(), condition, name, "npz"), KEYS)
 
 
 def variants(out):

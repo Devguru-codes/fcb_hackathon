@@ -38,7 +38,7 @@ import numpy as np
 
 from . import temporal
 from .decoder import transition_matrix
-from .experiments import SIM_TEST_SEED, CachedSample, check_members, decode_table, folds, score, \
+from .experiments import SIM_TEST_SEED, SIM_VERSION, CachedSample, check_members, decode_table, folds, score, \
     savez_atomic, write_atomic
 from .match import A, D, H
 from .opendata import EXTRA_LOADERS, LOADERS
@@ -223,9 +223,21 @@ def stamp_loader(folder):
         write_atomic(path, json.dumps(record))
 
 
+def row_suffix(condition):
+    """Rows on simulated noise (sim, shift, sim<seed>) name the simulator from version 3 on, so a
+    table never mixes two simulators' rows; version 2 keeps today's names."""
+    sim = condition.startswith(("sim", "shift")) and SIM_VERSION > 2
+    return "_s{}".format(SIM_VERSION) if sim else ""
+
+
+def row_file(folder, condition, name, ext):
+    """One match's study rows."""
+    return Path(folder) / "{}_{}{}.{}".format(condition, name, row_suffix(condition), ext)
+
+
 def cached(folder, condition, name, compute):
     stamp_loader(folder)
-    path = folder / "{}_{}.json".format(condition, name)
+    path = row_file(folder, condition, name, "json")
     if path.exists():
         return json.loads(path.read_text(encoding="utf-8"))
     rows = compute()

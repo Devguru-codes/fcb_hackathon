@@ -37,7 +37,7 @@ def main(argv=None):
 
     base, _ = evaluate(names, samples, lambda n: decode_table(
         samples[n], logps[n], transition_matrix(*BASE)))
-    show("viterbi {} (submitted costs, no change bonus)".format(BASE), base)
+    show("viterbi {} (3-member CV ensemble, submitted costs, no bonus)".format(BASE), base)
 
     # Minimum durations, with the switch cost re-tuned (a floor on run length replaces part of
     # what the switch cost was doing).

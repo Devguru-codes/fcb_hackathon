@@ -89,8 +89,10 @@ def cached_results(folder):
     """{condition: {match: rows}} from a study folder's per-match caches."""
     out = {c: {} for c in CONDITIONS}
     for c in CONDITIONS:
-        for path in sorted(folder.glob("{}_*.json".format(c))):
-            out[c][path.stem[len(c) + 1:]] = json.loads(path.read_text(encoding="utf-8"))
+        suffix = adaptcv.row_suffix(c)           # only this simulator's rows
+        for path in sorted(folder.glob("{}_*{}.json".format(c, suffix))):
+            out[c][path.stem[len(c) + 1:len(path.stem) - len(suffix)]] = json.loads(
+                path.read_text(encoding="utf-8"))
     return out
 
 

@@ -1705,8 +1705,41 @@ class Draw2Tests(unittest.TestCase):
             adaptcv.cached(Path(folder), "sim1002", "m", lambda: [2])
             self.assertEqual(adaptcv.cached(Path(folder), "sim1001", "m",
                                             lambda: self.fail("recomputed")), [1])
-            self.assertEqual(sorted(p.name for p in Path(folder).iterdir()),
-                             ["loader.json", "sim1001_m.json", "sim1002_m.json"])   # + the loader stamp
+            names = sorted(p.name for p in Path(folder).iterdir())
+        from tempolens.experiments import SIM_VERSION
+        sim = "_s{}".format(SIM_VERSION) if SIM_VERSION > 2 else ""
+        self.assertEqual(names, ["loader.json", "sim1001_m{}.json".format(sim),
+                                 "sim1002_m{}.json".format(sim)])   # + the loader stamp
+
+    def test_simulated_rows_name_the_simulator_and_real_ones_do_not(self):
+        # Under simulator 3 a missing match must not be computed and averaged with simulator-2
+        # rows still on disk under the old names.
+        from pathlib import Path
+        from unittest.mock import patch
+        from tempolens import adaptcv
+        with patch.object(adaptcv, "SIM_VERSION", 3):
+            self.assertEqual(adaptcv.row_file(Path("c"), "shift", "dfl1", "npz").name,
+                             "shift_dfl1_s3.npz")
+            self.assertEqual(adaptcv.row_file(Path("c"), "sim1001", "m", "json").name,
+                             "sim1001_m_s3.json")
+            self.assertEqual(adaptcv.row_file(Path("c"), "sc", "sc1", "npz").name, "sc_sc1.npz")
+        with patch.object(adaptcv, "SIM_VERSION", 2):              # today's names kept
+            self.assertEqual(adaptcv.row_file(Path("c"), "sim", "dfl1", "npz").name, "sim_dfl1.npz")
+
+    def test_swaadopt_reads_only_the_current_simulators_rows(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        from tempolens import adaptcv
+        from tempolens.studies import swaadopt
+        with tempfile.TemporaryDirectory() as folder, patch.object(adaptcv, "SIM_VERSION", 3):
+            root = Path(folder)
+            for name, rows in (("sim_dfl1.json", [2]), ("sim_dfl1_s3.json", [3]),
+                               ("shift_dfl1_s3.json", [3]), ("sc_sc1.json", [0])):
+                (root / name).write_text(json.dumps(rows))
+            self.assertEqual(swaadopt.cached_results(root),
+                             {"sim": {"dfl1": [3]}, "shift": {"dfl1": [3]}, "sc": {"sc1": [0]}})
 
 
 class TwoViewTests(unittest.TestCase):
@@ -1929,12 +1962,13 @@ class RecipeProvenanceTests(unittest.TestCase):
 
         def fake_save(model, normaliser, path, recipe=None):
             saved.update(path=path, recipe=recipe)
+        from tempolens import opendata
+        before = opendata.DFL_MIN_SPELL
         with tempfile.TemporaryDirectory() as folder,                 patch.object(train, "training_samples", return_value=[]),                 patch.object(temporal, "train", return_value=(None, None)),                 patch.object(temporal, "save", side_effect=fake_save):
             train.main(["--out", str(Path(folder) / "x.pt"), "--draws", "4", "--min-spell", "50",
                         "--matches", "metrica1"])
         self.assertEqual(saved["recipe"], {"draws": 4, "min_spell": 50, "matches": ["metrica1"]})
-        from tempolens import opendata
-        self.assertEqual(opendata.DFL_MIN_SPELL, 10)    # put back: no leak into a later call
+        self.assertEqual(opendata.DFL_MIN_SPELL, before)    # put back: no leak into a later call
 
     def test_the_recipe_is_stored_and_load_ignores_it(self):
         import tempfile

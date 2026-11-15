@@ -85,7 +85,7 @@ def jobs():
 
 
 def store_path(condition, name):
-    return _cache() / "{}_{}.npz".format(condition, name)
+    return adaptcv.row_file(_cache(), condition, name, "npz")
 
 
 def outputs():
@@ -126,7 +126,7 @@ def needed_files():
     for condition, name, _, _ in jobs():
         out.append(store_path(condition, name))
         out.append(pffstudy._cache() / "pff_{}_outputs.npz".format(name) if condition == "pff"
-                   else hedgestudy._cache() / "{}_{}.npz".format(condition, name))
+                   else adaptcv.row_file(hedgestudy._cache(), condition, name, "npz"))
     return out
 
 
