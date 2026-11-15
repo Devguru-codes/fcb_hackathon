@@ -44,12 +44,18 @@ N_FOLDS = 5
 # The caches below are keyed by parameters, not by code. Bump SIM_VERSION when simulate.py's
 # logic changes and TRAIN_VERSION when temporal.py's training changes (LR, CHUNK, losses...);
 # version 1 keeps the historical file names, so existing caches stay valid.
-SIM_VERSION = 2   # 2: Metrica's dead-time ball filled (opendata.fill_dead_ball)
+SIM_VERSION = 3   # 2: Metrica's dead-time ball filled (opendata.fill_dead_ball); 3: stoppages split per half
 TRAIN_VERSION = 1
 RANDOM_VERSION = 1   # simulate.random_noise's ranges
 KEEPER_SWAPS = 2      # keeper-swap stretches per faulted test match (E1)
 NOISE_TAG = hashlib.md5((repr(AtdNoise()) + ("" if SIM_VERSION == 1 else str(SIM_VERSION)))
                         .encode()).hexdigest()[:8]
+FAULTS_TAG = hashlib.md5(repr(TrackerFaults()).encode()).hexdigest()[:6]   # fault draws' settings
+# Decoder cost grid (switch, alive->dead, dead->alive). A switch dearer than alive>dead +
+# dead>alive is never taken directly (the decoder routes through one dead frame instead, which
+# spellF1 does not see), so the grid stops there.
+COST_GRID = [(s, ad, da) for s in (1.0, 1.5, 2.0, 4.0, 6.0, 8.0, 12.0) for ad in (2.0, 4.0, 8.0)
+             for da in (2.0, 4.0, 8.0)]
 
 
 # -- scoring and decoding ---------------------------------------------------------------------
@@ -181,6 +187,7 @@ class CachedSample:
         if self.seed is not None and LOADER_VERSION > 1:   # version 1 keeps today's names
             tag += "_l{}".format(LOADER_VERSION)
         tag += "_kf{}".format(KEEPER_SWAPS) if self.keeper else ""
+        tag += "_tf" + FAULTS_TAG if self.faults or self.keeper else ""
         if self.repair:
             tag += "_kr{window_s:g}-{occupancy:g}-{present:g}".format(**self.repair)
         return (open_data_dir() / "cache" / "features" /
@@ -316,7 +323,7 @@ def oof_tag(kind, config=None, draws=0, faults=False, min_spell=None, sc_visible
     else:
         tag = kind
     if draws:
-        tag += "_rnd{}v{}{}".format(draws, RANDOM_VERSION, "f" if faults else "")
+        tag += "_rnd{}v{}{}".format(draws, RANDOM_VERSION, "f" + FAULTS_TAG if faults else "")
     if kind == "temporal" and config.touch:     # the touch targets' recipe is part of what was trained
         from .touches import TOUCH_VERSION
         tag += "_tv{}".format(TOUCH_VERSION)
@@ -525,10 +532,6 @@ def main(argv=None):
                         help="--extra-train frames enter the loss only where the ball is detected")
     parser.add_argument("--refresh", action="store_true", help="retrain, ignoring the cache")
     args = parser.parse_args(argv)
-    # A switch dearer than alive>dead + dead>alive is never taken directly (the decoder routes
-    # through one dead frame instead, which spellF1 does not see), so the grid stops there.
-    grid = [(s, ad, da) for s in (1.0, 1.5, 2.0, 4.0, 6.0, 8.0, 12.0) for ad in (2.0, 4.0, 8.0)
-            for da in (2.0, 4.0, 8.0)]
     from .temporal import TemporalConfig
     sizes = {k: v for k, v in (("hidden", args.hidden), ("epochs", args.epochs),
                                ("chunk", args.chunk)) if v}
@@ -540,7 +543,7 @@ def main(argv=None):
                             drop=drop_names(args.drop), **sizes)
     from .opendata import EXTRA_LOADERS
     extra = sorted(EXTRA_LOADERS) if args.extra_train == "skillcorner" else ()
-    run(args.matches, grid, args.model, args.protocol, args.refresh, args.member, config,
+    run(args.matches, COST_GRID, args.model, args.protocol, args.refresh, args.member, config,
         args.member_set or args.members, extra, args.draws, args.faults, args.min_spell,
         args.sc_visible)
 

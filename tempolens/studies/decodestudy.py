@@ -15,7 +15,7 @@ from ..mbr import decode_min_duration, mbr_decode
 from ..opendata import LOADERS
 from ..predict import load_decoder
 
-_SETTINGS = load_decoder()   # the submitted decoder is the baseline every alternative must beat
+_SETTINGS = load_decoder()   # the submitted costs, without the change bonus (the alternatives have none)
 BASE = tuple(_SETTINGS[k] for k in ("switch", "alive_to_dead", "dead_to_alive"))
 
 
@@ -37,7 +37,7 @@ def main(argv=None):
 
     base, _ = evaluate(names, samples, lambda n: decode_table(
         samples[n], logps[n], transition_matrix(*BASE)))
-    show("viterbi {} (submitted)".format(BASE), base)
+    show("viterbi {} (submitted costs, no change bonus)".format(BASE), base)
 
     # Minimum durations, with the switch cost re-tuned (a floor on run length replaces part of
     # what the switch cost was doing).

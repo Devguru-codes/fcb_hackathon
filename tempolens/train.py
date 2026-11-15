@@ -9,6 +9,9 @@ matches; `--draws 0` gives the older two fixed-noise draws. The other five submi
 (models/tempolens_ms50_m0..4.pt, plan row LCB-ADOPT) add `--min-spell 50`. Training uses only
 open data (no competition asset), so the weights may be committed. GPU training is not bit-reproducible, which is why the weights are
 committed: the submission is regenerated from them by CPU inference, which is.
+The submitted members were trained under simulator v2 (tag `phase1-submission`). Since 2026-11-15
+the simulator loses each half's stoppages separately (v3, plan row AUD4), so retraining from a
+later commit draws slightly different noise.
 """
 
 import argparse
@@ -46,16 +49,20 @@ def main(argv=None):
     parser.add_argument("--swa", type=int, default=0,
                         help="average the weights of the last N epochs (plan rows B3 / B3c)")
     args = parser.parse_args(argv)
-    opendata.DFL_MIN_SPELL = args.min_spell
     out = args.out or "models/retrained_m{}.pt".format(args.member)
     from .predict import load_decoder
-    submitted = {Path(m).name for m in load_decoder()["members"]}     # every submitted member
-    if Path(out).name in submitted or Path(out).name.startswith("tempolens_rnd4_m"):
+    submitted = {Path(m).name.lower() for m in load_decoder()["members"]}   # every submitted member
+    name = Path(out).name.lower().rstrip(". ")   # Windows ignores case and trailing dots/spaces
+    if name in submitted or name.startswith("tempolens_rnd4_m"):
         parser.error("never overwrite the submitted weights ({})".format(out))
-    samples = training_samples(args.matches, args.member, args.draws, args.faults)
-    if args.extra_train:     # as in the cross-validation: real broadcast noise, one draw each
-        samples += [CachedSample(n, member_noise_seeds(args.member)[0])
-                    for n in sorted(EXTRA_LOADERS)]
+    default_spell, opendata.DFL_MIN_SPELL = opendata.DFL_MIN_SPELL, args.min_spell
+    try:                     # labels are read when a CachedSample is made
+        samples = training_samples(args.matches, args.member, args.draws, args.faults)
+        if args.extra_train:     # as in the cross-validation: real broadcast noise, one draw each
+            samples += [CachedSample(n, member_noise_seeds(args.member)[0])
+                        for n in sorted(EXTRA_LOADERS)]
+    finally:
+        opendata.DFL_MIN_SPELL = default_spell
     config = temporal.TemporalConfig(hidden=args.hidden, epochs=args.epochs, chunk=args.chunk,
                                      touch=args.touch, drop=drop_names(args.drop), swa=args.swa)
     model, normaliser = temporal.train(samples, seed=temporal.SEED + args.member, config=config)

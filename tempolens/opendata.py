@@ -93,7 +93,7 @@ def labels_from_events(events, period, n_frames):
             continue
         labels[first:stop] = D
         window = events[(events.start >= first) & (events.start < stop)]
-        state, since = D, first
+        state = D
         changes = []
         started = False
         for row in window.itertuples():
@@ -160,7 +160,6 @@ def metrica_csv_game(game):
     players = np.concatenate([home, away], axis=1) * scale
     slot_team = np.asarray([H] * home.shape[1] + [A] * away.shape[1], dtype=np.int8)
     events = _metrica_csv_events(folder / "Sample_Game_{}_RawEventsData.csv".format(game), n)
-    period = np.nan_to_num(period).astype(np.int8)
     table = MatchTable(name="metrica{}".format(game), ball=(ball * scale).astype(np.float32),
                        players=players.astype(np.float32), slot_team=slot_team, period=period,
                        pitch=PITCH)

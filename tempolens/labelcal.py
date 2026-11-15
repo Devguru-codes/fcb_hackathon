@@ -128,6 +128,8 @@ def main(argv=None):
     parser.add_argument("--frames", type=int, help="step2: the calibrated min_frames")
     parser.add_argument("--workers", type=int, default=4)
     args = parser.parse_args(argv)
+    if args.step == "step2" and args.frames is None:
+        parser.error("step2 needs --frames")
     with Pool(args.workers) as pool:
         if args.step == "step1":
             step1(pool)

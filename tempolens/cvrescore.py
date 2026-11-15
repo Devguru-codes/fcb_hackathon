@@ -17,12 +17,11 @@ from multiprocessing import Pool
 import numpy as np
 
 from .decoder import transition_matrix
-from .experiments import SIM_TEST_SEED, CachedSample, decode_table, oof_logp, score
+from .experiments import COST_GRID as COSTS, SIM_TEST_SEED, CachedSample, decode_table, oof_logp, \
+    score
 from .match import A, D, H
 from .opendata import LOADERS, remove_flicker
 
-COSTS = [(s, ad, da) for s in (1.0, 1.5, 2.0, 4.0, 6.0, 8.0, 12.0) for ad in (2.0, 4.0, 8.0)
-         for da in (2.0, 4.0, 8.0)]
 SETTINGS = [c + (w,) for c in COSTS for w in (0.0, 0.5, 1.0)]
 CONVENTIONS = (("provider", 0), ("controlled-1s", 25), ("controlled-2s", 50),
                ("controlled-3s", 75))

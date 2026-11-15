@@ -191,6 +191,22 @@ class SimulatorTests(unittest.TestCase):
         self.assertGreater(missing[table.labels == D].mean(),
                            2 * missing[np.isin(table.labels, [H, A])].mean())
 
+    def test_each_half_loses_its_own_stoppage_when_halves_are_back_to_back(self):
+        # DFL puts the second half right after the first: dead at the end of one and before the
+        # other's kickoff must be two stoppages, each lost on its own.
+        from tempolens.simulate import AtdNoise, _stoppage_gaps
+        n = 2000
+        period = np.r_[np.ones(1000), np.full(1000, 2)].astype(np.int8)
+        labels = np.full(n, H, dtype=np.int8)
+        labels[900:1200] = D
+        table = MatchTable(name="b2b", ball=np.zeros((n, 2), np.float32),
+                           players=np.zeros((n, 2, 2), np.float32),
+                           slot_team=np.array([H, A], np.int8), period=period, labels=labels)
+        noise = AtdNoise(dead_cover=1.0, dead_lag=0.0, dead_edge_sd=0.0)
+        lost = _stoppage_gaps(table, noise, np.random.default_rng(0))
+        self.assertTrue(lost[900:1200].all())
+        self.assertFalse(lost[:900].any() or lost[1200:].any())
+
     def test_randomised_noise_is_seeded_varied_and_reached(self):
         from tempolens.simulate import random_noise, simulate_atd
         self.assertEqual(random_noise(7), random_noise(7))
@@ -806,7 +822,9 @@ class SwaAdoptTests(unittest.TestCase):
         import tempfile
         from pathlib import Path
         with tempfile.TemporaryDirectory() as folder:      # the guard's name, never the tracked file
-            for name in ("tempolens_rnd4_m0.pt", "tempolens_ms50_m3.pt"):   # both halves of the mix
+            # both halves of the mix, and spellings Windows maps onto the same file
+            for name in ("tempolens_rnd4_m0.pt", "tempolens_ms50_m3.pt", "TEMPOLENS_MS50_M0.pt",
+                         "tempolens_ms50_m0.pt."):
                 out = Path(folder) / name
                 with self.assertRaises(SystemExit):
                     train.main(["--out", str(out)])
@@ -955,6 +973,7 @@ class LoaderVersionTests(unittest.TestCase):
             self.assertEqual([p.name for p in Path(folder).iterdir()], ["fake_l7.npz"])
         sample = CachedSample.__new__(CachedSample)
         sample.name, sample.seed, sample.keeper, sample.repair = "x", None, False, None
+        sample.faults = False
         with patch("tempolens.experiments.open_data_dir", return_value=Path(".")):  # fresh clone
             self.assertIn("_clean_l{}_".format(od.LOADER_VERSION), sample._path(False).name)
 
@@ -1039,6 +1058,17 @@ class AdaptMembersTests(unittest.TestCase):
 
 
 class StudyMembersTests(unittest.TestCase):
+    def test_adaptcv_default_finals_match_the_member_count(self):
+        # `python -m tempolens.adaptcv` (3 members) once died on "5 final members, not 3".
+        import tempfile
+        from unittest.mock import patch
+        from tempolens import adaptcv
+        seen = {}
+        with tempfile.TemporaryDirectory() as folder,                 patch.object(adaptcv, "check_members",
+                             side_effect=lambda f, paths: seen.update(paths=paths)),                 patch.object(adaptcv.temporal, "load", return_value=None),                 patch.object(adaptcv, "folds", return_value=[]),                 patch.object(adaptcv, "EXTRA_LOADERS", {}):
+            adaptcv.collect(adaptcv.MEMBERS, folder)
+        self.assertEqual(seen["paths"], adaptcv.ens5_paths()[:adaptcv.MEMBERS])
+
     def test_a_cache_folder_refuses_other_members(self):
         import tempfile
         from pathlib import Path
@@ -1903,6 +1933,8 @@ class RecipeProvenanceTests(unittest.TestCase):
             train.main(["--out", str(Path(folder) / "x.pt"), "--draws", "4", "--min-spell", "50",
                         "--matches", "metrica1"])
         self.assertEqual(saved["recipe"], {"draws": 4, "min_spell": 50, "matches": ["metrica1"]})
+        from tempolens import opendata
+        self.assertEqual(opendata.DFL_MIN_SPELL, 10)    # put back: no leak into a later call
 
     def test_the_recipe_is_stored_and_load_ignores_it(self):
         import tempfile

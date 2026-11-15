@@ -21,10 +21,6 @@ OUT = adaptcv.OUT / "draw2"
 MEMBERS = 5
 
 
-def fold_path(held, k):
-    return adaptcv.OUT / "models" / "{}_m{}.pt".format("-".join(held), k)
-
-
 def score_match(members, sample):
     return adaptcv.score_match(members, sample, per_member=True, costs=COSTS, alphas=(0.0, 0.5),
                                steps=(0, 10), gates=(False,))
@@ -34,7 +30,7 @@ def rows_by_draw():
     """{seed: {match: rows}}; seed 1000 from ADseeds' cache, the others computed and cached."""
     out = {SIM_TEST_SEED: swaadopt.cached_results(swaadopt.ADSEEDS)["sim"]}
     names = sorted(LOADERS)
-    check_members(OUT, [fold_path(held, k) for held in folds(names) for k in range(MEMBERS)])
+    check_members(OUT, [adaptcv.fold_path(held, k) for held in folds(names) for k in range(MEMBERS)])
     assert sorted(out[SIM_TEST_SEED]) == names, "ADseeds' sim rows are incomplete"
     for seed in SEEDS[1:]:
         out[seed] = {}

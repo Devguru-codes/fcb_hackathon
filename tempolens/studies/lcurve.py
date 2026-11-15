@@ -36,7 +36,7 @@ def subsets(names=None):
 
 def model_path(held, size):
     if size == len(LOADERS) - len(held):      # every other match: ADseeds' fold model
-        return adaptcv.OUT / "models" / "{}_m0.pt".format("-".join(held))
+        return adaptcv.fold_path(held, 0)
     return OUT / "{}_n{}_m0.pt".format("-".join(held), size)
 
 

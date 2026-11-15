@@ -95,13 +95,17 @@ def train_once(path, command, wait_s=30, timeout_s=4 * 3600):
     return path
 
 
+def fold_path(held, k, swa=0):
+    return OUT / ("models_swa{}".format(swa) if swa else "models") / "{}_m{}.pt".format(
+        "-".join(held), k)
+
+
 def fold_members(held, rest, count=MEMBERS, swa=0):
     """The v7-recipe members trained without `held` (with weight averaging over the last `swa`
     epochs if set), cached on disk."""
     members = []
     for k in range(count):
-        folder = OUT / ("models_swa{}".format(swa) if swa else "models")
-        path = folder / "{}_m{}.pt".format("-".join(held), k)
+        path = fold_path(held, k, swa)
         train_once(path, [sys.executable, "-m", "tempolens.train", "--member", str(k),
                           "--draws", str(DRAWS), "--out", str(path), "--matches", *rest]
                    + (["--swa", str(swa)] if swa else []))
@@ -234,7 +238,7 @@ def collect(count=MEMBERS, folder=None, scorer=score_match, final_paths=None, sw
     """`final_paths` (default: ENS5) score sc; `swa` picks the fold models."""
     folder = folder or (OUT / "m{}_swa{}".format(count, swa) if swa
                         else OUT if count == MEMBERS else OUT / "m{}".format(count))
-    final_paths = final_paths or ens5_paths()
+    final_paths = final_paths or ens5_paths()[:count]   # 3 members: the 3-member final m0..m2
     check_members(folder, final_paths)      # the sc rows are these members' outputs
     final = [temporal.load(p) for p in final_paths]
     assert len(final) == count, "{} final members, not {}".format(len(final), count)

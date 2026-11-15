@@ -108,7 +108,7 @@ def verdict(job, jobs):
 
 
 def write_plan(jobs):
-    mark = {"pending": "⬜", "running": "⏳", "done": "✅", "failed": "❌"}
+    mark = {"pending": "⬜", "running": "⏳", "done": "✅", "failed": "❌", "skipped": "⏭"}
     rows = ["| | id | experiment | all | DFL | metrica | best costs | vs baseline | finished |",
             "|---|---|---|---|---|---|---|---|---|"]
     for job in jobs:
@@ -149,7 +149,9 @@ def run_job(job, jobs):
     LOGS.mkdir(parents=True, exist_ok=True)
     log = LOGS / "{}.log".format(job["id"])
     jobs = load()                       # jobs may have been added while we waited
-    job = next(j for j in jobs if j["id"] == job["id"])
+    job = next((j for j in jobs if j["id"] == job["id"]), None)
+    if job is None:                     # removed from the queue while we waited
+        return
     job.update(status="running", started=datetime.now().strftime("%Y-%m-%d %H:%M"))
     save(jobs)
     write_plan(jobs)
@@ -160,7 +162,11 @@ def run_job(job, jobs):
                                cwd=job.get("cwd") or ROOT, env=dict(os.environ, **job.get("env", {})),
                                stdout=handle, stderr=subprocess.STDOUT)
     jobs = load()                       # the queue may have been edited meanwhile
-    job = next(j for j in jobs if j["id"] == job["id"])
+    job = next((j for j in jobs if j["id"] == job["id"]), None)
+    if job is None:                     # removed while it ran: its log is kept
+        print("{}  {} left the queue while running; log {}".format(now(), log.stem, log),
+              flush=True)
+        return
     result = parse(log.read_text(encoding="utf-8", errors="replace"))
     finished_ok = code == 0 and (result or job.get("cmd"))
     job.update(status="done" if finished_ok else "failed", result=result,

@@ -91,17 +91,18 @@ def _ball_gaps(hazard, durations, period):
 def _stoppage_gaps(table, noise, rng):
     """Lose the ball through whole stoppages: shortly after it dies until about the restart."""
     lost = np.zeros(table.n_frames, dtype=bool)
-    dead = (table.labels == D) & (table.period > 0)
-    edges = np.diff(np.concatenate(([0], dead.astype(np.int8), [0])))
-    for start, stop in zip(np.flatnonzero(edges == 1), np.flatnonzero(edges == -1)):
-        if rng.random() >= noise.dead_cover:
-            continue
-        a = start + int(round(noise.dead_lag + noise.dead_edge_sd * rng.standard_normal()))
-        b = stop + int(round(noise.dead_edge_sd * rng.standard_normal()))
-        a, b = max(start, a), min(table.n_frames, b)
-        period = table.period[start]
-        if b > a:
-            lost[a:b] = table.period[a:b] == period
+    dead = table.labels == D
+    # Per half: two halves back to back (DFL) must not merge into one stoppage.
+    for first, last in table.runs():
+        edges = np.diff(np.concatenate(([0], dead[first:last].astype(np.int8), [0])))
+        for start, stop in zip(first + np.flatnonzero(edges == 1), first + np.flatnonzero(edges == -1)):
+            if rng.random() >= noise.dead_cover:
+                continue
+            a = start + int(round(noise.dead_lag + noise.dead_edge_sd * rng.standard_normal()))
+            b = stop + int(round(noise.dead_edge_sd * rng.standard_normal()))
+            a, b = max(start, a), min(last, b)
+            if b > a:
+                lost[a:b] = True
     return lost
 
 
