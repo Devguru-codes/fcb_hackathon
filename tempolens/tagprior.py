@@ -74,6 +74,8 @@ def votes(instances, n_frames, groups=GROUPS):
     tally = {group: np.zeros(n_frames, dtype=np.int32) for group in groups}
     for start, stop, group, side in instances:
         start, stop = max(0, start), min(n_frames, stop)
+        if stop <= start:      # wholly outside the match; a negative stop would index from the end
+            continue
         tally[group][start:stop] += 1 if side == H else -1
     return {group: np.sign(t).astype(np.int8) for group, t in tally.items()}
 

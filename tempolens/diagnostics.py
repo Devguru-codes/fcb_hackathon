@@ -138,12 +138,16 @@ def run(data_root, model_paths=None, decoder_path=None):
     # 5. Smart Tagging reliability, measured against the confident model (no labels)
     if model_paths:
         from .predict import learned_logp, load_decoder
-        from .tagprior import read_instances, self_calibrated
+        from .tagprior import SHRINK, read_instances, self_calibrated
         from games import GAMES
         settings = load_decoder(decoder_path)
-        _, logp, _ = learned_logp(data_root, GAME, model_paths)
+        # The same adapted output and shrink predict calibrates on, so these are the shipped weights.
+        _, logp, _ = learned_logp(data_root, GAME, model_paths, settings.get("tta_alpha", 0.0),
+                                  settings.get("eata_steps", 0), settings.get("blend", False),
+                                  settings.get("tta_both_views", False))
         instances = read_instances(path, table.meta["home"], table.meta["away"], GAMES[GAME]["fps"])
-        _, tag_report = self_calibrated(logp, instances, graded)
+        _, tag_report = self_calibrated(logp, instances, graded,
+                                        shrink=settings.get("tag_shrink", SHRINK))
         report["tag_prior"] = {
             group: {"weight": round(w, 3), "reliability": round(r, 3), "confident_frames": n}
             for group, (w, r, n) in tag_report.items()}

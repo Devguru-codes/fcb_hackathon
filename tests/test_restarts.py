@@ -17,6 +17,24 @@ def _table(ball):
                       np.array([H, A], dtype=np.int8), np.ones(n, dtype=np.int8))
 
 
+class OpenKickoffKindTests(unittest.TestCase):
+    def test_a_missed_half_kickoff_does_not_relabel_a_goal_kickoff(self):
+        from unittest.mock import patch
+        n = 4000
+        period = np.r_[np.ones(2000), np.full(2000, 2)].astype(np.int8)
+        table = MatchTable("k", np.zeros((n, 2), np.float32), np.zeros((n, 2, 2), np.float32),
+                           np.array([H, A], dtype=np.int8), period)
+        raw = [(0, H), (900, A), (2000, A), (3000, H)]   # half 1, goal, half 2, goal
+        lead = int(restarts.LEAD_S * table.fps)
+
+        def found(table, start, *args, **kwargs):          # the half-1 kickoff is never found
+            return None if start == 0 else start + lead
+        with patch.object(restarts, "_dfl_kickoffs", return_value=raw),                 patch.object(restarts.kickoffs, "restart_frame", side_effect=found):
+            rows, missing = restarts.open_kickoffs("dfl_x", table)
+        self.assertEqual(missing, 1)
+        self.assertEqual(rows, [("goal", 900, A), ("half", 2000, A), ("goal", 3000, H)])
+
+
 class LeadingDeadTests(unittest.TestCase):
     def test_runs_at_and_beyond_the_window(self):
         self.assertEqual(restarts.leading_dead(_codes((D, 75), (H, 5)), 0), 75)

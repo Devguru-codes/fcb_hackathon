@@ -3,7 +3,17 @@ import unittest
 import numpy as np
 
 from tempolens.match import A, H, MatchTable
-from tempolens.touches import snap_to_contact
+from tempolens.touches import dfl_event_frame, snap_to_contact
+
+
+class DflEventFrameTests(unittest.TestCase):
+    def test_times_map_into_the_halves_in_table_order(self):
+        halves = [(100.0, 50), (200.0, 50)]          # (first ball time, frames) per half
+        self.assertEqual(dfl_event_frame(100.0, halves), 0)
+        self.assertEqual(dfl_event_frame(101.96, halves), 49)
+        self.assertIsNone(dfl_event_frame(102.0, halves))      # after half 1, before half 2
+        self.assertEqual(dfl_event_frame(200.0, halves), 50)
+        self.assertIsNone(dfl_event_frame(99.0, halves))
 
 
 class SnapToContactTests(unittest.TestCase):

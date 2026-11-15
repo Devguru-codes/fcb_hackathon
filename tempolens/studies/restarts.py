@@ -114,7 +114,7 @@ def match(data_root, labels_path):
 def _dfl_kickoffs(match_id):
     import re
     from ..opendata import _dfl_file
-    from ..touches import _dfl_halves, _time
+    from ..touches import _dfl_halves, _time, dfl_event_frame
     info = _dfl_file("matchinformation", match_id).read_text(encoding="utf-8")
     general = dict(re.findall(r'(\w+)="([^"]*)"', re.search(r"<General [^>]*>", info).group(0)))
     team_of = {general["HomeTeamId"]: H, general["GuestTeamId"]: A}
@@ -124,13 +124,9 @@ def _dfl_kickoffs(match_id):
         play = None if kick is None else kick.find("Play")
         if play is None or play.attrib.get("Team") not in team_of:
             continue
-        t, offset = _time(event.attrib["EventTime"]), 0
-        for start, n in halves:
-            k = int(round((t - start) / 0.04))
-            if 0 <= k < n:
-                out.append((offset + k, team_of[play.attrib["Team"]]))
-                break
-            offset += n
+        frame = dfl_event_frame(_time(event.attrib["EventTime"]), halves)
+        if frame is not None:
+            out.append((frame, team_of[play.attrib["Team"]]))
     return out
 
 
@@ -165,21 +161,22 @@ def open_kickoffs(name, table):
     else "goal"; and how many events had no ball-track restart."""
     raw = (_dfl_kickoffs(name[4:]) if name.startswith("dfl_")
            else _metrica_kickoffs(int(name[-1]), table.n_frames))
-    out, missing = [], 0
+    out, missing, seen = [], 0, set()
     fps = table.fps
+    starts = [a for a, _ in table.runs()]
     for approx, team in sorted(raw):
+        # The half from the event time, so a half kickoff the search misses cannot pass its
+        # "half" label to a later goal kickoff.
+        half = sum(a <= approx + int(LEAD_S * fps) for a in starts)
+        kind = "goal" if half in seen else "half"
+        seen.add(half)
         frame = kickoffs.restart_frame(table, max(0, approx - int(LEAD_S * fps)), SEARCH_S,
                                        strict=True)
         if frame is None or table.period[frame] == 0:
             missing += 1
             continue
-        out.append((frame, team))
-    rows, seen = [], set()
-    for frame, team in sorted(set(out)):
-        period = int(table.period[frame])
-        rows.append(("goal" if period in seen else "half", frame, team))
-        seen.add(period)
-    return rows, missing
+        out.append((kind, frame, team))
+    return sorted(set(out), key=lambda row: row[1]), missing
 
 
 def open_study():

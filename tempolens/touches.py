@@ -59,6 +59,17 @@ def _dfl_halves(match_id):
     return halves
 
 
+def dfl_event_frame(t, halves):
+    """Table frame of a DFL event time `t` (s), or None outside every half (`_dfl_halves`)."""
+    offset = 0
+    for start, n in halves:
+        k = int(round((t - start) / 0.04))
+        if 0 <= k < n:
+            return offset + k
+        offset += n
+    return None
+
+
 def dfl_touch_frames(match_id):
     """(frames, teams) of on-ball events, in the table's frame index."""
     info = _dfl_file("matchinformation", match_id).read_text(encoding="utf-8")
@@ -78,14 +89,10 @@ def dfl_touch_frames(match_id):
             continue
         if team not in team_of:
             continue
-        t, offset = _time(event.attrib["EventTime"]), 0
-        for start, n in halves:
-            k = int(round((t - start) / 0.04))
-            if 0 <= k < n:
-                frames.append(offset + k)
-                teams.append(team_of[team])
-                break
-            offset += n
+        frame = dfl_event_frame(_time(event.attrib["EventTime"]), halves)
+        if frame is not None:
+            frames.append(frame)
+            teams.append(team_of[team])
     return np.asarray(frames, dtype=np.int64), np.asarray(teams, dtype=np.int8)
 
 

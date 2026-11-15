@@ -18,7 +18,7 @@ import numpy as np
 from ..match import A, H, X
 
 CORNER_M, STILL_M, MOVE_M = 2.0, 1.0, 2.0
-STILL_S, SKIP_S, WINDOW_S, START_S = 0.5, 10.0, 2.0, 2.0
+STILL_S, SKIP_S, START_S = 0.5, 10.0, 2.0
 AREA_DEPTH, AREA_HALF = 5.5, 9.16          # goal area: 5.5 m deep, 18.32 m wide
 MAX_FILL = 75
 COSTS = (4.0, 8.0, 8.0, 1.0)
@@ -87,10 +87,6 @@ def implied_side(kind, end, ends):
     return defending if kind == "goal kick" else (A if defending == H else H)
 
 
-def decoded_side(codes, frame, fps):
-    window = codes[frame:frame + int(WINDOW_S * fps)]
-    h, a = int((window == H).sum()), int((window == A).sum())
-    return None if h == a == 0 else (H if h >= a else A)
 
 
 def restarts_with_sides(table, kickoffs=None):
@@ -101,9 +97,10 @@ def restarts_with_sides(table, kickoffs=None):
 
 def tally(codes, rows, fps):
     """{kind: [found, agree, disagree, undecided]} plus "all"."""
+    from ..kickoffs import decoded_team      # majority over the first 2 s, as for kickoffs
     out = {k: [0, 0, 0, 0] for k in ("corner", "goal kick", "all")}
     for f, kind, implied in rows:
-        got = decoded_side(codes, f, fps)
+        got = decoded_team(codes, f, fps)
         slot = 3 if got is None or implied is None else (1 if got == implied else 2)
         for k in (kind, "all"):
             out[k][0] += 1

@@ -32,6 +32,12 @@ class TagPriorTests(unittest.TestCase):
         self.assertEqual(v["attack"][10:15].tolist(), [-1] * 5)
         self.assertEqual(v["defence"][20:30].tolist(), [-1] * 10)
 
+    def test_tags_outside_the_match_add_nothing(self):
+        # A negative stop once indexed from the end and voted on frames 0-84.
+        v = votes([(-40, -15, "attack", H), (95, 120, "attack", A), (130, 140, "attack", H)], 100)
+        self.assertEqual(np.flatnonzero(v["attack"]).tolist(), list(range(95, 100)))
+        self.assertTrue((v["attack"][95:] == -1).all())
+
     def test_reliable_tags_get_weight_and_random_tags_do_not(self):
         rng = np.random.default_rng(0)
         sides = rng.integers(0, 2, 5000)

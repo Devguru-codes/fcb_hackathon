@@ -283,6 +283,42 @@ class EnsembleTests(unittest.TestCase):
         np.testing.assert_allclose(adaptcv.member_output(model.head, h0, h1, inside),
                                    temporal.predict(model, normaliser, sample), atol=1e-4)
 
+    def test_long_matches_are_stitched_exactly(self):
+        # _infer runs overlapping windows (batches of 16 full ones, edge windows alone) and keeps
+        # each window's centre: an identity model must come back unchanged at any length.
+        import torch
+        from tempolens import temporal
+
+        class Identity(torch.nn.Module):
+            config = temporal.TemporalConfig()
+
+            def __init__(self):
+                super().__init__()
+                self.w = torch.nn.Parameter(torch.zeros(1, dtype=torch.float64))
+
+            def forward(self, x, tokens=None):
+                return x
+        model = Identity()
+        for n in (1, 2999, 3001, 5001, 79467):
+            z = np.random.default_rng(n).standard_normal((n, 3))
+            np.testing.assert_array_equal(temporal._infer(model, z), z)
+
+    def test_tta_on_a_teamcue_model_and_eata_on_a_hedge_model(self):
+        # Both once failed on a width mismatch (157 vs 149 inputs; 35 vs 32 head inputs).
+        from tempolens import temporal
+        from tempolens.features import TableSample
+        table = SimulatorTests()._labelled(3000)
+        sample = TableSample(table)
+        for config in (temporal.TemporalConfig(hidden=8, teamcue=True),
+                       temporal.TemporalConfig(hidden=8, hedge=0.5)):
+            model, normaliser = temporal.train([table], epochs=1, device="cpu", verbose=False,
+                                               config=config)
+            model = model.double()
+            adapted = temporal.adapt_normaliser(normaliser, sample, 0.5)
+            temporal.adapt_head(model, adapted, sample, 2)
+            out = temporal.predict(model, adapted, sample)
+            self.assertTrue(np.isfinite(out[table.period > 0]).all())
+
     def test_study_eata_equals_predict_eata(self):
         import copy
         from tempolens import adaptcv, temporal

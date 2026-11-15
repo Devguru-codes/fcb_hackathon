@@ -63,7 +63,7 @@ def event_rows(raw):
 def dfl_raw(match_id):
     """[(table frame, tag, team, child tags)] of one DFL match's events inside its halves."""
     from ..opendata import _dfl_file
-    from ..touches import _dfl_halves, _time
+    from ..touches import _dfl_halves, _time, dfl_event_frame
     info = _dfl_file("matchinformation", match_id).read_text(encoding="utf-8")
     general = dict(re.findall(r'(\w+)="([^"]*)"', re.search(r"<General [^>]*>", info).group(0)))
     team_of = {general["HomeTeamId"]: H, general["GuestTeamId"]: A}
@@ -72,14 +72,9 @@ def dfl_raw(match_id):
         child = next(iter(event), None)
         if child is None or "EventTime" not in event.attrib:
             continue
-        t, offset = _time(event.attrib["EventTime"]), 0
-        for start, n in halves:
-            k = int(round((t - start) / 0.04))
-            if 0 <= k < n:
-                out.append((offset + k, child.tag, _team(child, team_of),
-                            {el.tag for el in child.iter()}))
-                break
-            offset += n
+        frame = dfl_event_frame(_time(event.attrib["EventTime"]), halves)
+        if frame is not None:
+            out.append((frame, child.tag, _team(child, team_of), {el.tag for el in child.iter()}))
     return out
 
 

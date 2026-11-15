@@ -155,6 +155,8 @@ def adapt_normaliser(normaliser, sample, alpha=1.0, both_views=False):
     their width. The match's statistics come from the home view only (the submitted recipe);
     `both_views` pools both team views, so they no longer depend on which club is home."""
     sample = _as_sample(sample)
+    if len(normaliser.median) > np.asarray(sample.features(False)).shape[1]:
+        sample = TeamCueSample(sample)      # a teamcue model: its inputs carry the cue pack
     inside = sample.period > 0
     x = np.asarray(sample.features(False))[inside][::10]
     if both_views:
@@ -175,7 +177,8 @@ def head_inputs(model, normaliser, sample, swap):
         x = sample.features(swap)
         out = None
         for start, stop in sample.runs():
-            h = _infer(model, normaliser(np.asarray(x[start:stop])))
+            # The RNN features come first; aux_ball / hedge heads append after them.
+            h = _infer(model, normaliser(np.asarray(x[start:stop])))[:, :head.in_features]
             if out is None:
                 out = np.zeros((sample.n_frames, h.shape[1]), dtype=h.dtype)
             out[start:stop] = h
@@ -189,6 +192,7 @@ def eata_inputs(model, normaliser, sample):
     set -- in-half frames whose missing-value flags are not all set (view 0 then view 1), every
     5th frame, in the head's precision."""
     torch = _torch()
+    sample = TeamCueSample(sample) if model.config.teamcue else _as_sample(sample)
     inside = np.zeros(sample.n_frames, dtype=bool)
     for start, stop in sample.runs():
         inside[start:stop] = True
