@@ -156,6 +156,9 @@ baseline reads only the nearest player, which the jitter barely moved):
 | published spellF1 | 0.049 | 0.200 | 0.243 | 0.224 |
 | simulated | 0.046 | 0.257 | 0.256 | 0.198 |
 
+*The simulated rows come from the calibration run's log; the plan of action records only its
+outcome (macroF1 within ~0.03 and in the published order, plan rows on the simulator).*
+
 The macroF1 order is reproduced, within ~0.03; under spellF1 the simulation ties smooth25 with
 smooth50 and puts smooth125 below both. Uniform (non-stoppage) gaps leave macroF1 about
 0.2 too low whatever the dead-ball bias (`tempolens/simulate.py`). Every number in this document was produced under
@@ -250,6 +253,9 @@ official `possession_metrics.py`. The public five minutes choose nothing (§7c).
 | v7, 5 members, `tta_alpha` 0.5 + EATA 10, costs 4/8/8/1.0 (ENS5, submitted until 2026-11-11) | 0.7578 | 0.7698 |
 | 10-member mix (ENS5 + ms50), same setting (§7d) | — | 0.7493 |
 | **10-member mix, `tta_alpha` 0.5 alone (submitted; §7e)** | — | 0.7505 |
+
+*The "all" column is recorded in the plan of action. The DFL column of the v5, v7 and 5-member
+adaptation rows comes from the run logs and is not in the plan.*
 
 Simulator v2 is harder and closer to the real tracking (visible dead-time ball, tracker ball
 noise), so its scores are not comparable with v1's. Before the rules clarification, the choice
@@ -427,6 +433,9 @@ than 0.005.
 | `tta_alpha` 0.5, EATA 10 (2/8/8/0.5) | 0.7725 | 0.7700 | 0.3986 | 0.6471 |
 | `tta_alpha` 0.5, gate (2/8/8/0.5) | 0.7660 | 0.7614 | 0.4031 | 0.6435 |
 | `tta_alpha` 1 (4/8/8/1.0) | 0.7673 | 0.7583 | 0.3983 | 0.6413 |
+
+*Every row is from the adaptation study's run (plan row ADcv5); the rows for no adaptation at
+2/2/2/0.5 and for the gate are from its log, and the plan records only the others.*
 
 Mild re-scaling helps on real tracking (sc +0.011) but costs a little on simulated tracking; the
 best gain (+0.0028, worst condition −0.0018) stayed under the 0.005 bar, so the submission at the
